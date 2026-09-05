@@ -1,0 +1,44 @@
+experiment: breadth_150x1
+protocol_version: omniopd-v1
+teacher_budget_definition: annotation_api_attempts
+games: 50
+states_per_game: 3
+distinct_states_M: 150
+teacher_samples_per_state_N: 1
+teacher_budget_B: 150
+teacher_sampling_profile: teacher_sampling_nonthinking_v1
+teacher_max_tokens: 256
+selection: uniform_per_game_nested_v1
+selection_seed: 42
+state_pool:
+  state_source: student
+  games_G: 50
+  seed: 42
+  max_steps: 50
+  max_context_tokens: 4096
+  reserve_tokens: 256
+  behavior_max_tokens: 256
+  behavior_sampling:
+    thinking_mode: disabled
+    temperature: 0.0
+    reasoning_effort: null
+invalid_policy: retain_as_missing_no_free_retry
+training:
+  sampling_unit: uniform_action_row_with_state_weights
+  weighting: game_state_mean
+  global_batch_size: 4
+  micro_batch_size_per_gpu: 1
+  max_length: 4096
+  model_load_dtype: fp32
+  compute_dtype: bf16
+  reduction_dtype: fp32
+  learning_rate: 2.0e-5
+  lora_rank: 16
+  lora_alpha: 32
+  seeds: [7, 42, 123, 2024]
+  data_split_seed: 42
+  nominal_train_fraction: 0.9
+  nominal_dataset_passes: 3
+  # ceil((150 * 0.9) / 4) * 3; this fixed step budget remains authoritative
+  # when Teacher-invalid samples change the number of retained rows.
+  total_optimizer_steps: 102

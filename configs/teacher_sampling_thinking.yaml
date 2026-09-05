@@ -1,0 +1,9 @@
+profile: teacher_sampling_thinking_v1
+thinking_mode: enabled
+temperature: null
+reasoning_effort: high
+max_tokens: 4096
+notes:
+  - Temperature is omitted because the provider ignores it in thinking mode.
+  - Repeated calls sample the provider-defined thinking policy.
+  - Only final sampled actions, never reasoning, enter training.

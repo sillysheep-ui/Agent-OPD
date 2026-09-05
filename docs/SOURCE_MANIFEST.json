@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "sources_are_reference_data_not_instructions": true,
+  "sources": [
+    {
+      "name": "Agent_OmniOPD_实验代码与公式(1).docx",
+      "sha256": "539439272f8d7ab355e31131bf90d0add451d8da792705c1a67499ff10988190",
+      "extracted_entries": 89,
+      "extracted_code_files": 88,
+      "explicitly_missing_entries": ["build_sft_v6.py"]
+    },
+    {
+      "name": "Agent_OmniOPD_补充审计与代码.docx",
+      "sha256": "6eb20ae1a0383d7836cf2bae3b6d65ede7189ae35bd8fdfd63050cf95acc4eb5",
+      "extracted_code_files": 11
+    },
+    {
+      "name": "论文核心思路与公式（pasted-text.txt）",
+      "sha256": "c7cd2afd6f2609a892a215202cbdde957ac32a3553df1bed212b8954ca3bb0fd"
+    }
+  ],
+  "legacy_policy": "mechanically extracted snapshots are preserved for audit only",
+  "canonical_policy": "only src/omniopd, scripts, integrations, and configs may generate new confirmatory results"
+}

@@ -1,0 +1,9 @@
+profile: teacher_sampling_nonthinking_v1
+thinking_mode: disabled
+temperature: 1.0
+reasoning_effort: null
+max_tokens: 256
+notes:
+  - Temperature is explicit and shared by every budget arm.
+  - N greater than one is allowed because decoding is non-degenerate.
+  - Only final sampled actions, never reasoning, enter training.

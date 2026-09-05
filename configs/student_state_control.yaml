@@ -1,0 +1,28 @@
+experiment: student_state_source
+protocol_version: omniopd-v1
+state_source:
+  name: student
+  behavior_policy: frozen_sft_student
+  behavior_temperature: 0.0
+  behavior_thinking_mode: disabled
+correction:
+  prompt: canonical_teacher
+  model_revision: REQUIRED
+  sampling_profile: teacher_sampling_nonthinking_v1
+  temperature: 1.0
+  thinking_mode: disabled
+  reasoning_effort: null
+  invalid_policy: retain_as_missing_no_free_retry
+learner_context:
+  prompt: canonical_student
+  target: action_only
+training:
+  base_checkpoint_sha256: REQUIRED
+  master_dtype: fp32
+  compute_dtype: bf16
+  reduction_dtype: fp32
+  weighting: game_state_mean
+  total_optimizer_steps: 102
+evaluation:
+  game_list_sha256: REQUIRED
+  temperature: 0.0

@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-omniopd"
+version = "0.1.0"
+description = "Reproducible black-box on-policy distillation for language-model agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Research use; verify third-party component licenses before redistribution"}
+authors = [{name = "Agent OmniOPD"}]
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+train = ["torch>=2.1", "transformers>=4.45", "peft>=0.12", "pyarrow>=14"]
+api = ["openai>=1.40"]
+test = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+omniopd-build-data = "omniopd.cli.build_data:main"
+omniopd-bootstrap = "omniopd.cli.bootstrap:main"
+omniopd-audit = "omniopd.cli.audit:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = ["legacy"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]

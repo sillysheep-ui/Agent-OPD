@@ -1,0 +1,9 @@
+profile: sage_judge_thinking_v1
+thinking_mode: enabled
+temperature: null
+reasoning_effort: high
+max_tokens: 2048
+notes:
+  - The blind query never includes Teacher actions, entropy, selection scores, or group labels.
+  - Technical-invalid Student states are deterministically Strong and spend no judge call.
+  - Every executable state spends exactly one attempt; failures are retained as missing.
