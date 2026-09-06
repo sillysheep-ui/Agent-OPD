@@ -50,6 +50,7 @@ def test_m3_panel_freezes_cross_game_nonselected_neighbors_and_assembles_deltas(
         [a1, a3, n1, n2],
         {"A1": [_source(a1)], "A3": [_source(a3)]},
         {"A1": {a1.state.state_hash}, "A3": {a3.state.state_hash}},
+        experiments_by_group={"A1": "random", "A3": "entropy"},
         neighbors=2,
         minimum_neighbors=2,
     )
@@ -65,10 +66,10 @@ def test_m3_panel_freezes_cross_game_nonselected_neighbors_and_assembles_deltas(
         if row["target_kind"] == "neighbor"
     )
 
-    pairs = {}
+    base_by_panel = {}
+    updated_by_cell = {}
     for group, rows in score_rows.items():
         base = []
-        updated = []
         for row in rows:
             identity = {
                 key: row[key]
@@ -80,22 +81,53 @@ def test_m3_panel_freezes_cross_game_nonselected_neighbors_and_assembles_deltas(
                     "source_state_hash",
                     "target_state_hash",
                     "teacher_action",
+                    "panel_group",
+                    "panel_experiment",
                 ]
             }
             base.append(
-                {**identity, "mean_target_log_probability": -2.0, "target_tokens": 2}
-            )
-            gain = 1.0 if row["target_kind"] == "self" else 0.25
-            updated.append(
                 {
                     **identity,
-                    "mean_target_log_probability": -2.0 + gain,
+                    "checkpoint_group": "BASE",
+                    "checkpoint_experiment": None,
+                    "mean_target_log_probability": -2.0,
                     "target_tokens": 2,
                 }
             )
-        pairs[group] = (base, updated)
-    assembled = assemble_m3_rows(metadata, pairs)
-    assert len(assembled) == 2
+        base_by_panel[group] = base
+        for checkpoint, experiment in {"A1": "random", "A3": "entropy"}.items():
+            updated = []
+            for row in rows:
+                identity = {
+                    key: row[key]
+                    for key in [
+                        "score_id",
+                        "source_id",
+                        "group",
+                        "target_kind",
+                        "source_state_hash",
+                        "target_state_hash",
+                        "teacher_action",
+                        "panel_group",
+                        "panel_experiment",
+                    ]
+                }
+                gain = 1.0 if row["target_kind"] == "self" else 0.25
+                updated.append(
+                    {
+                        **identity,
+                        "checkpoint_group": checkpoint,
+                        "checkpoint_experiment": experiment,
+                        "mean_target_log_probability": -2.0 + gain,
+                        "target_tokens": 2,
+                    }
+                )
+            updated_by_cell[(checkpoint, group)] = updated
+    assembled = assemble_m3_rows(metadata, base_by_panel, updated_by_cell)
+    assert len(assembled) == 4
+    assert {
+        (row["checkpoint_group"], row["panel_group"]) for row in assembled
+    } == {("A1", "A1"), ("A1", "A3"), ("A3", "A1"), ("A3", "A3")}
     assert all(row["S_i"] == 1.0 for row in assembled)
     assert all(row["T_i"] == 0.25 for row in assembled)
 
@@ -107,6 +139,7 @@ def test_m3_panel_records_attrition_instead_of_zero_filling_undefined_transfer()
         [a1, a3],
         {"A1": [_source(a1)], "A3": [_source(a3)]},
         {"A1": {a1.state.state_hash}, "A3": {a3.state.state_hash}},
+        experiments_by_group={"A1": "random", "A3": "entropy"},
         neighbors=2,
         minimum_neighbors=1,
     )

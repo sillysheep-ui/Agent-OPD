@@ -36,7 +36,8 @@ def main() -> None:
     current_code = fingerprint_code_tree(ROOT)
     current_revision = git_revision(ROOT)
     if (
-        input_manifest.get("artifact") != "m3_correction_level_transfer_rows"
+        input_manifest.get("artifact")
+        != "m3_crossed_correction_level_transfer_rows"
         or input_manifest.get("output_sha256") != sha256_file(input_path)
         or input_manifest.get("token_contract") != "assistant_action_content_tokens_v1"
         or input_manifest.get("code") != current_code
@@ -44,12 +45,14 @@ def main() -> None:
     ):
         raise SystemExit("M3 rows do not match a canonical assembled-input manifest")
     rows = list(read_jsonl(args.input))
-    groups = {row.get("group") for row in rows}
-    if groups != {"A1", "A3"}:
-        raise SystemExit(f"input must contain separate A1 and A3 correction rows; got {groups}")
     result = fit_transfer_regression(rows)
     intervals = {}
-    for coefficient in ["group_A3", "S_x_group_A3"]:
+    for coefficient in [
+        "checkpoint_A3",
+        "S_x_checkpoint_A3",
+        "checkpoint_x_panel_A3",
+        "S_x_checkpoint_x_panel_A3",
+    ]:
         point, lower, upper = game_cluster_bootstrap_coefficient(
             rows,
             coefficient=coefficient,
@@ -59,8 +62,8 @@ def main() -> None:
         intervals[coefficient] = {"estimate": point, "lower_95": lower, "upper_95": upper}
     report = {
         "protocol_version": "omniopd-v1",
-        "artifact": "m3_action_imitation_transfer_analysis",
-        "interpretation": "whole_checkpoint_action_imitation_transfer_not_task_utility",
+        "artifact": "m3_crossed_action_imitation_transfer_analysis",
+        "interpretation": "crossed_whole_checkpoint_action_imitation_transfer_not_task_utility",
         "code": current_code,
         "code_revision": current_revision,
         "input": {

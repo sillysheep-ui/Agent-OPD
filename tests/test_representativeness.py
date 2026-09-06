@@ -1,4 +1,5 @@
 from omniopd.representativeness import (
+    common_retained_game_support,
     game_balanced_probability_mass,
     paired_game_balanced_bootstrap_js,
     probability_mass,
@@ -23,3 +24,15 @@ def test_paired_js_is_zero_for_equal_per_game_distributions():
     assert interval.estimate == 0.0
     assert interval.lower == 0.0
     assert interval.upper == 0.0
+
+
+def test_m2_uses_one_common_retained_game_support_across_groups():
+    assert common_retained_game_support(
+        {"A1": ["g1", "g2"], "A3": ["g2", "g3"]}
+    ) == ("g2",)
+    try:
+        common_retained_game_support({"A1": ["g1"], "A3": ["g2"]})
+    except ValueError as error:
+        assert "incomparable" in str(error)
+    else:
+        raise AssertionError("disjoint M2 supports cannot be compared")

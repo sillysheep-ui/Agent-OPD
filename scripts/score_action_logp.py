@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from omniopd.io import read_jsonl, write_jsonl
 from omniopd.loss import mean_target_log_probability
+from omniopd.evaluation import validate_training_completion_manifest
 from omniopd.provenance import (
     fingerprint_code_tree,
     fingerprint_path,
@@ -24,6 +25,47 @@ def _artifact_digest(value):
     if not isinstance(value, dict):
         return None
     return value.get("sha256") or value.get("tree_sha256")
+
+
+def _training_comparison_contract(manifest: dict) -> dict:
+    """Extract the preregistered fields that must match across M3 checkpoints."""
+
+    training = manifest.get("training_contract")
+    hyperparameters = manifest.get("hyperparameters")
+    if not isinstance(training, dict) or not isinstance(hyperparameters, dict):
+        raise ValueError("training contract/hyperparameters are missing")
+    training_keys = [
+        "global_train_batch_size",
+        "local_train_batch_size",
+        "micro_batch_size_per_gpu",
+        "microbatches_per_optimizer_step",
+        "total_optimizer_steps",
+        "seed",
+        "model_load_dtype",
+        "forward_and_fsdp_param_dtype",
+        "cross_entropy_dtype",
+        "gradient_reduce_dtype",
+        "attention_implementation",
+        "distributed_strategy",
+        "state_weight_normalization",
+        "sampler_padding_weight",
+        "encoded_sequence_overflow_policy",
+    ]
+    hyperparameter_keys = ["learning_rate", "max_length", "lora_rank", "lora_alpha"]
+    missing = [key for key in training_keys if key not in training]
+    missing += [
+        f"hyperparameters.{key}"
+        for key in hyperparameter_keys
+        if key not in hyperparameters
+    ]
+    if missing:
+        raise ValueError(f"training comparison contract lacks fields: {missing}")
+    return {
+        "training_contract": {key: training[key] for key in training_keys},
+        "hyperparameters": {
+            key: hyperparameters[key] for key in hyperparameter_keys
+        },
+    }
 
 
 def _python_value(value):
@@ -60,7 +102,15 @@ def main() -> None:
         "--training-manifest",
         help="canonical launch_manifest.json required with --adapter",
     )
+    parser.add_argument(
+        "--training-completion-manifest",
+        help="canonical completion_manifest.json required with --adapter",
+    )
     parser.add_argument("--tokenizer")
+    parser.add_argument(
+        "--checkpoint-group", choices=["BASE", "A1", "A3"], required=True
+    )
+    parser.add_argument("--panel-group", choices=["A1", "A3"], required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device")
@@ -79,15 +129,34 @@ def main() -> None:
     training_manifest_path = (
         Path(args.training_manifest) if args.training_manifest else None
     )
-    if (adapter_path is None) != (training_manifest_path is None):
+    training_completion_path = (
+        Path(args.training_completion_manifest)
+        if args.training_completion_manifest
+        else None
+    )
+    if len(
+        {
+            adapter_path is None,
+            training_manifest_path is None,
+            training_completion_path is None,
+        }
+    ) != 1:
         raise SystemExit(
-            "--adapter and --training-manifest must be supplied together"
+            "--adapter, --training-manifest, and --training-completion-manifest "
+            "must be supplied together"
+        )
+    if (adapter_path is None) != (args.checkpoint_group == "BASE"):
+        raise SystemExit(
+            "BASE scoring must omit an adapter; A1/A3 scoring must load one"
         )
     tokenizer_name = args.tokenizer or args.base_model
     required_paths = [base_model_path, Path(tokenizer_name)]
     if adapter_path is not None:
         required_paths.append(adapter_path)
         required_paths.append(training_manifest_path)
+        required_paths.append(training_completion_path)
+        required_paths.append(training_manifest_path.parent / "resolved_config.yaml")
+        required_paths.append(training_manifest_path.parent / "train.log")
     if any(not path.exists() for path in required_paths):
         raise SystemExit("base model, optional adapter, and tokenizer must be local paths")
     current_code = fingerprint_code_tree(ROOT)
@@ -101,11 +170,26 @@ def main() -> None:
         training_manifest = json.loads(
             training_manifest_path.read_text(encoding="utf-8")
         )
+        training_completion = json.loads(
+            training_completion_path.read_text(encoding="utf-8")
+        )
         try:
-            total_steps = int(
-                training_manifest["training_contract"]["total_optimizer_steps"]
+            completion_identity = validate_training_completion_manifest(
+                training_completion,
+                training_manifest,
+                launch_manifest_sha256=sha256_file(training_manifest_path),
+                completion_manifest_sha256=sha256_file(training_completion_path),
+                checkpoint_fingerprint=adapter_fingerprint,
+                resolved_config_fingerprint=fingerprint_path(
+                    training_manifest_path.parent / "resolved_config.yaml"
+                ),
+                training_log_fingerprint=fingerprint_path(
+                    training_manifest_path.parent / "train.log"
+                ),
             )
-            training_seed = int(training_manifest["training_contract"]["seed"])
+            total_steps = int(completion_identity["total_optimizer_steps"])
+            training_seed = int(completion_identity["training_seed"])
+            comparison_contract = _training_comparison_contract(training_manifest)
         except (KeyError, TypeError, ValueError) as error:
             raise SystemExit(f"M3 training manifest is incomplete: {error}") from error
         expected_adapter = training_manifest_path.parent / f"global_step_{total_steps}"
@@ -119,6 +203,8 @@ def main() -> None:
                 training_manifest.get("inputs", {}).get("model_path")
             )
             != _artifact_digest(base_fingerprint)
+            or not isinstance(training_manifest.get("experiment"), str)
+            or not training_manifest["experiment"].strip()
         ):
             raise SystemExit(
                 "M3 adapter must be the final checkpoint of a canonical training run "
@@ -127,9 +213,13 @@ def main() -> None:
         training_identity = {
             "path": str(training_manifest_path),
             "sha256": sha256_file(training_manifest_path),
-            "experiment": training_manifest.get("experiment"),
+            "completion_path": str(training_completion_path),
+            "completion_sha256": sha256_file(training_completion_path),
+            "experiment": completion_identity["experiment"],
             "training_seed": training_seed,
             "total_optimizer_steps": total_steps,
+            "comparison_contract": comparison_contract,
+            "final_checkpoint": completion_identity["final_checkpoint"],
             "final_checkpoint_verified": True,
         }
 
@@ -166,6 +256,8 @@ def main() -> None:
         "score_id",
         "source_id",
         "group",
+        "panel_group",
+        "panel_experiment",
         "target_kind",
         "source_state_hash",
         "target_state_hash",
@@ -187,6 +279,10 @@ def main() -> None:
             row["protocol_version"] != "omniopd-v1"
             or bool(row["enable_thinking"])
             or row["group"] not in {"A1", "A3"}
+            or row["group"] != args.panel_group
+            or row["panel_group"] != args.panel_group
+            or not isinstance(row["panel_experiment"], str)
+            or not row["panel_experiment"].strip()
             or row["target_kind"] not in {"self", "neighbor"}
             or row["state_hash"] != row["target_state_hash"]
             or row["messages"][-1]
@@ -247,6 +343,12 @@ def main() -> None:
                     "score_id": row["score_id"],
                     "source_id": row["source_id"],
                     "group": row["group"],
+                    "panel_group": row["panel_group"],
+                    "panel_experiment": row["panel_experiment"],
+                    "checkpoint_group": args.checkpoint_group,
+                    "checkpoint_experiment": (
+                        training_identity["experiment"] if training_identity else None
+                    ),
                     "target_kind": row["target_kind"],
                     "source_state_hash": row["source_state_hash"],
                     "target_state_hash": row["target_state_hash"],
@@ -268,6 +370,12 @@ def main() -> None:
         "base_model": base_fingerprint,
         "adapter": adapter_fingerprint,
         "training_manifest": training_identity,
+        "checkpoint_group": args.checkpoint_group,
+        "checkpoint_experiment": (
+            training_identity["experiment"] if training_identity else None
+        ),
+        "panel_group": args.panel_group,
+        "panel_experiment": rows[0]["panel_experiment"],
         "tokenizer": fingerprint_path(tokenizer_name),
         "model_dtype": args.model_dtype,
         "device": device,

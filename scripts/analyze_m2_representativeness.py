@@ -17,8 +17,12 @@ from omniopd.provenance import (
     fingerprint_code_tree,
     git_revision,
     sha256_file,
+    sha256_json,
 )
-from omniopd.representativeness import paired_game_balanced_bootstrap_js
+from omniopd.representativeness import (
+    common_retained_game_support,
+    paired_game_balanced_bootstrap_js,
+)
 from omniopd.validation import audit_correction_records
 
 
@@ -115,8 +119,10 @@ def main() -> None:
             for feature, value in features.items():
                 reference[feature][game].append(value)
 
-    group_reports = {}
     group_input_metadata = {}
+    group_records = {}
+    selected_features = {}
+    retained_games_by_group = {}
     for group_name, path in sorted(groups.items()):
         group_manifest_path = group_manifests[group_name]
         group_manifest = json.loads(
@@ -147,43 +153,61 @@ def main() -> None:
             raise SystemExit(
                 f"M2 group {group_name} contains states outside the frozen pool: {unknown[:5]}"
             )
-        selected: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
         retained = [record for record in records if record.valid_teacher_samples]
+        selected: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
         for record in retained:
             features = features_by_hash[record.state.state_hash]
             for feature, value in features.items():
                 selected[feature][record.state.game_id].append(value)
-        retained_games = sorted({record.state.game_id for record in retained})
-        dropped_games = sorted(set(by_game) - set(retained_games))
-        diagnostics = {}
-        if retained_games:
-            for feature in feature_names or []:
-                reference_common = {
-                    game: reference[feature][game] for game in retained_games
-                }
-                selected_common = {
-                    game: selected[feature][game] for game in retained_games
-                }
-                interval = paired_game_balanced_bootstrap_js(
-                    reference_common,
-                    selected_common,
-                    replicates=args.replicates,
-                    rng_seed=args.seed,
-                )
-                diagnostics[feature] = interval.__dict__
-        group_reports[group_name] = {
-            "selected_states": len(records),
-            "teacher_valid_states": len(retained),
-            "retained_games": retained_games,
-            "dropped_games": dropped_games,
-            "estimand": "game_balanced_conditional_on_retained_games",
-            "marginal_js": diagnostics,
+        group_records[group_name] = (records, retained)
+        selected_features[group_name] = selected
+        retained_games_by_group[group_name] = {
+            record.state.game_id for record in retained
         }
         group_input_metadata[group_name] = {
             "path": str(path),
             "sha256": sha256_file(path),
             "manifest_path": str(group_manifest_path),
             "manifest_sha256": sha256_file(group_manifest_path),
+        }
+
+    try:
+        common_games = common_retained_game_support(retained_games_by_group)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    group_reports = {}
+    for group_name in sorted(groups):
+        records, retained = group_records[group_name]
+        diagnostics = {}
+        for feature in feature_names or []:
+            reference_common = {
+                game: reference[feature][game] for game in common_games
+            }
+            selected_common = {
+                game: selected_features[group_name][feature][game]
+                for game in common_games
+            }
+            interval = paired_game_balanced_bootstrap_js(
+                reference_common,
+                selected_common,
+                replicates=args.replicates,
+                rng_seed=args.seed,
+            )
+            diagnostics[feature] = interval.__dict__
+        retained_games = retained_games_by_group[group_name]
+        group_reports[group_name] = {
+            "selected_states": len(records),
+            "teacher_valid_states": len(retained),
+            "teacher_valid_states_on_common_support": sum(
+                record.state.game_id in common_games for record in retained
+            ),
+            "retained_games": sorted(retained_games),
+            "games_excluded_for_cross_group_comparability": sorted(
+                retained_games - set(common_games)
+            ),
+            "dropped_games": sorted(set(by_game) - retained_games),
+            "estimand": "game_balanced_conditional_on_common_retained_game_support",
+            "marginal_js": diagnostics,
         }
 
     report = {
@@ -196,6 +220,12 @@ def main() -> None:
         "state_pool_manifest_sha256": sha256_file(state_pool_manifest_path),
         "state_pool_states": len(turns),
         "state_pool_games": len(by_game),
+        "comparison_support": {
+            "contract": "intersection_of_teacher_valid_game_supports",
+            "games": list(common_games),
+            "games_count": len(common_games),
+            "sha256": sha256_json(list(common_games)),
+        },
         "group_inputs": group_input_metadata,
         "bootstrap_replicates": args.replicates,
         "bootstrap_seed": args.seed,

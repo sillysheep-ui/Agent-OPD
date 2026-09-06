@@ -13,8 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from omniopd.analysis.gradient import (
+    assert_shared_teacher_contract,
     assert_held_out_reference_games,
     gradient_alignment,
+    teacher_contract_from_manifest,
 )
 from omniopd.io import read_jsonl, write_jsonl
 from omniopd.loss import weighted_causal_ce
@@ -23,6 +25,7 @@ from omniopd.provenance import (
     fingerprint_path,
     git_revision,
     sha256_file,
+    sha256_json,
 )
 from omniopd.tokenization import encode_final_assistant_content
 from omniopd.prompts import STUDENT_SYSTEM_PROMPT
@@ -168,6 +171,83 @@ def _parse_group(value: str) -> tuple[str, Path]:
     return name.strip(), Path(path)
 
 
+def _resolve_manifest_path(audit_path: Path, declared_path: str) -> Path:
+    path = Path(declared_path)
+    return path if path.is_absolute() else audit_path.parent / path
+
+
+def _validate_bound_artifacts(
+    data_path: Path,
+    audit_path: Path,
+    rows: list[dict[str, Any]],
+    *,
+    current_code: dict[str, Any],
+    current_revision: str,
+) -> tuple[dict[str, Any], dict[str, Any], Path, dict[str, Any]]:
+    """Validate the action table, build audit, correction manifest, and Teacher."""
+
+    try:
+        audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise SystemExit(f"M1 build audit cannot be read: {audit_path}: {error}") from error
+    correction_binding = audit.get("correction_manifest")
+    if not isinstance(correction_binding, dict):
+        raise SystemExit(f"M1 build audit lacks a correction-manifest binding: {audit_path}")
+    declared_path = correction_binding.get("path")
+    declared_sha = correction_binding.get("sha256")
+    if not isinstance(declared_path, str) or not declared_path or not isinstance(
+        declared_sha, str
+    ) or not declared_sha:
+        raise SystemExit(f"M1 correction-manifest binding is incomplete: {audit_path}")
+    correction_manifest_path = _resolve_manifest_path(audit_path, declared_path)
+    if not correction_manifest_path.is_file():
+        raise SystemExit(
+            f"M1 bound correction manifest does not exist: {correction_manifest_path}"
+        )
+    if sha256_file(correction_manifest_path) != declared_sha:
+        raise SystemExit(
+            f"M1 bound correction manifest hash disagrees with build audit: {audit_path}"
+        )
+    try:
+        correction_manifest = json.loads(
+            correction_manifest_path.read_text(encoding="utf-8")
+        )
+        teacher_contract = teacher_contract_from_manifest(correction_manifest)
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        raise SystemExit(
+            f"M1 correction/Teacher manifest validation failed for {data_path}: {error}"
+        ) from error
+    experiment = audit.get("experiment")
+    experiment_config = audit.get("experiment_config")
+    manifest_experiment_config = correction_manifest.get("experiment_config")
+    if (
+        audit.get("artifact") != "action_only_training_data_audit"
+        or audit.get("protocol_version") != "omniopd-v1"
+        or audit.get("code") != current_code
+        or audit.get("code_revision") != current_revision
+        or audit.get("input_sha256") != correction_manifest.get("corrections_sha256")
+        or audit.get("training_output_sha256") != sha256_file(data_path)
+        or audit.get("weighting_mode") != "game_state_mean"
+        or "split" not in audit
+        or audit.get("split") is not None
+        or int(audit.get("validation_rows", -1)) != 0
+        or int(audit.get("training_rows", -1)) != len(rows)
+        or not isinstance(experiment, str)
+        or not experiment
+        or correction_manifest.get("experiment") != experiment
+        or correction_manifest.get("code") != current_code
+        or correction_manifest.get("code_revision") != current_revision
+        or not isinstance(experiment_config, dict)
+        or not isinstance(manifest_experiment_config, dict)
+        or experiment_config.get("sha256")
+        != manifest_experiment_config.get("sha256")
+    ):
+        raise SystemExit(
+            f"M1 data {data_path} is not a complete, source-bound canonical action table"
+        )
+    return audit, correction_manifest, correction_manifest_path, teacher_contract
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="M1 held-out surrogate-gradient alignment in a fixed LoRA tangent space"
@@ -229,6 +309,42 @@ def main() -> None:
     if not current_revision:
         raise SystemExit("M1 analysis requires an immutable Git revision")
 
+    # Validate provenance before allocating the model: a malformed/stale input
+    # must fail without producing even a partial scientific result.
+    reference_rows = _load_rows(reference_path)
+    group_rows = {name: _load_rows(path) for name, path in args.group}
+    reference_audit, reference_correction_manifest, reference_manifest_path, reference_teacher = (
+        _validate_bound_artifacts(
+            reference_path,
+            reference_audit_path,
+            reference_rows,
+            current_code=current_code,
+            current_revision=current_revision,
+        )
+    )
+    validated_groups = {
+        name: _validate_bound_artifacts(
+            group_paths[name],
+            group_audit_paths[name],
+            group_rows[name],
+            current_code=current_code,
+            current_revision=current_revision,
+        )
+        for name in group_names
+    }
+    try:
+        assert_shared_teacher_contract(
+            [reference_teacher]
+            + [validated_groups[name][3] for name in sorted(validated_groups)]
+        )
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    reference_games = {str(row["game_id"]) for row in reference_rows}
+    correction_games = {
+        str(row["game_id"]) for rows in group_rows.values() for row in rows
+    }
+    assert_held_out_reference_games(correction_games, reference_games)
+
     import torch
     from peft import LoraConfig, TaskType, get_peft_model
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -272,47 +388,16 @@ def main() -> None:
     parameters = [parameter for parameter in model.parameters() if parameter.requires_grad]
     if not parameters:
         raise RuntimeError("LoRA setup exposed no trainable parameters")
-
-    reference_rows = _load_rows(reference_path)
-    group_rows = {name: _load_rows(path) for name, path in args.group}
-
-    def validate_unsplit_audit(data_path: Path, audit_path: Path, rows: list[dict]) -> dict:
-        audit = json.loads(audit_path.read_text(encoding="utf-8"))
-        correction_manifest = audit.get("correction_manifest")
-        if (
-            audit.get("artifact") != "action_only_training_data_audit"
-            or audit.get("protocol_version") != "omniopd-v1"
-            or audit.get("code") != current_code
-            or audit.get("code_revision") != current_revision
-            or audit.get("training_output_sha256") != sha256_file(data_path)
-            or audit.get("weighting_mode") != "game_state_mean"
-            or "split" not in audit
-            or audit.get("split") is not None
-            or int(audit.get("validation_rows", -1)) != 0
-            or int(audit.get("training_rows", -1)) != len(rows)
-            or not isinstance(correction_manifest, dict)
-            or not isinstance(correction_manifest.get("sha256"), str)
-            or not correction_manifest["sha256"]
-        ):
-            raise SystemExit(
-                f"M1 data {data_path} must be a complete unsplit canonical action table"
-            )
-        return audit
-
-    reference_audit = validate_unsplit_audit(
-        reference_path, reference_audit_path, reference_rows
-    )
-    group_audits = {
-        name: validate_unsplit_audit(
-            group_paths[name], group_audit_paths[name], group_rows[name]
-        )
-        for name in group_names
-    }
-    reference_games = {str(row["game_id"]) for row in reference_rows}
-    correction_games = {
-        str(row["game_id"]) for rows in group_rows.values() for row in rows
-    }
-    assert_held_out_reference_games(correction_games, reference_games)
+    trainable_parameter_contract = [
+        {
+            "name": name,
+            "shape": list(parameter.shape),
+            "dtype": str(parameter.dtype),
+            "elements": parameter.numel(),
+        }
+        for name, parameter in model.named_parameters()
+        if parameter.requires_grad
+    ]
 
     def gradient_for_row(row):
         return _gradient_vector(
@@ -400,7 +485,14 @@ def main() -> None:
             "sha256": sha256_file(reference_path),
             "audit_path": str(reference_audit_path),
             "audit_sha256": sha256_file(reference_audit_path),
-            "correction_manifest": reference_audit["correction_manifest"],
+            "experiment": reference_audit["experiment"],
+            "correction_manifest": {
+                "path": str(reference_manifest_path),
+                "sha256": sha256_file(reference_manifest_path),
+                "corrections_sha256": reference_correction_manifest[
+                    "corrections_sha256"
+                ],
+            },
             "rows": len(reference_rows),
             "games": len(reference_games),
         },
@@ -410,10 +502,19 @@ def main() -> None:
                 "sha256": sha256_file(path),
                 "audit_path": str(group_audit_paths[name]),
                 "audit_sha256": sha256_file(group_audit_paths[name]),
-                "correction_manifest": group_audits[name]["correction_manifest"],
+                "experiment": validated_groups[name][0]["experiment"],
+                "correction_manifest": {
+                    "path": str(validated_groups[name][2]),
+                    "sha256": sha256_file(validated_groups[name][2]),
+                    "corrections_sha256": validated_groups[name][1][
+                        "corrections_sha256"
+                    ],
+                },
             }
             for name, path in args.group
         },
+        "teacher_contract": reference_teacher,
+        "teacher_contract_sha256": sha256_json(reference_teacher),
         "token_contract": "assistant_action_content_tokens_v1",
         "enable_thinking": False,
         "model_master_dtype": "fp32",
@@ -424,6 +525,13 @@ def main() -> None:
             "dropout": 0.0,
             "seed": args.lora_seed,
             "target_modules": target_modules,
+            "trainable_parameter_tensors": len(trainable_parameter_contract),
+            "trainable_parameter_elements": sum(
+                row["elements"] for row in trainable_parameter_contract
+            ),
+            "trainable_parameter_contract_sha256": sha256_json(
+                trainable_parameter_contract
+            ),
         },
         "summaries": summaries,
         "outputs": {

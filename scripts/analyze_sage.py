@@ -13,7 +13,9 @@ from omniopd.analysis.sage import (
     design_weighted_game_balanced_indicator,
     deterministic_or_judged_label,
     disagreement,
+    game_cluster_bootstrap_design_ratio,
     game_balanced_indicator,
+    state_level_disagreement,
 )
 from omniopd.io import read_jsonl, write_jsonl
 from omniopd.provenance import (
@@ -36,6 +38,8 @@ def main() -> None:
     )
     parser.add_argument("--population-manifest", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--replicates", type=int, default=10_000)
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     labels_path = Path(args.labels)
@@ -52,6 +56,8 @@ def main() -> None:
         raise SystemExit("SAGE labels, label manifest, and population counts must exist")
     if output.exists():
         raise SystemExit(f"refusing to overwrite SAGE output: {output}")
+    if args.replicates <= 0:
+        raise SystemExit("--replicates must be positive")
     population = {
         str(game): int(count)
         for game, count in json.loads(
@@ -81,6 +87,8 @@ def main() -> None:
         != population_manifest.get("state_pool_sha256")
         or labels_manifest.get("code") != current_code
         or labels_manifest.get("code_revision") != current_revision
+        or not isinstance(labels_manifest.get("experiment"), str)
+        or not labels_manifest["experiment"].strip()
     ):
         raise SystemExit("SAGE labels do not match a canonical blind-judge manifest")
 
@@ -134,10 +142,9 @@ def main() -> None:
                 "skip": int(label == "Skip") if label is not None else None,
                 "weak": int(label == "Weak") if label is not None else None,
                 "strong": int(label == "Strong") if label is not None else None,
-                "disagreement": (
-                    sum(disagreement_values) / len(disagreement_values)
-                    if disagreement_values
-                    else None
+                "teacher_valid": bool(disagreement_values),
+                "disagreement": state_level_disagreement(
+                    str(row["student_action"]), teacher_samples
                 ),
                 "valid_teacher_samples": len(disagreement_values),
                 "total_teacher_samples": len(teacher_samples),
@@ -176,6 +183,119 @@ def main() -> None:
         else None
     )
 
+    def ratio_summary(numerator, denominator, *, estimand: str):
+        rows = []
+        for row in processed:
+            numerator_value, denominator_value = numerator(row), denominator(row)
+            rows.append(
+                {
+                    **row,
+                    "_numerator": numerator_value,
+                    "_denominator": denominator_value,
+                }
+            )
+        try:
+            interval = game_cluster_bootstrap_design_ratio(
+                rows,
+                numerator_key="_numerator",
+                denominator_key="_denominator",
+                population_states_by_game=population,
+                replicates=args.replicates,
+                rng_seed=args.seed,
+            )
+            return {
+                "estimand": estimand,
+                "design_weighted_population": interval.__dict__,
+                "population_nonidentification": None,
+            }
+        except ValueError as error:
+            return {
+                "estimand": estimand,
+                "design_weighted_population": None,
+                "population_nonidentification": str(error),
+            }
+
+    paper_conditionals = {"P(I|D)": {}, "P(D|I)": {}, "P(V_T|I)": {}}
+    for d_value in [0, 1]:
+        for label_value in ["Skip", "Weak", "Strong"]:
+            key = f"I={label_value}|D={d_value}"
+
+            def denominator_i_d(row, d=d_value):
+                return int(
+                    row["student_valid"]
+                    and row["teacher_valid"]
+                    and row["disagreement"] == d
+                )
+
+            def numerator_i_d(row, d=d_value, label=label_value):
+                denom = denominator_i_d(row, d)
+                if denom and row["sage_label"] is None:
+                    return None
+                return int(denom and row["sage_label"] == label)
+
+            paper_conditionals["P(I|D)"][key] = ratio_summary(
+                numerator_i_d,
+                denominator_i_d,
+                estimand="P(I|D,student_valid=1,V_T=1)",
+            )
+    for label_value in ["Skip", "Weak", "Strong"]:
+        for d_value in [0, 1]:
+            key = f"D={d_value}|I={label_value}"
+
+            def denominator_d_i(row, label=label_value):
+                if row["student_valid"] and row["sage_label"] is None:
+                    return None
+                return int(
+                    row["student_valid"]
+                    and row["teacher_valid"]
+                    and row["sage_label"] == label
+                )
+
+            def numerator_d_i(row, d=d_value, label=label_value):
+                denom = denominator_d_i(row, label)
+                return None if denom is None else int(denom and row["disagreement"] == d)
+
+            paper_conditionals["P(D|I)"][key] = ratio_summary(
+                numerator_d_i,
+                denominator_d_i,
+                estimand="P(D|I,student_valid=1,V_T=1)",
+            )
+        def denominator_v_i(row, label=label_value):
+            if row["student_valid"] and row["sage_label"] is None:
+                return None
+            return int(row["sage_label"] == label)
+
+        def numerator_v_i(row, label=label_value):
+            denom = denominator_v_i(row, label)
+            return None if denom is None else int(denom and row["teacher_valid"])
+
+        paper_conditionals["P(V_T|I)"][f"V_T=1|I={label_value}"] = ratio_summary(
+            numerator_v_i,
+            denominator_v_i,
+            estimand="P(V_T=1|I)",
+        )
+
+    def u_denominator(row):
+        return int(row["student_valid"])
+
+    def u_numerator(row):
+        if row["student_valid"] and row["sage_label"] is None:
+            return None
+        return int(
+            row["student_valid"]
+            and row["teacher_valid"]
+            and row["disagreement"] == 1
+            and row["sage_label"] == "Skip"
+        )
+
+    group_identity = labels_manifest.get("experiment")
+    u_g = ratio_summary(
+        u_numerator,
+        u_denominator,
+        estimand="P(D=1,I=Skip|student_valid=1,g)",
+    )
+    u_g["group"] = group_identity
+
     output.mkdir(parents=True)
     processed_path = output / "processed_labels.jsonl"
     write_jsonl(processed_path, processed)
@@ -199,6 +319,10 @@ def main() -> None:
         ),
         "sage_proportions": summaries,
         "disagreement_observed_only": disagreement_summary,
+        "paper_conditionals": paper_conditionals,
+        "U_g": u_g,
+        "bootstrap_replicates": args.replicates,
+        "bootstrap_seed": args.seed,
     }
     (output / "summary.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False),

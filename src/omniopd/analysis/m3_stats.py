@@ -28,19 +28,36 @@ def _design(rows: Sequence[dict[str, Any]], *, levels: dict[str, list[str]] | No
         "task_type": sorted({str(row["task_type"]) for row in rows}),
         "action_type": sorted({str(row["action_type"]) for row in rows}),
     }
-    names = ["intercept", "group_A3", "S", "S_x_group_A3", "sim", "technical", "repeat_obs"]
+    names = [
+        "intercept",
+        "checkpoint_A3",
+        "panel_A3",
+        "checkpoint_x_panel_A3",
+        "S",
+        "S_x_checkpoint_A3",
+        "S_x_panel_A3",
+        "S_x_checkpoint_x_panel_A3",
+        "sim",
+        "technical",
+        "repeat_obs",
+    ]
     names += [f"task_type[{value}]" for value in levels["task_type"][1:]]
     names += [f"action_type[{value}]" for value in levels["action_type"][1:]]
     matrix = []
     outcomes = []
     for row in rows:
-        group = 1.0 if row["group"] == "A3" else 0.0
+        checkpoint = 1.0 if row["checkpoint_group"] == "A3" else 0.0
+        panel = 1.0 if row["panel_group"] == "A3" else 0.0
         source = float(row["S_i"])
         vector = [
             1.0,
-            group,
+            checkpoint,
+            panel,
+            checkpoint * panel,
             source,
-            source * group,
+            source * checkpoint,
+            source * panel,
+            source * checkpoint * panel,
             float(row["sim_topK"]),
             float(row.get("technical", 0)),
             float(row.get("repeat_obs", 0)),
@@ -52,13 +69,43 @@ def _design(rows: Sequence[dict[str, Any]], *, levels: dict[str, list[str]] | No
     return np.asarray(matrix), np.asarray(outcomes), names, levels
 
 
+def validate_crossed_m3_rows(rows: Sequence[dict[str, Any]]) -> None:
+    cells = {
+        (row.get("checkpoint_group"), row.get("panel_group")) for row in rows
+    }
+    expected = {(checkpoint, panel) for checkpoint in ["A1", "A3"] for panel in ["A1", "A3"]}
+    if cells != expected:
+        raise ValueError(f"M3 requires a complete checkpoint×panel 2x2 grid, got {cells}")
+    by_source: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        by_source.setdefault(str(row.get("source_id")), []).append(row)
+    if not by_source or any(
+        {row.get("checkpoint_group") for row in pair} != {"A1", "A3"}
+        or len(pair) != 2
+        or len({row.get("panel_group") for row in pair}) != 1
+        for pair in by_source.values()
+    ):
+        raise ValueError("every M3 source must be paired across both checkpoints")
+    experiment_by_group = {}
+    for row in rows:
+        for logical, experiment in [
+            (row["panel_group"], row.get("panel_experiment")),
+            (row["checkpoint_group"], row.get("checkpoint_experiment")),
+        ]:
+            if not isinstance(experiment, str) or not experiment:
+                raise ValueError("M3 rows lack checkpoint/panel experiment identities")
+            previous = experiment_by_group.setdefault(logical, experiment)
+            if previous != experiment:
+                raise ValueError("one M3 logical group maps to multiple experiments")
+    if len(set(experiment_by_group.values())) != 2:
+        raise ValueError("A1/A3 M3 experiment identities must be distinct")
+
+
 def fit_transfer_regression(rows: Iterable[dict[str, Any]]) -> RegressionResult:
     import numpy as np
 
     rows = list(rows)
-    groups = {row.get("group") for row in rows}
-    if groups != {"A1", "A3"}:
-        raise ValueError(f"M3 regression requires separate A1/A3 rows, got {groups}")
+    validate_crossed_m3_rows(rows)
     matrix, outcomes, names, _ = _design(rows)
     if not np.isfinite(matrix).all() or not np.isfinite(outcomes).all():
         raise ValueError("M3 regression contains non-finite values")
@@ -97,11 +144,15 @@ def game_cluster_bootstrap_coefficient(
     incomplete = [
         game
         for game, game_rows in by_game.items()
-        if {row.get("group") for row in game_rows} != {"A1", "A3"}
+        if {
+            (row.get("checkpoint_group"), row.get("panel_group"))
+            for row in game_rows
+        }
+        != {(checkpoint, panel) for checkpoint in ["A1", "A3"] for panel in ["A1", "A3"]}
     ]
     if incomplete:
         raise ValueError(
-            "paired game-cluster bootstrap requires both A1 and A3 in every game; "
+            "paired game-cluster bootstrap requires all checkpoint×panel cells in every game; "
             f"missing in {incomplete[:5]}"
         )
     _, _, names, levels = _design(rows)

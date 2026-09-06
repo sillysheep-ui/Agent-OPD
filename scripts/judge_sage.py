@@ -17,6 +17,7 @@ from omniopd.analysis.sage import (
     SAGE_JUDGE_SYSTEM_PROMPT,
     build_sage_judge_messages,
     parse_sage_label,
+    state_level_disagreement,
 )
 from omniopd.io import correction_from_dict, read_jsonl
 from omniopd.provenance import (
@@ -101,6 +102,8 @@ def main() -> None:
         or correction_manifest.get("code_revision") != current_revision
         or not isinstance(correction_manifest.get("state_pool_sha256"), str)
         or not correction_manifest.get("state_pool_sha256")
+        or not isinstance(correction_manifest.get("experiment"), str)
+        or not correction_manifest["experiment"].strip()
     ):
         raise SystemExit(
             "SAGE corrections must match a canonical manifest from this code revision"
@@ -201,6 +204,10 @@ def main() -> None:
                 "student_action": record.student.executed_action,
                 "student_valid": record.student.valid,
                 "teacher_samples": [sample.to_dict() for sample in record.teacher_samples],
+                "teacher_valid": bool(record.valid_teacher_samples),
+                "disagreement": state_level_disagreement(
+                    record.student.executed_action, record.teacher_samples
+                ),
                 "inclusion_probability": record.inclusion_probability,
                 "judge_label": label,
                 "judge_raw": raw,
@@ -238,6 +245,7 @@ def main() -> None:
         "code": current_code,
         "code_revision": current_revision,
         "corrections_sha256": sha256_file(corrections_path),
+        "experiment": correction_manifest.get("experiment"),
         "correction_manifest_sha256": sha256_file(correction_manifest_path),
         "state_pool_sha256": correction_manifest.get("state_pool_sha256"),
         "selection_manifest_sha256": correction_manifest.get(

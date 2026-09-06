@@ -135,3 +135,28 @@ def paired_game_balanced_bootstrap_js(
         draws[int(0.025 * (replicates - 1))],
         draws[int(0.975 * (replicates - 1))],
     )
+
+
+def common_retained_game_support(
+    games_by_group: Mapping[str, Iterable[str]],
+) -> tuple[str, ...]:
+    """Return the one game support on which every M2 arm is comparable.
+
+    Teacher-valid filtering can remove all selected states from a game in one
+    arm but not another.  Reporting each arm on its own surviving games changes
+    the game-balanced target between columns.  We therefore intersect supports
+    once and reject an empty (or malformed) comparison population.
+    """
+
+    normalized = {
+        str(group): {str(game) for game in games}
+        for group, games in games_by_group.items()
+    }
+    if len(normalized) < 2 or any(not games for games in normalized.values()):
+        raise ValueError("M2 comparison requires at least two non-empty group supports")
+    common = set.intersection(*normalized.values())
+    if not common:
+        raise ValueError(
+            "M2 groups have no common Teacher-valid game support and are incomparable"
+        )
+    return tuple(sorted(common))

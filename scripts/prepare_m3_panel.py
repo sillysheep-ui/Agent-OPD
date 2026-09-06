@@ -59,6 +59,48 @@ def _unique_mapping(values: list[tuple[str, Path]], label: str) -> dict[str, Pat
     return result
 
 
+def _resolve_bound_path(parent: Path, declared: str) -> Path:
+    path = Path(declared)
+    return path if path.is_absolute() else parent.parent / path
+
+
+def _load_bound_correction_manifest(
+    audit: dict,
+    audit_path: Path,
+    *,
+    expected_code: dict,
+    expected_revision: str,
+) -> tuple[dict, Path]:
+    binding = audit.get("correction_manifest")
+    if not isinstance(binding, dict):
+        raise SystemExit(f"M3 source audit lacks correction manifest: {audit_path}")
+    declared_path = binding.get("path")
+    declared_sha = binding.get("sha256")
+    if (
+        not isinstance(declared_path, str)
+        or not declared_path
+        or not isinstance(declared_sha, str)
+        or not declared_sha
+    ):
+        raise SystemExit(f"M3 source correction binding is incomplete: {audit_path}")
+    path = _resolve_bound_path(audit_path, declared_path)
+    if not path.is_file() or sha256_file(path) != declared_sha:
+        raise SystemExit(f"M3 source correction binding is missing or stale: {audit_path}")
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    if (
+        manifest.get("artifact") != "teacher_corrections"
+        or manifest.get("protocol_version") != "omniopd-v1"
+        or manifest.get("code") != expected_code
+        or manifest.get("code_revision") != expected_revision
+        or manifest.get("corrections_sha256") != audit.get("input_sha256")
+        or manifest.get("experiment") != audit.get("experiment")
+        or manifest.get("experiment_config", {}).get("sha256")
+        != audit.get("experiment_config", {}).get("sha256")
+    ):
+        raise SystemExit(f"M3 source correction manifest disagrees with audit: {audit_path}")
+    return manifest, path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Freeze the correction-level M3 source/neighbor scoring panel"
@@ -154,6 +196,7 @@ def main() -> None:
     turns = [rollout_turn_from_dict(row) for row in read_jsonl(state_pool_path)]
     selected_hashes: dict[str, set[str]] = {}
     selection_inputs = {}
+    selection_experiments = {}
     for name in sorted(selections):
         selection_rows = list(read_jsonl(selections[name]))
         hashes = [str(row["state_hash"]) for row in selection_rows]
@@ -177,21 +220,62 @@ def main() -> None:
         }
         if mismatches:
             raise SystemExit(f"selection {name} disagrees with its manifest: {mismatches}")
+        experiment = manifest.get("experiment")
+        experiment_config_sha256 = manifest.get("experiment_config_sha256")
+        if (
+            not isinstance(experiment, str)
+            or not experiment.strip()
+            or not isinstance(experiment_config_sha256, str)
+            or not experiment_config_sha256
+        ):
+            raise SystemExit(
+                f"selection {name} lacks an experiment/config identity"
+            )
         selected_hashes[name] = set(hashes)
+        selection_experiments[name] = experiment.strip()
         selection_inputs[name] = {
             "selection_path": str(selections[name]),
             "selection_sha256": expected["selection_sha256"],
             "manifest_path": str(selection_manifests[name]),
             "manifest_sha256": sha256_file(selection_manifests[name]),
+            "experiment": experiment.strip(),
+            "experiment_config_sha256": experiment_config_sha256,
             "states": len(hashes),
         }
 
     source_rows = {name: _load_table(path) for name, path in sources.items()}
     source_input_metadata = {}
+    source_experiments = {}
     for name in sorted(sources):
         audit = json.loads(source_audits[name].read_text(encoding="utf-8"))
         expected_source_hash = sha256_file(sources[name])
         correction_manifest = audit.get("correction_manifest")
+        if not isinstance(correction_manifest, dict):
+            raise SystemExit(f"M3 source {name} audit lacks correction manifest")
+        correction_manifest_raw_path = correction_manifest.get("path")
+        correction_manifest_sha = correction_manifest.get("sha256")
+        if (
+            not isinstance(correction_manifest_raw_path, str)
+            or not correction_manifest_raw_path
+            or not isinstance(correction_manifest_sha, str)
+            or not correction_manifest_sha
+        ):
+            raise SystemExit(f"M3 source {name} correction binding is incomplete")
+        correction_manifest_path = Path(correction_manifest_raw_path)
+        if not correction_manifest_path.is_absolute():
+            correction_manifest_path = source_audits[name].parent / correction_manifest_path
+        if (
+            not correction_manifest_path.is_file()
+            or sha256_file(correction_manifest_path) != correction_manifest_sha
+        ):
+            raise SystemExit(
+                f"M3 source {name} bound correction manifest is missing or changed"
+            )
+        correction = json.loads(
+            correction_manifest_path.read_text(encoding="utf-8")
+        )
+        experiment = audit.get("experiment")
+        experiment_config = audit.get("experiment_config")
         if (
             audit.get("artifact") != "action_only_training_data_audit"
             or audit.get("training_output_sha256") != expected_source_hash
@@ -203,25 +287,45 @@ def main() -> None:
             or audit.get("split") is not None
             or int(audit.get("validation_rows", -1)) != 0
             or int(audit.get("training_rows", -1)) != len(source_rows[name])
-            or not isinstance(correction_manifest, dict)
-            or not isinstance(correction_manifest.get("sha256"), str)
-            or not correction_manifest["sha256"]
+            or not isinstance(experiment, str)
+            or not experiment.strip()
+            or experiment != selection_experiments[name]
+            or not isinstance(experiment_config, dict)
+            or experiment_config.get("sha256")
+            != selection_inputs[name]["experiment_config_sha256"]
+            or correction.get("artifact") != "teacher_corrections"
+            or correction.get("protocol_version") != "omniopd-v1"
+            or correction.get("code") != current_code
+            or correction.get("code_revision") != current_revision
+            or correction.get("experiment") != experiment
+            or correction.get("corrections_sha256") != audit.get("input_sha256")
+            or correction.get("experiment_config", {}).get("sha256")
+            != experiment_config.get("sha256")
         ):
             raise SystemExit(
                 f"M3 source {name} must be the complete unsplit canonical action table"
             )
+        source_experiments[name] = experiment.strip()
         source_input_metadata[name] = {
             "path": str(sources[name]),
             "sha256": expected_source_hash,
             "rows": len(source_rows[name]),
             "audit_path": str(source_audits[name]),
             "audit_sha256": sha256_file(source_audits[name]),
-            "correction_manifest": correction_manifest,
+            "experiment": experiment.strip(),
+            "experiment_config": experiment_config,
+            "correction_manifest": {
+                "path": str(correction_manifest_path),
+                "sha256": correction_manifest_sha,
+            },
         }
+    if len(set(source_experiments.values())) != 2:
+        raise SystemExit("M3 A1/A3 must be bound to two distinct experiment identities")
     score_rows, metadata, attrition = build_m3_panel(
         turns,
         source_rows,
         selected_hashes,
+        experiments_by_group=source_experiments,
         neighbors=args.neighbors,
         minimum_neighbors=args.minimum_neighbors,
         minimum_similarity=args.minimum_similarity,
@@ -255,6 +359,7 @@ def main() -> None:
             "states": len(turns),
         },
         "source_inputs": source_input_metadata,
+        "experiment_identities": source_experiments,
         "selection_inputs": selection_inputs,
         "excluded_state_set_sha256": sha256_json(sorted(set().union(*selected_hashes.values()))),
         "neighbor_contract": {

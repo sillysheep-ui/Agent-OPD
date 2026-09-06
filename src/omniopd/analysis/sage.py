@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+import math
+import random
 from typing import Any, Iterable
 
 from ..provenance import sha256_json
@@ -84,6 +86,19 @@ def disagreement(student_action: str, teacher_sample: Any) -> int | None:
     return int(str(student_action) != sample["action"])
 
 
+def state_level_disagreement(
+    student_action: str, teacher_samples: Iterable[Any]
+) -> int | None:
+    """Paper D(s): any valid Teacher draw differs; undefined if none is valid."""
+
+    values = [
+        value
+        for value in (disagreement(student_action, sample) for sample in teacher_samples)
+        if value is not None
+    ]
+    return int(any(values)) if values else None
+
+
 def deterministic_or_judged_label(
     *, student_valid: bool, judge_label: str | None
 ) -> str | None:
@@ -112,6 +127,15 @@ class DesignWeightedProportion:
     games: int
     sampled_states: int
     estimand: str = "finite_population_game_balanced_mean"
+
+
+@dataclass(frozen=True)
+class ClusterBootstrapEstimate:
+    estimate: float
+    lower: float
+    upper: float
+    games: int
+    replicates: int
 
 
 def game_balanced_indicator(
@@ -187,4 +211,115 @@ def design_weighted_game_balanced_indicator(
         estimate=sum(game_estimates) / len(game_estimates),
         games=len(game_estimates),
         sampled_states=len(rows),
+    )
+
+
+def design_weighted_game_balanced_ratio(
+    rows: Iterable[dict[str, Any]],
+    *,
+    numerator_key: str,
+    denominator_key: str,
+    population_states_by_game: dict[str, int],
+    probability_key: str = "inclusion_probability",
+) -> float:
+    """Ratio of two game-balanced Horvitz–Thompson finite-population means."""
+
+    rows = list(rows)
+    if not rows or not population_states_by_game:
+        raise ValueError("sample and population game counts are required")
+    by_game: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        game = str(row.get("game_id"))
+        if game not in population_states_by_game:
+            raise ValueError(f"sampled game {game!r} is absent from target population")
+        if row.get(numerator_key) is None or row.get(denominator_key) is None:
+            raise ValueError("missing outcomes make this SAGE probability nonidentified")
+        probability = row.get(probability_key)
+        try:
+            probability = float(probability)
+        except (TypeError, ValueError) as error:
+            raise ValueError("valid design inclusion probabilities are required") from error
+        if not math.isfinite(probability) or not 0.0 < probability <= 1.0:
+            raise ValueError(
+                "valid design inclusion probabilities are required; deterministic top-k "
+                "does not identify a population probability"
+            )
+        by_game[game].append(row)
+    if set(by_game) != set(population_states_by_game):
+        raise ValueError("every target game must have sampled states")
+    numerator = 0.0
+    denominator = 0.0
+    for game, population_size in population_states_by_game.items():
+        if int(population_size) <= 0:
+            raise ValueError("population state counts must be positive")
+        numerator += sum(
+            float(row[numerator_key]) / float(row[probability_key])
+            for row in by_game[game]
+        ) / int(population_size)
+        denominator += sum(
+            float(row[denominator_key]) / float(row[probability_key])
+            for row in by_game[game]
+        ) / int(population_size)
+    if denominator <= 0.0:
+        raise ValueError("conditioning event has zero estimated probability")
+    return numerator / denominator
+
+
+def game_cluster_bootstrap_design_ratio(
+    rows: Iterable[dict[str, Any]],
+    *,
+    numerator_key: str,
+    denominator_key: str,
+    population_states_by_game: dict[str, int],
+    replicates: int = 10_000,
+    rng_seed: int = 42,
+) -> ClusterBootstrapEstimate:
+    """Resample games and recompute the design-weighted SAGE ratio."""
+
+    rows = list(rows)
+    point = design_weighted_game_balanced_ratio(
+        rows,
+        numerator_key=numerator_key,
+        denominator_key=denominator_key,
+        population_states_by_game=population_states_by_game,
+    )
+    if replicates <= 0 or len(population_states_by_game) < 2:
+        raise ValueError("positive replicates and at least two game clusters are required")
+    by_game: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        by_game[str(row["game_id"])].append(row)
+    games = sorted(population_states_by_game)
+    rng = random.Random(rng_seed)
+    draws = []
+    attempts = 0
+    while len(draws) < replicates and attempts < replicates * 20:
+        attempts += 1
+        sampled_rows = []
+        sampled_population = {}
+        for draw_index in range(len(games)):
+            game = rng.choice(games)
+            alias = f"bootstrap_{draw_index}"
+            sampled_population[alias] = population_states_by_game[game]
+            sampled_rows.extend(dict(row, game_id=alias) for row in by_game[game])
+        try:
+            draws.append(
+                design_weighted_game_balanced_ratio(
+                    sampled_rows,
+                    numerator_key=numerator_key,
+                    denominator_key=denominator_key,
+                    population_states_by_game=sampled_population,
+                )
+            )
+        except ValueError as error:
+            if "conditioning event" not in str(error):
+                raise
+    if len(draws) != replicates:
+        raise ValueError("conditioning event is too sparse for a stable cluster bootstrap")
+    draws.sort()
+    return ClusterBootstrapEstimate(
+        point,
+        draws[int(0.025 * (replicates - 1))],
+        draws[int(0.975 * (replicates - 1))],
+        len(games),
+        replicates,
     )

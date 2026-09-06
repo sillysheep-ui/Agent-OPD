@@ -11,19 +11,28 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from omniopd.analysis.m3_panel import assemble_m3_rows
+from omniopd.analysis.m3_panel import M3_GROUPS, assemble_m3_rows
 from omniopd.io import read_jsonl, write_jsonl
 from omniopd.provenance import fingerprint_code_tree, git_revision, sha256_file
 
 
-def _score_pair(value: str) -> tuple[str, tuple[Path, Path]]:
+def _named_path(value: str) -> tuple[str, Path]:
     if "=" not in value:
-        raise argparse.ArgumentTypeError("score pair must be GROUP=BASE.jsonl,UPDATED.jsonl")
-    group, paths = value.split("=", 1)
-    parts = paths.split(",")
-    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", group) is None or len(parts) != 2:
-        raise argparse.ArgumentTypeError("score pair must be GROUP=BASE.jsonl,UPDATED.jsonl")
-    return group, (Path(parts[0]), Path(parts[1]))
+        raise argparse.ArgumentTypeError("value must be NAME=PATH")
+    name, path = value.split("=", 1)
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name) is None or not path:
+        raise argparse.ArgumentTypeError("value must be NAME=PATH")
+    return name, Path(path)
+
+
+def _score_cell(value: str) -> tuple[tuple[str, str], Path]:
+    if "=" not in value:
+        raise argparse.ArgumentTypeError("cell must be CHECKPOINT,PANEL=PATH")
+    identity, path = value.split("=", 1)
+    parts = identity.split(",")
+    if len(parts) != 2 or any(part not in M3_GROUPS for part in parts) or not path:
+        raise argparse.ArgumentTypeError("cell must be A1|A3,A1|A3=PATH")
+    return (parts[0], parts[1]), Path(path)
 
 
 def _identity(value: Any) -> Any:
@@ -36,187 +45,213 @@ def _identity(value: Any) -> Any:
     }
 
 
+def _unique(values, label):
+    result = dict(values)
+    if len(result) != len(values):
+        raise SystemExit(f"{label} identities must be unique")
+    return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Join frozen M3 panel scores into correction-level S_i/T_i rows"
+        description="Join the required M3 checkpoint×panel 2x2 score grid"
     )
     parser.add_argument("--preparation-manifest", required=True)
-    parser.add_argument("--score-pair", action="append", type=_score_pair, required=True)
+    parser.add_argument("--base-score", action="append", type=_named_path, required=True)
+    parser.add_argument(
+        "--updated-score", action="append", type=_score_cell, required=True
+    )
     parser.add_argument("--output", required=True)
     parser.add_argument("--manifest-output")
     args = parser.parse_args()
 
-    pairs = dict(args.score_pair)
-    if len(pairs) != len(args.score_pair) or set(pairs) != {"A1", "A3"}:
-        raise SystemExit("score pairs must contain unique A1 and A3 groups")
+    base_paths = _unique(args.base_score, "base-score")
+    updated_paths = _unique(args.updated_score, "updated-score")
+    expected_cells = {
+        (checkpoint, panel) for checkpoint in M3_GROUPS for panel in M3_GROUPS
+    }
+    if set(base_paths) != M3_GROUPS or set(updated_paths) != expected_cells:
+        raise SystemExit(
+            "M3 requires BASE×{A1,A3} and the complete {A1,A3}×{A1,A3} grid"
+        )
     preparation_path = Path(args.preparation_manifest)
     output = Path(args.output)
     manifest_output = Path(args.manifest_output or str(output) + ".manifest.json")
-    all_score_paths = [path for pair in pairs.values() for path in pair]
-    all_manifest_paths = [Path(str(path) + ".manifest.json") for path in all_score_paths]
-    inputs = [preparation_path, *all_score_paths, *all_manifest_paths]
-    if any(not path.is_file() for path in inputs):
-        raise SystemExit("preparation, score, and score-manifest inputs must all exist")
+    score_paths = [*base_paths.values(), *updated_paths.values()]
+    score_manifest_paths = [Path(str(path) + ".manifest.json") for path in score_paths]
+    if any(
+        not path.is_file()
+        for path in [preparation_path, *score_paths, *score_manifest_paths]
+    ):
+        raise SystemExit("preparation, every score, and every score manifest must exist")
     if output == manifest_output or output.exists() or manifest_output.exists():
         raise SystemExit("refusing to overwrite or alias M3 assembled outputs")
 
     preparation = json.loads(preparation_path.read_text(encoding="utf-8"))
+    experiments = preparation.get("experiment_identities")
     if (
         preparation.get("artifact") != "m3_frozen_scoring_panel"
         or preparation.get("analysis_ready") is not True
-        or not preparation.get("code_revision")
+        or not isinstance(experiments, dict)
+        or set(experiments) != M3_GROUPS
+        or len(set(experiments.values())) != 2
     ):
-        raise SystemExit("preparation manifest is not an analysis-ready frozen M3 panel")
+        raise SystemExit("preparation manifest lacks analysis-ready A1/A3 identities")
     metadata_path = preparation_path.parent / "m3_sources.jsonl"
-    if (
-        not metadata_path.is_file()
-        or sha256_file(metadata_path) != preparation.get("source_metadata_sha256")
+    if not metadata_path.is_file() or sha256_file(metadata_path) != preparation.get(
+        "source_metadata_sha256"
     ):
         raise SystemExit("M3 source metadata does not match its preparation manifest")
 
-    score_manifests: dict[str, tuple[dict, dict]] = {}
-    score_rows = {}
-    common_code = None
-    common_tokenizer = None
-    common_base_model = None
-    common_model_dtype = None
-    updated_adapters = []
-    updated_training_manifests = []
-    for group in ["A1", "A3"]:
-        group_manifests = tuple(
-            json.loads(Path(str(path) + ".manifest.json").read_text(encoding="utf-8"))
-            for path in pairs[group]
+    common_identity = None
+    comparison_contract = None
+    checkpoint_identities: dict[str, str] = {}
+    manifests = {}
+    base_rows = {}
+    updated_rows = {}
+    entries = [
+        ("BASE", panel, path) for panel, path in sorted(base_paths.items())
+    ] + [
+        (checkpoint, panel, path)
+        for (checkpoint, panel), path in sorted(updated_paths.items())
+    ]
+    for checkpoint, panel, path in entries:
+        manifest_path = Path(str(path) + ".manifest.json")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        expected_data_hash = preparation["score_outputs"][panel]["sha256"]
+        if (
+            manifest.get("artifact") != "action_imitation_log_probability"
+            or manifest.get("scores_sha256") != sha256_file(path)
+            or manifest.get("data_sha256") != expected_data_hash
+            or manifest.get("checkpoint_group") != checkpoint
+            or manifest.get("panel_group") != panel
+            or manifest.get("panel_experiment") != experiments[panel]
+            or manifest.get("token_contract")
+            != "assistant_action_content_tokens_v1"
+            or manifest.get("enable_thinking") is not False
+        ):
+            raise SystemExit(f"M3 score manifest identity mismatch at {checkpoint}×{panel}")
+        identity = json.dumps(
+            {
+                "code": manifest.get("code"),
+                "code_revision": manifest.get("code_revision"),
+                "tokenizer": _identity(manifest.get("tokenizer")),
+                "base_model": _identity(manifest.get("base_model")),
+                "model_dtype": manifest.get("model_dtype"),
+            },
+            sort_keys=True,
+            allow_nan=False,
         )
-        expected_data_hash = preparation["score_outputs"][group]["sha256"]
-        for role, path, manifest in zip(["base", "updated"], pairs[group], group_manifests):
-            if manifest.get("artifact") != "action_imitation_log_probability":
-                raise SystemExit(f"{group} {role} manifest has the wrong artifact type")
-            if manifest.get("data_sha256") != expected_data_hash:
-                raise SystemExit(f"{group} {role} scored a different frozen panel")
-            if manifest.get("scores_sha256") != sha256_file(path):
-                raise SystemExit(f"{group} {role} score file does not match its manifest")
+        if common_identity is None:
+            common_identity = identity
+        elif identity != common_identity:
+            raise SystemExit("all six M3 score cells must share code/base/tokenizer/dtype")
+        adapter = manifest.get("adapter")
+        training = manifest.get("training_manifest")
+        if checkpoint == "BASE":
+            if adapter is not None or training is not None or manifest.get(
+                "checkpoint_experiment"
+            ) is not None:
+                raise SystemExit("M3 BASE cells cannot load or claim a training run")
+            base_rows[panel] = list(read_jsonl(path))
+        else:
             if (
-                manifest.get("token_contract") != "assistant_action_content_tokens_v1"
-                or manifest.get("enable_thinking") is not False
+                not isinstance(adapter, dict)
+                or not isinstance(training, dict)
+                or training.get("final_checkpoint_verified") is not True
+                or training.get("experiment") != experiments[checkpoint]
+                or manifest.get("checkpoint_experiment") != experiments[checkpoint]
+                or not training.get("completion_sha256")
+                or not isinstance(training.get("comparison_contract"), dict)
             ):
-                raise SystemExit(f"{group} {role} used a non-canonical token contract")
-            if not manifest.get("code_revision"):
-                raise SystemExit(f"{group} {role} score manifest lacks a code revision")
-            code_identity = json.dumps(
-                [manifest.get("code"), manifest.get("code_revision")],
+                raise SystemExit(
+                    f"M3 {checkpoint} checkpoint lacks a completed matching experiment"
+                )
+            run_identity = json.dumps(
+                {
+                    "adapter": _identity(adapter),
+                    "launch": training.get("sha256"),
+                    "completion": training.get("completion_sha256"),
+                    "final_checkpoint": training.get("final_checkpoint"),
+                },
                 sort_keys=True,
                 allow_nan=False,
             )
-            tokenizer_identity = json.dumps(
-                _identity(manifest.get("tokenizer")), sort_keys=True, allow_nan=False
-            )
-            base_model_identity = json.dumps(
-                _identity(manifest.get("base_model")),
-                sort_keys=True,
-                allow_nan=False,
-            )
-            model_dtype = manifest.get("model_dtype")
-            adapter_identity = (
-                None
-                if manifest.get("adapter") is None
-                else json.dumps(
-                    _identity(manifest.get("adapter")),
-                    sort_keys=True,
-                    allow_nan=False,
-                )
-            )
-            training_manifest_identity = manifest.get("training_manifest")
-            if role == "base" and adapter_identity is not None:
-                raise SystemExit(f"{group} base scores must not load an adapter")
-            if role == "base" and training_manifest_identity is not None:
-                raise SystemExit(f"{group} base scores must not name a training run")
-            if role == "updated" and (
-                adapter_identity is None
-                or not isinstance(training_manifest_identity, dict)
-                or training_manifest_identity.get("final_checkpoint_verified") is not True
-                or not isinstance(training_manifest_identity.get("sha256"), str)
-                or not training_manifest_identity.get("sha256")
-            ):
+            previous = checkpoint_identities.setdefault(checkpoint, run_identity)
+            if previous != run_identity:
                 raise SystemExit(
-                    f"{group} updated scores must bind a canonical final training checkpoint"
+                    f"M3 {checkpoint} rows were scored by different checkpoint bytes"
                 )
-            if model_dtype not in {"fp32", "bf16"} or not isinstance(
-                manifest.get("base_model"), dict
-            ):
-                raise SystemExit(f"{group} {role} lacks a canonical base/dtype identity")
-            if common_code is None:
-                common_code = code_identity
-                common_tokenizer = tokenizer_identity
-                common_base_model = base_model_identity
-                common_model_dtype = model_dtype
-            elif (
-                code_identity != common_code
-                or tokenizer_identity != common_tokenizer
-                or base_model_identity != common_base_model
-                or model_dtype != common_model_dtype
-            ):
+            contract = json.dumps(
+                training["comparison_contract"], sort_keys=True, allow_nan=False
+            )
+            if comparison_contract is None:
+                comparison_contract = contract
+            elif comparison_contract != contract:
                 raise SystemExit(
-                    "M3 scores use different code, tokenizer, base model, or dtype"
+                    "A1/A3 checkpoints must share seed, steps, and key hyperparameters"
                 )
-            if role == "updated":
-                updated_adapters.append(adapter_identity)
-                updated_training_manifests.append(
-                    training_manifest_identity["sha256"]
-                )
-        score_manifests[group] = group_manifests
-        score_rows[group] = tuple(list(read_jsonl(path)) for path in pairs[group])
-    if len(set(updated_adapters)) != 2:
-        raise SystemExit("A1 and A3 updated adapters must be distinct")
-    if len(set(updated_training_manifests)) != 2:
-        raise SystemExit("A1 and A3 updated adapters must come from distinct training runs")
-    preparation_code = json.dumps(
-        [preparation.get("code"), preparation.get("code_revision")],
+            updated_rows[(checkpoint, panel)] = list(read_jsonl(path))
+        manifests[(checkpoint, panel)] = (path, manifest_path, manifest)
+    if len(set(checkpoint_identities.values())) != 2:
+        raise SystemExit("A1 and A3 must be distinct completed checkpoint artifacts")
+
+    current_identity = json.dumps(
+        {"code": fingerprint_code_tree(ROOT), "code_revision": git_revision(ROOT)},
         sort_keys=True,
         allow_nan=False,
     )
-    current_code = json.dumps(
-        [fingerprint_code_tree(ROOT), git_revision(ROOT)],
+    preparation_identity = json.dumps(
+        {
+            "code": preparation.get("code"),
+            "code_revision": preparation.get("code_revision"),
+        },
         sort_keys=True,
         allow_nan=False,
     )
-    if preparation_code != common_code or current_code != common_code:
-        raise SystemExit(
-            "M3 preparation, scoring, and assembly must use one code revision"
-        )
+    score_code_identity = json.dumps(
+        {
+            "code": manifests[("BASE", "A1")][2].get("code"),
+            "code_revision": manifests[("BASE", "A1")][2].get("code_revision"),
+        },
+        sort_keys=True,
+        allow_nan=False,
+    )
+    if current_identity != preparation_identity or current_identity != score_code_identity:
+        raise SystemExit("M3 preparation, scoring, and assembly require one code revision")
 
     metadata = list(read_jsonl(metadata_path))
-    assembled = assemble_m3_rows(metadata, score_rows)
+    assembled = assemble_m3_rows(metadata, base_rows, updated_rows)
     write_jsonl(output, assembled)
     manifest = {
         "protocol_version": "omniopd-v1",
-        "artifact": "m3_correction_level_transfer_rows",
-        "interpretation": "whole_checkpoint_action_imitation_transfer_not_task_utility",
+        "artifact": "m3_crossed_correction_level_transfer_rows",
+        "interpretation": "crossed_whole_checkpoint_action_imitation_transfer_not_task_utility",
         "code": fingerprint_code_tree(ROOT),
         "code_revision": git_revision(ROOT),
         "preparation_manifest": {
             "path": str(preparation_path),
             "sha256": sha256_file(preparation_path),
         },
-        "score_inputs": {
-            group: {
-                role: {
-                    "path": str(path),
-                    "sha256": sha256_file(path),
-                    "manifest_sha256": sha256_file(str(path) + ".manifest.json"),
-                }
-                for role, path in zip(["base", "updated"], pairs[group])
+        "experiment_identities": experiments,
+        "score_grid": {
+            f"{checkpoint}x{panel}": {
+                "path": str(path),
+                "sha256": sha256_file(path),
+                "manifest_sha256": sha256_file(manifest_path),
             }
-            for group in ["A1", "A3"]
+            for (checkpoint, panel), (path, manifest_path, _) in manifests.items()
         },
-        "updated_training_manifest_sha256": {
-            group: score_manifests[group][1]["training_manifest"]["sha256"]
-            for group in ["A1", "A3"]
-        },
+        "comparison_contract": json.loads(comparison_contract),
+        "design": "checkpoint_by_panel_2x2_with_shared_base_per_panel",
         "token_contract": "assistant_action_content_tokens_v1",
         "rows": len(assembled),
-        "groups": {
-            group: sum(row["group"] == group for row in assembled)
-            for group in ["A1", "A3"]
+        "cells": {
+            f"{checkpoint}x{panel}": sum(
+                row["checkpoint_group"] == checkpoint and row["panel_group"] == panel
+                for row in assembled
+            )
+            for checkpoint, panel in expected_cells
         },
         "output_sha256": sha256_file(output),
     }

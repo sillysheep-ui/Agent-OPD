@@ -16,11 +16,17 @@ M3_STOPWORDS = frozenset(
 )
 
 
-def _source_id(group: str, state_hash: str, teacher_sample_index: int) -> str:
+def _source_id(
+    group: str,
+    experiment: str,
+    state_hash: str,
+    teacher_sample_index: int,
+) -> str:
     return sha256_json(
         {
             "kind": "m3_source_v1",
             "group": group,
+            "experiment": experiment,
             "state_hash": state_hash,
             "teacher_sample_index": teacher_sample_index,
         }
@@ -68,6 +74,7 @@ def build_m3_panel(
     source_rows_by_group: Mapping[str, Sequence[Mapping[str, Any]]],
     selected_hashes_by_design: Mapping[str, set[str]],
     *,
+    experiments_by_group: Mapping[str, str],
     neighbors: int = 10,
     minimum_neighbors: int = 5,
     minimum_similarity: float = 0.0,
@@ -83,6 +90,15 @@ def build_m3_panel(
 
     if set(source_rows_by_group) != M3_GROUPS:
         raise ValueError("M3 source groups must be exactly A1 and A3")
+    if set(experiments_by_group) != M3_GROUPS:
+        raise ValueError("M3 experiment identities must be supplied for A1 and A3")
+    normalized_experiments = {
+        group: str(experiments_by_group[group]).strip() for group in M3_GROUPS
+    }
+    if any(not value for value in normalized_experiments.values()) or len(
+        set(normalized_experiments.values())
+    ) != len(M3_GROUPS):
+        raise ValueError("M3 A1/A3 experiment identities must be non-empty and distinct")
     if not M3_GROUPS <= set(selected_hashes_by_design):
         raise ValueError("M3 requires explicit A1 and A3 selection sets")
     if neighbors <= 0 or not 1 <= minimum_neighbors <= neighbors:
@@ -122,6 +138,7 @@ def build_m3_panel(
     attrition: list[dict[str, Any]] = []
     seen_sources: set[str] = set()
     for group in sorted(M3_GROUPS):
+        panel_experiment = normalized_experiments[group]
         selection = selected_hashes_by_design[group]
         ordered_sources = sorted(
             source_rows_by_group[group],
@@ -168,7 +185,9 @@ def build_m3_panel(
                 raise ValueError("M3 Teacher sample identity/action is invalid")
             if teacher_action not in source.state.admissible_actions:
                 raise ValueError("M3 source Teacher action is not admissible at its source state")
-            source_id = _source_id(group, state_hash, sample_index)
+            source_id = _source_id(
+                group, panel_experiment, state_hash, sample_index
+            )
             if source_id in seen_sources:
                 raise ValueError("M3 contains a duplicate group/state/Teacher-sample source")
             seen_sources.add(source_id)
@@ -207,6 +226,7 @@ def build_m3_panel(
                     score_id=self_score_id,
                     source_id=source_id,
                     group=group,
+                    panel_experiment=panel_experiment,
                     target_kind="self",
                     source_state_hash=state_hash,
                     target=source,
@@ -224,6 +244,7 @@ def build_m3_panel(
                         score_id=score_id,
                         source_id=source_id,
                         group=group,
+                        panel_experiment=panel_experiment,
                         target_kind="neighbor",
                         source_state_hash=state_hash,
                         target=target,
@@ -247,6 +268,8 @@ def build_m3_panel(
                     "protocol_version": "omniopd-v1",
                     "source_id": source_id,
                     "group": group,
+                    "panel_group": group,
+                    "panel_experiment": panel_experiment,
                     "source_score_id": self_score_id,
                     "source_state_hash": state_hash,
                     "game_id": source.state.game_id,
@@ -280,6 +303,7 @@ def _make_score_row(
     score_id: str,
     source_id: str,
     group: str,
+    panel_experiment: str,
     target_kind: str,
     source_state_hash: str,
     target: RolloutTurn,
@@ -291,6 +315,8 @@ def _make_score_row(
         "score_id": score_id,
         "source_id": source_id,
         "group": group,
+        "panel_group": group,
+        "panel_experiment": panel_experiment,
         "target_kind": target_kind,
         "source_state_hash": source_state_hash,
         "target_state_hash": target.state.state_hash,
@@ -307,25 +333,57 @@ def _make_score_row(
 
 def assemble_m3_rows(
     source_metadata: Sequence[Mapping[str, Any]],
-    score_pairs: Mapping[
-        str, tuple[Sequence[Mapping[str, Any]], Sequence[Mapping[str, Any]]]
+    base_scores_by_panel: Mapping[str, Sequence[Mapping[str, Any]]],
+    updated_scores_by_cell: Mapping[
+        tuple[str, str], Sequence[Mapping[str, Any]]
     ],
 ) -> list[dict[str, Any]]:
-    """Join frozen source/neighbor metadata to base and updated log-prob scores."""
+    """Join the required checkpoint × panel 2×2 M3 scoring design.
 
-    if set(score_pairs) != M3_GROUPS:
-        raise ValueError("M3 score pairs must be exactly A1 and A3")
+    Each A1/A3 source panel is scored by both the A1 and A3 final checkpoints,
+    against one shared base score for that panel.  This prevents checkpoint
+    identity from being perfectly confounded with source-panel identity.
+    """
+
+    if set(base_scores_by_panel) != M3_GROUPS:
+        raise ValueError("M3 base scores must cover the A1 and A3 panels")
+    expected_cells = {
+        (checkpoint, panel)
+        for checkpoint in M3_GROUPS
+        for panel in M3_GROUPS
+    }
+    if set(updated_scores_by_cell) != expected_cells:
+        raise ValueError("M3 updated scores must form a complete checkpoint×panel 2x2 grid")
     if not source_metadata:
         raise ValueError("M3 source metadata is empty")
     metadata_ids = [str(row["source_id"]) for row in source_metadata]
     if len(metadata_ids) != len(set(metadata_ids)):
         raise ValueError("M3 source metadata contains duplicate source IDs")
-    if {str(row["group"]) for row in source_metadata} != M3_GROUPS:
+    if {
+        str(row.get("panel_group", row.get("group"))) for row in source_metadata
+    } != M3_GROUPS:
         raise ValueError("M3 source metadata must retain separate A1 and A3 rows")
+    experiments_by_group: dict[str, str] = {}
+    for row in source_metadata:
+        panel = str(row.get("panel_group", row.get("group")))
+        experiment = str(row.get("panel_experiment", "")).strip()
+        if panel not in M3_GROUPS or not experiment:
+            raise ValueError("M3 source metadata lacks a panel experiment identity")
+        previous = experiments_by_group.setdefault(panel, experiment)
+        if previous != experiment:
+            raise ValueError("one M3 panel is bound to multiple experiment identities")
+    if set(experiments_by_group) != M3_GROUPS or len(
+        set(experiments_by_group.values())
+    ) != 2:
+        raise ValueError("M3 A1/A3 panel experiments must be distinct")
 
     assembled = []
-    for group in sorted(M3_GROUPS):
-        group_metadata = [row for row in source_metadata if row["group"] == group]
+    for panel in sorted(M3_GROUPS):
+        group_metadata = [
+            row
+            for row in source_metadata
+            if row.get("panel_group", row.get("group")) == panel
+        ]
         expected_ids = {
             str(row["source_score_id"])
             for row in group_metadata
@@ -334,70 +392,107 @@ def assemble_m3_rows(
             for row in group_metadata
             for neighbor in row["neighbors"]
         }
-        base = _index_scores(score_pairs[group][0], group)
-        updated = _index_scores(score_pairs[group][1], group)
-        if set(base) != expected_ids or set(updated) != expected_ids:
+        base = _index_scores(
+            base_scores_by_panel[panel],
+            panel_group=panel,
+            checkpoint_group="BASE",
+            checkpoint_experiment=None,
+        )
+        if set(base) != expected_ids:
             raise ValueError(
-                f"M3 {group} base/updated scores do not exactly cover the frozen panel"
+                f"M3 BASE×{panel} scores do not exactly cover the frozen panel"
             )
-        for score_id in expected_ids:
-            identity_fields = [
-                "score_id",
-                "source_id",
-                "group",
-                "target_kind",
-                "source_state_hash",
-                "target_state_hash",
-                "teacher_action",
-                "target_tokens",
-            ]
-            if any(base[score_id].get(key) != updated[score_id].get(key) for key in identity_fields):
-                raise ValueError("M3 base and updated scores refer to different examples")
-        for metadata in group_metadata:
-            source_score_id = str(metadata["source_score_id"])
-            source_base = float(base[source_score_id]["mean_target_log_probability"])
-            source_updated = float(
-                updated[source_score_id]["mean_target_log_probability"]
+        for checkpoint in sorted(M3_GROUPS):
+            updated = _index_scores(
+                updated_scores_by_cell[(checkpoint, panel)],
+                panel_group=panel,
+                checkpoint_group=checkpoint,
+                checkpoint_experiment=experiments_by_group[checkpoint],
             )
-            neighbor_ids = [str(row["score_id"]) for row in metadata["neighbors"]]
-            neighbor_base = [
-                float(base[score_id]["mean_target_log_probability"])
-                for score_id in neighbor_ids
-            ]
-            neighbor_updated = [
-                float(updated[score_id]["mean_target_log_probability"])
-                for score_id in neighbor_ids
-            ]
-            neighbor_deltas = [
-                after - before
-                for before, after in zip(neighbor_base, neighbor_updated)
-            ]
-            row = dict(metadata)
-            row.update(
-                {
-                    "S_i": source_updated - source_base,
-                    "T_i": sum(neighbor_deltas) / len(neighbor_deltas),
-                    "source_base_logp": source_base,
-                    "source_updated_logp": source_updated,
-                    "neighbor_base_logp_mean": sum(neighbor_base) / len(neighbor_base),
-                    "neighbor_updated_logp_mean": sum(neighbor_updated)
-                    / len(neighbor_updated),
-                    "neighbor_dlogp": neighbor_deltas,
-                    "estimand": "whole_checkpoint_action_imitation_transfer_not_task_utility",
-                }
-            )
-            assembled.append(row)
-    assembled.sort(key=lambda row: row["source_id"])
+            if set(updated) != expected_ids:
+                raise ValueError(
+                    f"M3 {checkpoint}×{panel} scores do not exactly cover the frozen panel"
+                )
+            for score_id in expected_ids:
+                identity_fields = [
+                    "score_id",
+                    "source_id",
+                    "group",
+                    "panel_group",
+                    "panel_experiment",
+                    "target_kind",
+                    "source_state_hash",
+                    "target_state_hash",
+                    "teacher_action",
+                    "target_tokens",
+                ]
+                if any(
+                    base[score_id].get(key) != updated[score_id].get(key)
+                    for key in identity_fields
+                ):
+                    raise ValueError("M3 base and updated scores refer to different examples")
+            for metadata in group_metadata:
+                source_score_id = str(metadata["source_score_id"])
+                source_base = float(
+                    base[source_score_id]["mean_target_log_probability"]
+                )
+                source_updated = float(
+                    updated[source_score_id]["mean_target_log_probability"]
+                )
+                neighbor_ids = [
+                    str(row["score_id"]) for row in metadata["neighbors"]
+                ]
+                neighbor_base = [
+                    float(base[score_id]["mean_target_log_probability"])
+                    for score_id in neighbor_ids
+                ]
+                neighbor_updated = [
+                    float(updated[score_id]["mean_target_log_probability"])
+                    for score_id in neighbor_ids
+                ]
+                neighbor_deltas = [
+                    after - before
+                    for before, after in zip(neighbor_base, neighbor_updated)
+                ]
+                row = dict(metadata)
+                row["source_group"] = row.pop("group", panel)
+                row.update(
+                    {
+                        "panel_group": panel,
+                        "checkpoint_group": checkpoint,
+                        "checkpoint_experiment": experiments_by_group[checkpoint],
+                        "S_i": source_updated - source_base,
+                        "T_i": sum(neighbor_deltas) / len(neighbor_deltas),
+                        "source_base_logp": source_base,
+                        "source_updated_logp": source_updated,
+                        "neighbor_base_logp_mean": sum(neighbor_base)
+                        / len(neighbor_base),
+                        "neighbor_updated_logp_mean": sum(neighbor_updated)
+                        / len(neighbor_updated),
+                        "neighbor_dlogp": neighbor_deltas,
+                        "estimand": "crossed_whole_checkpoint_action_imitation_transfer_not_task_utility",
+                    }
+                )
+                assembled.append(row)
+    assembled.sort(key=lambda row: (row["source_id"], row["checkpoint_group"]))
     return assembled
 
 
 def _index_scores(
-    rows: Sequence[Mapping[str, Any]], group: str
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    panel_group: str,
+    checkpoint_group: str,
+    checkpoint_experiment: str | None,
 ) -> dict[str, Mapping[str, Any]]:
     required = {
         "score_id",
         "source_id",
         "group",
+        "panel_group",
+        "panel_experiment",
+        "checkpoint_group",
+        "checkpoint_experiment",
         "target_kind",
         "source_state_hash",
         "target_state_hash",
@@ -412,8 +507,16 @@ def _index_scores(
             raise ValueError(f"M3 score row is missing fields: {sorted(missing)}")
         score_id = str(row["score_id"])
         value = float(row["mean_target_log_probability"])
-        if row["group"] != group or row["target_kind"] not in {"self", "neighbor"}:
-            raise ValueError("M3 score row has the wrong group or target kind")
+        if (
+            row["group"] != panel_group
+            or row["panel_group"] != panel_group
+            or row["checkpoint_group"] != checkpoint_group
+            or row["checkpoint_experiment"] != checkpoint_experiment
+            or row["target_kind"] not in {"self", "neighbor"}
+        ):
+            raise ValueError(
+                "M3 score row has the wrong panel/checkpoint experiment identity"
+            )
         if score_id in indexed or not math.isfinite(value) or int(row["target_tokens"]) <= 0:
             raise ValueError("M3 scores must be unique, finite, and contain target tokens")
         indexed[score_id] = row
