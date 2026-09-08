@@ -58,6 +58,12 @@ def main() -> None:
         raise SystemExit(f"bootstrap inputs are missing: {missing}")
     treatment = _load(args.treatment)
     control = _load(args.control)
+    if not args.fixed_seeds and len(treatment) < 2:
+        raise SystemExit(
+            "training-seed uncertainty requires at least two independent seeds; "
+            "rerun with --fixed-seeds only if the intended estimand is conditional "
+            "on the supplied checkpoint"
+        )
     treatment_manifest = json.loads(
         paths["treatment_manifest"].read_text(encoding="utf-8")
     )
@@ -74,6 +80,10 @@ def main() -> None:
     pairing = validate_paired_aggregates(
         treatment, control, treatment_manifest, control_manifest
     )
+    if len(pairing["games"]) < 2:
+        raise SystemExit(
+            "game-cluster uncertainty requires at least two paired evaluation games"
+        )
     repository_root = Path(__file__).resolve().parents[3]
     current_code = fingerprint_code_tree(repository_root)
     current_revision = git_revision(repository_root)

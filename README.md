@@ -1,17 +1,26 @@
 # Agent OmniOPD
 
 这是依据论文定义重新整理的、协议优先的 Black-box Agent On-Policy Distillation
-代码库。它不把历史实验产物自动视为可信输入，而是显式记录
+代码库。它不把历史实验产物自动视为可信输入，而是显式记录状态 schema、
+\(P_S/P_T\) 分离、角色安全的模板规则、action-token 契约以及
 
 \[
 B=M\times N,
 \qquad
 q_{\mathrm{train}}(s)\propto
-q_{\mathrm{sel}}(s)P(V_T=1\mid s),
+q_{\mathrm{sel}}(s)P(K_s>0\mid s),
 \]
 
-并让 rollout、Teacher annotation、action-only SFT、机制分析和评测共享同一套
-state、chat-template 与 loss 定义。
+其中 \(K_s=\sum_{j=1}^{N}\mathbf 1\{V_{T,sj}=1\}\)。若同一 state 的
+Teacher draws 在给定 \(s\) 后独立同分布，则
+\(P(K_s>0\mid s)=1-(1-p_v(s))^N\)。因此改变 \(N\) 不只改变方差，也会改变
+进入训练集的 state 分布；代码不会把它误写成与 \(N\) 无关的
+\(P(V_T=1\mid s)\)。invalid attempts 占用 \(B\)，但 action loss 的条件目标是
+\(q_T^V(a\mid s)=P(A=a\mid s,V_T=1)\)。模型实际接收的是受 token budget 约束的
+截断上下文 \(\tau_\Lambda(z_t)\)；`full_messages` 只用于对称 replay 和 provenance，
+不伪装成模型看到的输入。
+上述比例式是 game/state 分层归一前的 retention tilt 简写；实际
+`game_state_mean` 目标还会对保留 games、states 和 valid draws 分层归一。
 
 ## 当前状态
 
@@ -53,30 +62,45 @@ pytest -q
 
 ## 核心工作流
 
-1. 使用 `scripts/collect_state_pool.py` 只采一次 immutable behavior-policy state pool；
+1. 使用 `scripts/run_vllm_state_pool.sh` 启动并现场核验完整 Student 服务，只采一次
+   immutable behavior-policy state pool；pool manifest 会保存规范化的服务证明及其
+   内容摘要，后续 selection、annotation、pair、训练与 Position 均沿链复核；
 2. 使用 `scripts/score_entropy.py`（可选）和 `scripts/select_states.py` 从同一 pool
-   产生各实验组的 selection manifest，禁止每组各自重新 rollout；
+   产生各实验组的 selection manifest，禁止每组各自重新 rollout；标注前会从实体 rows
+   复算每局 (m)、状态集合与 SRSWOR 纳入概率 (m/T_g)。若使用 top-score，选择与标注
+   两个入口都必须绑定完整 score rows/manifest，并从逐 admissible-action log score
+   重新计算 entropy，不能只信任缓存的 state-level score；
 3. 使用 `scripts/annotate_states.py` 从 resolved experiment config 读取 \(M,N,B\)，
    请求 Teacher，并把 invalid/API-error attempt 一并计入预算；
 4. 使用 `omniopd-build-data` 按 game-safe split 构造 Student-context、action-only 数据；
-5. 先用 `scripts/validate_experiment_pair.py` 验收 fixed-budget/control 对照，再按
-   `docs/VERL_INTEGRATION.md` 启动固定 optimizer-step 的训练；
-6. 使用 `scripts/evaluate.py` 在冻结 game list 上配对评测；训练 seed 与统一的
-   rollout seed 是两个独立字段，且checkpoint必须绑定训练manifest中的最终step；
+5. 使用 `scripts/validate_experiment_pair.py --kind annotation_runs --output ...` 生成唯一的
+   annotation-pair manifest；两个训练臂必须共同绑定这个完整文件，再按
+   `docs/VERL_INTEGRATION.md` 启动固定 optimizer-step 训练；
+6. 训练正常退出且 final checkpoint 被验证为超参数匹配、带 Tokenizer、A/B tensor
+   成对且覆盖配置 target modules 的 PEFT LoRA adapter 后才生成 completion manifest。
+   使用 `scripts/run_vllm_eval.sh` 在服务仍为
+   wrapper 子进程时核验 base、最终checkpoint、launch/completion manifest 与运行时，
+   然后在冻结 game list 上配对评测；training seed、rollout seed 与 environment seed
+   是三个独立字段；
 7. 使用 `scripts/aggregate_evaluations.py` 生成带 manifest 的 seed×game 数据，再用
    `omniopd-bootstrap` 校验两组 manifest 后同时传播 game 与 training-seed 不确定性。
 
-`scripts/collect_opd.py` 保留为一次性小规模诊断入口；正式 A1/A3/breadth-depth
-实验应使用上述分阶段流程，才能证明不同选择策略共享同一行为轨迹总体。
+`scripts/collect_opd.py` 保留为一次性小规模诊断入口。当前能从头闭环的确认性
+流程是 fixed-budget breadth/depth；A1/A3 的分析入口已实现，但其上游规范
+state-selection pair/launcher 尚未提供，不能写成可生成确认性 A1/A3 结果。
 
 所有真实运行都应把 resolved config、代码 revision、模型/Tokenizer hash、输入输出
-SHA256 和 API call ledger 写入 manifest。不要依赖文件名表达实验协议。
-规范入口要求仓库已有Git base revision，并逐阶段比较精确的canonical code-tree hash；
-因此不要在一个实验链条中途修改代码或README。
+SHA256 和 API call ledger 写入 manifest。开始任何实验链前，先提交本仓库并保持
+working tree 干净；canonical code-tree hash 覆盖 `src/`、`scripts/`、`integrations/`、
+`configs/`、`pyproject.toml` 和 `README.md`。链条中途修改其中任一文件都会
+故意触发身份校验失败；不要依赖文件名表达实验协议。
 
-机制分析同样执行来源绑定：M1 action table 必须带规范 build audit；M3 updated score
-必须绑定生成最终 adapter 的 training manifest，且 final step、base、Tokenizer与dtype均需
-一致。Student uncertainty 只能由生成对应state pool的同一Student/Tokenizer计算。
+机制分析同样执行来源绑定：M1 action table 必须带规范 build audit；M2 只在共同
+Teacher-valid game support 上比较；M3 使用 checkpoint×panel 的 2×2 交叉设计，updated
+score 同时绑定 launch 与 completion manifest，且 final step、base、Tokenizer与dtype均需
+一致；SAGE 先构造跨实验组去重并集再盲评。Student uncertainty 只能由生成对应state pool
+的同一Student/Tokenizer计算。Position 必须由 `scripts/run_vllm_position.sh` 启动生成
+该 state pool 的同一完整 behavior Student/Tokenizer/runtime，而不是训练后 adapter。
 
 Teacher 采样必须显式选择 `configs/teacher_sampling_nonthinking.yaml` 或
 `configs/teacher_sampling_thinking.yaml`。non-thinking 的 \(N>1\) 使用正温度；thinking
@@ -86,11 +110,18 @@ Teacher 采样必须显式选择 `configs/teacher_sampling_nonthinking.yaml` 或
 处置和公式映射分别见 `docs/AUDIT.md`、`docs/FILE_AUDIT.md` 与
 `docs/THEORY_TO_CODE.md`。
 
+当前发布包的确认性 launcher 完整实现的是 fixed-budget breadth/depth 二臂链。
+`student_state_control.yaml`、`teacher_state_control.yaml` 明确只是不可运行的设计约束模板；
+M3/SAGE 分析器也要求两个已完成的 (N=1) A1/A3 checkpoint/correction group，
+但仓库尚未提供生成这对 state-selection 运行的规范 pair launcher。因此这两类
+结果会 fail closed，不能把“分析
+函数已实现”写成“确认性实验生产链已完成”。
+
 ## 重要定义
 
 - Teacher budget 默认指 annotation API attempts，invalid 调用同样计费；
 - Teacher rollout 本身是否计入总黑盒预算必须在实验协议中单列；
-- `game_state_mean` 是 **Teacher-valid 条件下** 的 game-balanced objective，不能声称
-  它消除了 acceptance bias；
+- `game_state_mean` 是 **至少一次Teacher-valid的保留state条件下** 的 game-balanced
+  objective；由于保留概率随 \(N\) 变化，不能声称它消除了 acceptance bias；
 - M1 是 surrogate-gradient alignment；M3 是 action-imitation transfer，除非另有
   真实 `ΔJ` 验证，不把二者直接称为最终 task utility。

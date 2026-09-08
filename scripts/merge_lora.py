@@ -10,6 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from omniopd.prompts import STUDENT_SYSTEM_PROMPT
+from omniopd.evaluation import (
+    validate_artifact_fingerprint,
+    validate_training_completion_manifest,
+)
 from omniopd.provenance import (
     fingerprint_code_tree,
     fingerprint_path,
@@ -17,10 +21,7 @@ from omniopd.provenance import (
     sha256_file,
 )
 from omniopd.tokenization import apply_chat_template_ids
-
-
-def _artifact_digest(value: dict) -> str | None:
-    return value.get("sha256") or value.get("tree_sha256")
+from omniopd.validation import validate_lora_checkpoint_directory
 
 
 def main() -> None:
@@ -30,6 +31,7 @@ def main() -> None:
     parser.add_argument("--base-model", required=True)
     parser.add_argument("--adapter", required=True)
     parser.add_argument("--training-manifest", required=True)
+    parser.add_argument("--training-completion-manifest", required=True)
     parser.add_argument("--tokenizer")
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--device", default=None)
@@ -40,6 +42,7 @@ def main() -> None:
     base = Path(args.base_model)
     adapter = Path(args.adapter)
     training_manifest_path = Path(args.training_manifest)
+    training_completion_path = Path(args.training_completion_manifest)
     tokenizer_path = Path(args.tokenizer or args.base_model)
     output = Path(args.output_dir)
     if (
@@ -47,6 +50,9 @@ def main() -> None:
         or not adapter.exists()
         or not tokenizer_path.exists()
         or not training_manifest_path.is_file()
+        or not training_completion_path.is_file()
+        or not (training_manifest_path.parent / "resolved_config.yaml").is_file()
+        or not (training_manifest_path.parent / "train.log").is_file()
     ):
         raise SystemExit("base model, final adapter, tokenizer, and training manifest must exist")
     if output.exists():
@@ -58,23 +64,50 @@ def main() -> None:
     training_manifest = json.loads(
         training_manifest_path.read_text(encoding="utf-8")
     )
+    training_completion = json.loads(
+        training_completion_path.read_text(encoding="utf-8")
+    )
+    base_fingerprint = fingerprint_path(base)
+    adapter_fingerprint = fingerprint_path(adapter)
     try:
-        final_step = int(training_manifest["training_contract"]["total_optimizer_steps"])
+        completion_identity = validate_training_completion_manifest(
+            training_completion,
+            training_manifest,
+            launch_manifest_sha256=sha256_file(training_manifest_path),
+            completion_manifest_sha256=sha256_file(training_completion_path),
+            checkpoint_fingerprint=adapter_fingerprint,
+            current_checkpoint_format=validate_lora_checkpoint_directory(
+                adapter,
+                expected_rank=int(training_manifest["hyperparameters"]["lora_rank"]),
+                expected_alpha=float(training_manifest["hyperparameters"]["lora_alpha"]),
+                expected_target_modules_policy=str(
+                    training_manifest["hyperparameters"]["target_modules"]
+                ),
+            ),
+            resolved_config_fingerprint=fingerprint_path(
+                training_manifest_path.parent / "resolved_config.yaml"
+            ),
+            training_log_fingerprint=fingerprint_path(
+                training_manifest_path.parent / "train.log"
+            ),
+        )
+        final_step = int(completion_identity["final_global_step"])
+        validate_artifact_fingerprint(
+            training_manifest["inputs"]["model_path"],
+            base_fingerprint,
+            role="LoRA merge base model",
+        )
     except (KeyError, TypeError, ValueError) as error:
-        raise SystemExit(f"training manifest is incomplete: {error}") from error
+        raise SystemExit(f"training completion chain is invalid: {error}") from error
     if (
         not current_revision
-        or training_manifest.get("artifact") != "omniopd_training_launch"
-        or training_manifest.get("protocol_version") != "omniopd-v1"
         or training_manifest.get("code") != current_code
         or training_manifest.get("code_revision") != current_revision
         or adapter.resolve()
         != (training_manifest_path.parent / f"global_step_{final_step}").resolve()
-        or _artifact_digest(training_manifest.get("inputs", {}).get("model_path", {}))
-        != _artifact_digest(fingerprint_path(base))
     ):
         raise SystemExit(
-            "merge inputs must match the final adapter/base in a canonical training run"
+            "merge inputs must match a successfully completed canonical training run"
         )
 
     import torch
@@ -139,9 +172,15 @@ def main() -> None:
         "artifact": "fp32_merged_lora",
         "code": current_code,
         "code_revision": current_revision,
-        "base_model": fingerprint_path(base),
-        "adapter": fingerprint_path(adapter),
+        "experiment": completion_identity["experiment"],
+        "training_seed": completion_identity["training_seed"],
+        "base_model": base_fingerprint,
+        "adapter": adapter_fingerprint,
         "training_manifest_sha256": sha256_file(training_manifest_path),
+        "training_completion_manifest_sha256": sha256_file(
+            training_completion_path
+        ),
+        "training_completion": completion_identity,
         "tokenizer": fingerprint_path(tokenizer_path),
         "merged_model": fingerprint_path(model_output),
         "merge_dtype": "fp32",

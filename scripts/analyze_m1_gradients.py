@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import defaultdict
 import json
 import math
 import re
@@ -18,6 +19,10 @@ from omniopd.analysis.gradient import (
     gradient_alignment,
     teacher_contract_from_manifest,
 )
+from omniopd.evaluation import (
+    validate_annotation_pair_manifest,
+    validate_artifact_fingerprint,
+)
 from omniopd.io import read_jsonl, write_jsonl
 from omniopd.loss import weighted_causal_ce
 from omniopd.provenance import (
@@ -29,6 +34,10 @@ from omniopd.provenance import (
 )
 from omniopd.tokenization import encode_final_assistant_content
 from omniopd.prompts import STUDENT_SYSTEM_PROMPT
+from omniopd.validation import (
+    annotation_member_contract,
+    annotation_shared_contract,
+)
 
 
 def _python_value(value: Any) -> Any:
@@ -162,6 +171,149 @@ def _weighted_gradient_mean(rows, gradient_for_row):
     return total / total_weight
 
 
+def _common_retained_game_support(
+    groups: dict[str, list[dict[str, Any]]],
+) -> tuple[dict[str, list[dict[str, Any]]], list[str], dict[str, list[str]]]:
+    """Restrict every M1 group to the same Teacher-valid retained games."""
+
+    if len(groups) < 2:
+        raise ValueError("M1 comparison requires at least two correction groups")
+    games_by_group = {
+        name: {str(row["game_id"]) for row in rows} for name, rows in groups.items()
+    }
+    common = set.intersection(*games_by_group.values())
+    if not common:
+        raise ValueError("M1 groups have no common Teacher-valid retained-game support")
+    restricted = {
+        name: [row for row in rows if str(row["game_id"]) in common]
+        for name, rows in groups.items()
+    }
+    excluded = {
+        name: sorted(games - common) for name, games in games_by_group.items()
+    }
+    return restricted, sorted(common), excluded
+
+
+def _selected_game_support(manifest: dict[str, Any]) -> set[str]:
+    """Recover the pre-validity game support from a correction manifest."""
+
+    counts = manifest.get("selected_counts_by_game")
+    try:
+        states = int(manifest["distinct_states_M"])
+        normalized = {
+            str(game): int(count) for game, count in counts.items()
+        }
+    except (AttributeError, KeyError, TypeError, ValueError) as error:
+        raise ValueError("M1 correction manifest lacks selected-game counts") from error
+    if (
+        not normalized
+        or any(not game or count <= 0 for game, count in normalized.items())
+        or sum(normalized.values()) != states
+    ):
+        raise ValueError("M1 selected-game counts contradict distinct_states_M")
+    return set(normalized)
+
+
+def _validate_group_annotation_pair(
+    pair_manifest: dict[str, Any],
+    *,
+    pair_manifest_sha256: str,
+    group_manifests: dict[str, dict[str, Any]],
+    group_manifest_sha256s: dict[str, str],
+) -> dict[str, Any]:
+    """Bind the two M1 correction groups to one realized breadth/depth pair."""
+
+    validated = validate_annotation_pair_manifest(
+        pair_manifest, manifest_sha256=pair_manifest_sha256
+    )
+    if len(group_manifests) != 2 or set(group_manifests) != set(
+        group_manifest_sha256s
+    ):
+        raise ValueError("M1 requires exactly the two groups in one annotation pair")
+    actual_members: dict[str, dict[str, Any]] = {}
+    group_experiments: dict[str, str] = {}
+    for group_name, manifest in group_manifests.items():
+        experiment = manifest.get("experiment")
+        if not isinstance(experiment, str) or not experiment or experiment in actual_members:
+            raise ValueError("M1 group experiments must be non-empty and unique")
+        actual_members[experiment] = annotation_member_contract(
+            manifest,
+            annotation_manifest_sha256=group_manifest_sha256s[group_name],
+        )
+        group_experiments[group_name] = experiment
+        if annotation_shared_contract(manifest) != validated["shared_contract"]:
+            raise ValueError(
+                f"M1 group {group_name!r} does not share the annotation-pair protocol"
+            )
+    if actual_members != validated["members"]:
+        raise ValueError(
+            "M1 correction groups do not reproduce both annotation-pair members"
+        )
+    return {**validated, "group_experiments": group_experiments}
+
+
+def _validate_m1_student_identity(
+    *,
+    base_fingerprint: dict[str, Any],
+    tokenizer_fingerprint: dict[str, Any],
+    reference_manifest: dict[str, Any],
+    pair_binding: dict[str, Any],
+) -> None:
+    """Require M1 to use the behavior Student that generated every input state."""
+
+    behavior_student = pair_binding["shared_contract"]["behavior_student"]
+    reference_behavior = reference_manifest.get("behavior_student")
+    if reference_behavior != behavior_student:
+        raise ValueError(
+            "M1 held-out reference and correction groups use different behavior Students"
+        )
+    validate_artifact_fingerprint(
+        behavior_student["behavior_artifact"],
+        base_fingerprint,
+        role="M1 base/behavior Student",
+    )
+    validate_artifact_fingerprint(
+        behavior_student["tokenizer"],
+        tokenizer_fingerprint,
+        role="M1 tokenizer/behavior Student tokenizer",
+    )
+
+
+def _state_mean_gradients(rows, gradient_for_row):
+    """Average valid Teacher draws inside state before nonlinear diagnostics."""
+
+    import torch
+
+    by_state: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        by_state[str(row["state_hash"])].append(row)
+    if not by_state:
+        raise ValueError("M1 state-gradient population is empty")
+    outputs = []
+    for state_hash in sorted(by_state):
+        state_rows = by_state[state_hash]
+        games = {str(row["game_id"]) for row in state_rows}
+        weights = [float(row["state_weight"]) for row in state_rows]
+        if len(games) != 1 or any(
+            not math.isclose(weight, weights[0], rel_tol=1e-6, abs_tol=1e-10)
+            for weight in weights
+        ):
+            raise ValueError(
+                "M1 rows for one state must share one game and equal draw weights"
+            )
+        draw_gradients = [gradient_for_row(row) for row in state_rows]
+        outputs.append(
+            {
+                "state_hash": state_hash,
+                "game_id": next(iter(games)),
+                "teacher_valid_draws": len(state_rows),
+                "state_objective_weight": sum(weights),
+                "gradient": torch.stack(draw_gradients).mean(dim=0),
+            }
+        )
+    return outputs
+
+
 def _parse_group(value: str) -> tuple[str, Path]:
     if "=" not in value:
         raise argparse.ArgumentTypeError("group must be NAME=PATH")
@@ -260,6 +412,11 @@ def main() -> None:
     parser.add_argument(
         "--group-audit", action="append", type=_parse_group, required=True
     )
+    parser.add_argument(
+        "--annotation-pair",
+        required=True,
+        help="validated realized breadth/depth annotation-pair manifest",
+    )
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--device", default=None)
     parser.add_argument("--max-length", type=int, default=4096)
@@ -273,6 +430,7 @@ def main() -> None:
     tokenizer_path = Path(args.tokenizer or args.base_model)
     reference_path = Path(args.reference)
     reference_audit_path = Path(args.reference_audit)
+    annotation_pair_path = Path(args.annotation_pair)
     output = Path(args.output_dir)
     group_paths = dict(args.group)
     group_audit_paths = dict(args.group_audit)
@@ -281,6 +439,7 @@ def main() -> None:
         tokenizer_path,
         reference_path,
         reference_audit_path,
+        annotation_pair_path,
         *group_paths.values(),
         *group_audit_paths.values(),
     ]
@@ -333,6 +492,33 @@ def main() -> None:
         for name in group_names
     }
     try:
+        annotation_pair_manifest = json.loads(
+            annotation_pair_path.read_text(encoding="utf-8")
+        )
+        annotation_pair_binding = _validate_group_annotation_pair(
+            annotation_pair_manifest,
+            pair_manifest_sha256=sha256_file(annotation_pair_path),
+            group_manifests={
+                name: validated_groups[name][1] for name in group_names
+            },
+            group_manifest_sha256s={
+                name: sha256_file(validated_groups[name][2]) for name in group_names
+            },
+        )
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        raise SystemExit(f"M1 annotation-pair validation failed: {error}") from error
+    base_fingerprint = fingerprint_path(base)
+    tokenizer_fingerprint = fingerprint_path(tokenizer_path)
+    try:
+        _validate_m1_student_identity(
+            base_fingerprint=base_fingerprint,
+            tokenizer_fingerprint=tokenizer_fingerprint,
+            reference_manifest=reference_correction_manifest,
+            pair_binding=annotation_pair_binding,
+        )
+    except (KeyError, ValueError) as error:
+        raise SystemExit(f"M1 behavior-Student binding failed: {error}") from error
+    try:
         assert_shared_teacher_contract(
             [reference_teacher]
             + [validated_groups[name][3] for name in sorted(validated_groups)]
@@ -340,10 +526,27 @@ def main() -> None:
     except ValueError as error:
         raise SystemExit(str(error)) from error
     reference_games = {str(row["game_id"]) for row in reference_rows}
-    correction_games = {
-        str(row["game_id"]) for rows in group_rows.values() for row in rows
-    }
-    assert_held_out_reference_games(correction_games, reference_games)
+    try:
+        reference_selected_games = _selected_game_support(
+            reference_correction_manifest
+        )
+        correction_selected_games = set().union(
+            *(
+                _selected_game_support(validated_groups[name][1])
+                for name in group_names
+            )
+        )
+        assert_held_out_reference_games(
+            correction_selected_games, reference_selected_games
+        )
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    try:
+        group_rows, common_retained_games, excluded_games = (
+            _common_retained_game_support(group_rows)
+        )
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
 
     import torch
     from peft import LoraConfig, TaskType, get_peft_model
@@ -411,7 +614,7 @@ def main() -> None:
 
     reference_gradient = _weighted_gradient_mean(reference_rows, gradient_for_row)
     summaries = {}
-    individual_outputs: dict[str, list[dict[str, Any]]] = {}
+    state_alignment_outputs: dict[str, list[dict[str, Any]]] = {}
     for name, rows in group_rows.items():
         weighted_sum = None
         total_weight = 0.0
@@ -419,11 +622,12 @@ def main() -> None:
         weighted_cosine = 0.0
         weighted_dot = 0.0
         negative_weight = 0.0
-        for row_index, row in enumerate(rows):
-            weight = float(row["state_weight"])
+        state_gradients = _state_mean_gradients(rows, gradient_for_row)
+        for state_index, state_row in enumerate(state_gradients):
+            weight = float(state_row["state_objective_weight"])
             if not math.isfinite(weight) or weight <= 0:
                 raise ValueError("M1 state weights must be finite and positive")
-            gradient = gradient_for_row(row)
+            gradient = state_row["gradient"]
             alignment = gradient_alignment(gradient, reference_gradient)
             weighted_sum = (
                 gradient * weight
@@ -437,11 +641,11 @@ def main() -> None:
             individual.append(
                 {
                     "group": name,
-                    "row_index": row_index,
-                    "state_hash": row["state_hash"],
-                    "game_id": row["game_id"],
-                    "teacher_sample_index": int(row.get("teacher_sample_index", 0)),
-                    "state_weight": weight,
+                    "state_index": state_index,
+                    "state_hash": state_row["state_hash"],
+                    "game_id": state_row["game_id"],
+                    "teacher_valid_draws": state_row["teacher_valid_draws"],
+                    "state_objective_weight": weight,
                     "dot_product": alignment.dot_product,
                     "cosine": alignment.cosine,
                     "correction_gradient_norm": alignment.correction_norm,
@@ -453,33 +657,34 @@ def main() -> None:
         group_alignment = gradient_alignment(group_gradient, reference_gradient)
         summaries[name] = {
             "rows": len(rows),
-            "games": len({str(row["game_id"]) for row in rows}),
+            "states": len(state_gradients),
+            "games": len(common_retained_games),
             "total_objective_weight": total_weight,
-            "weighted_mean_individual_dot": weighted_dot / total_weight,
-            "weighted_mean_individual_cosine": weighted_cosine / total_weight,
-            "negative_dot_weight_fraction": negative_weight / total_weight,
+            "weighted_mean_state_dot": weighted_dot / total_weight,
+            "weighted_mean_state_cosine": weighted_cosine / total_weight,
+            "negative_state_dot_weight_fraction": negative_weight / total_weight,
             "dataset_dot_product": group_alignment.dot_product,
             "dataset_cosine": group_alignment.cosine,
             "dataset_gradient_norm": group_alignment.correction_norm,
             "reference_gradient_norm": group_alignment.reference_norm,
         }
-        individual_outputs[name] = individual
+        state_alignment_outputs[name] = individual
 
     output.mkdir(parents=True)
     torch.save(reference_gradient, output / "reference_gradient.pt")
-    individual_hashes = {}
-    for name, rows in individual_outputs.items():
-        path = output / f"individual_{name}.jsonl"
+    state_alignment_hashes = {}
+    for name, rows in state_alignment_outputs.items():
+        path = output / f"state_alignment_{name}.jsonl"
         write_jsonl(path, rows)
-        individual_hashes[name] = sha256_file(path)
+        state_alignment_hashes[name] = sha256_file(path)
     manifest = {
         "protocol_version": "omniopd-v1",
         "artifact": "m1_surrogate_gradient_alignment",
         "interpretation": "held_out_teacher_ce_surrogate_not_task_success_gradient",
         "code": current_code,
         "code_revision": current_revision,
-        "base_model": fingerprint_path(base),
-        "tokenizer": fingerprint_path(tokenizer_path),
+        "base_model": base_fingerprint,
+        "tokenizer": tokenizer_fingerprint,
         "reference": {
             "path": str(reference_path),
             "sha256": sha256_file(reference_path),
@@ -494,7 +699,10 @@ def main() -> None:
                 ],
             },
             "rows": len(reference_rows),
-            "games": len(reference_games),
+            "retained_games": len(reference_games),
+            "selected_games_before_teacher_validity": len(
+                reference_selected_games
+            ),
         },
         "groups": {
             name: {
@@ -515,6 +723,31 @@ def main() -> None:
         },
         "teacher_contract": reference_teacher,
         "teacher_contract_sha256": sha256_json(reference_teacher),
+        "annotation_pair": {
+            "path": str(annotation_pair_path),
+            "sha256": sha256_file(annotation_pair_path),
+            "schema_version": annotation_pair_binding["schema_version"],
+            "pair_contract_sha256": annotation_pair_binding[
+                "pair_contract_sha256"
+            ],
+            "comparison_contrast": annotation_pair_binding[
+                "comparison_contrast"
+            ],
+            "effect_direction": annotation_pair_binding["effect_direction"],
+            "arm_roles": annotation_pair_binding["arm_roles"],
+            "group_experiments": annotation_pair_binding["group_experiments"],
+        },
+        "held_out_game_contract": {
+            "definition": "disjoint_pre_validity_selected_game_sets",
+            "reference_selected_games": sorted(reference_selected_games),
+            "correction_selected_games": sorted(correction_selected_games),
+        },
+        "comparison_support": {
+            "definition": "intersection_of_teacher_valid_retained_games",
+            "common_games": common_retained_games,
+            "common_game_count": len(common_retained_games),
+            "excluded_games_by_group": excluded_games,
+        },
         "token_contract": "assistant_action_content_tokens_v1",
         "enable_thinking": False,
         "model_master_dtype": "fp32",
@@ -538,7 +771,7 @@ def main() -> None:
             "reference_gradient_sha256": sha256_file(
                 output / "reference_gradient.pt"
             ),
-            "individual_sha256": individual_hashes,
+            "state_alignment_sha256": state_alignment_hashes,
         },
     }
     (output / "summary.json").write_text(

@@ -18,6 +18,7 @@ from omniopd.provenance import (
     sha256_file,
 )
 from omniopd.selection import admissible_entropy
+from omniopd.validation import state_pool_behavior_student_contract
 
 
 def _content_identity(value):
@@ -71,14 +72,14 @@ def main() -> None:
         raise SystemExit("--model and --tokenizer must resolve to fingerprintable local paths")
     model_fingerprint = fingerprint_path(args.model)
     tokenizer_fingerprint = fingerprint_path(tokenizer_name)
-    behavior_artifacts = state_pool_manifest.get("behavior_artifacts")
+    try:
+        behavior_student = state_pool_behavior_student_contract(state_pool_manifest)
+    except ValueError as error:
+        raise SystemExit(f"entropy scoring requires a canonical Student pool: {error}") from error
     if (
-        state_pool_manifest.get("state_source") != "student"
-        or not isinstance(behavior_artifacts, list)
-        or len(behavior_artifacts) != 1
-        or _content_identity(behavior_artifacts[0])
+        _content_identity(behavior_student["behavior_artifact"])
         != _content_identity(model_fingerprint)
-        or _content_identity(state_pool_manifest.get("tokenizer"))
+        or _content_identity(behavior_student["tokenizer"])
         != _content_identity(tokenizer_fingerprint)
     ):
         raise SystemExit(

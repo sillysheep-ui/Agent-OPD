@@ -1,4 +1,9 @@
-from omniopd.adapters import extract_task_description, extract_task_type, unwrap_batched_info
+from omniopd.adapters import (
+    extract_task_description,
+    extract_task_type,
+    unwrap_batched_info,
+    validate_provider_response_model_identity,
+)
 
 
 def test_task_extraction_does_not_absorb_the_rest_of_the_initial_observation():
@@ -60,6 +65,105 @@ def test_game_listing_passes_the_exact_alfworld_split_name():
                 sys.modules[name] = module
     assert observed == ["eval_out_of_distribution"]
     assert games == ["/eval_out_of_distribution/game.z8"]
+
+
+def _install_fake_alfworld_modules(environment):
+    import sys
+    import types
+
+    names = [
+        "textworld",
+        "textworld.gym",
+        "alfworld",
+        "alfworld.agents",
+        "alfworld.agents.environment",
+        "alfworld.agents.environment.alfred_tw_env",
+    ]
+    previous = {name: sys.modules.get(name) for name in names}
+    textworld = types.ModuleType("textworld")
+    textworld.EnvInfos = lambda **kwargs: kwargs
+    gym = types.ModuleType("textworld.gym")
+    gym.register_games = lambda *args, **kwargs: "fake-env"
+    gym.make = lambda env_id: environment
+    textworld.gym = gym
+    alfred = types.ModuleType(names[-1])
+    alfred.AlfredDemangler = lambda shuffle: ("demangler", shuffle)
+    alfred.AlfredInfos = object
+    for name in names[2:-1]:
+        sys.modules[name] = types.ModuleType(name)
+    sys.modules["textworld"] = textworld
+    sys.modules["textworld.gym"] = gym
+    sys.modules[names[-1]] = alfred
+    return previous
+
+
+def _restore_modules(previous):
+    import sys
+
+    for name, module in previous.items():
+        if module is None:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = module
+
+
+def test_alfworld_adapter_seeds_textworld_before_confirmatory_reset():
+    from omniopd.adapters import AlfworldEnvironment
+
+    class FakeEnvironment:
+        def __init__(self):
+            self.seeds = []
+
+        def seed(self, value):
+            self.seeds.append(value)
+
+        def close(self):
+            pass
+
+    environment = FakeEnvironment()
+    previous = _install_fake_alfworld_modules(environment)
+    try:
+        adapter = AlfworldEnvironment(
+            {
+                "general": {"training_method": "dagger"},
+                "dagger": {"training": {"max_nb_steps_per_episode": 50}},
+            },
+            "/game.tw-pddl",
+            rollout_seed=2026,
+        )
+    finally:
+        _restore_modules(previous)
+    assert environment.seeds == [2026]
+    assert adapter.seed_attestation == {
+        "method": "textworld_gym_env.seed",
+        "seed": 2026,
+        "seeded_before_first_reset": True,
+        "alfred_demangler_shuffle": False,
+    }
+
+
+def test_alfworld_adapter_fails_closed_when_textworld_cannot_be_seeded():
+    import pytest
+
+    from omniopd.adapters import AlfworldEnvironment
+
+    class UnseedableEnvironment:
+        def close(self):
+            pass
+
+    previous = _install_fake_alfworld_modules(UnseedableEnvironment())
+    try:
+        with pytest.raises(RuntimeError, match="cannot accept"):
+            AlfworldEnvironment(
+                {
+                    "general": {"training_method": "dagger"},
+                    "dagger": {"training": {"max_nb_steps_per_episode": 50}},
+                },
+                "/game.tw-pddl",
+                rollout_seed=2026,
+            )
+    finally:
+        _restore_modules(previous)
 
 
 def test_openai_adapter_sends_explicit_thinking_contract():
@@ -203,3 +307,31 @@ def test_request_error_is_immediately_persisted_without_sdk_retry():
             sys.modules.pop("openai", None)
         else:
             sys.modules["openai"] = previous
+
+
+def test_provider_response_model_identity_allows_budgeted_errors_but_rejects_drift():
+    ledger = [
+        {"request_id": "failed", "status": "error"},
+        {"request_id": "ok", "status": "ok", "response_model": "frozen-alias"},
+    ]
+    assert validate_provider_response_model_identity(ledger, "frozen-alias") == [
+        "frozen-alias"
+    ]
+    ledger[-1]["response_model"] = "different-model"
+    try:
+        validate_provider_response_model_identity(ledger, "frozen-alias")
+    except RuntimeError as error:
+        assert "response.model" in str(error)
+    else:
+        raise AssertionError("successful responses must attest the requested alias")
+
+
+def test_provider_response_model_identity_requires_a_success_by_default():
+    try:
+        validate_provider_response_model_identity(
+            [{"request_id": "failed", "status": "error"}], "frozen-alias"
+        )
+    except RuntimeError as error:
+        assert "no successful" in str(error)
+    else:
+        raise AssertionError("an all-error run cannot attest its serving model")

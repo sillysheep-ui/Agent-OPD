@@ -13,9 +13,23 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from omniopd.adapters import AlfworldEnvironment, OpenAIChatPolicy, list_alfworld_games
+from omniopd.adapters import (
+    AlfworldEnvironment,
+    OpenAIChatPolicy,
+    list_alfworld_games,
+    validate_provider_response_model_identity,
+)
 from omniopd.context import TaskPreservingTruncator
+from omniopd.environment_provenance import (
+    capture_runtime_dependencies,
+    content_fingerprint_identity,
+    derive_environment_seed,
+    fingerprint_game_artifacts,
+    game_artifacts_digest,
+    verify_game_artifacts,
+)
 from omniopd.io import read_jsonl, record_game_id, write_jsonl
+from omniopd.evaluation import validate_state_pool_service_attestation_manifest
 from omniopd.prompts import STUDENT_SYSTEM_PROMPT, TEACHER_SYSTEM_PROMPT
 from omniopd.protocol import GenerationSettings, rollout_episode
 from omniopd.provenance import (
@@ -44,7 +58,16 @@ def main() -> None:
         help="local base/checkpoint/adapter path; repeat for composed models",
     )
     parser.add_argument("--behavior-url", default="http://127.0.0.1:8000/v1")
+    parser.add_argument(
+        "--inference-runtime",
+        required=True,
+        help="immutable serving-runtime identifier, e.g. vllm:0.8.5",
+    )
     parser.add_argument("--behavior-api-key")
+    parser.add_argument(
+        "--behavior-service-manifest",
+        help="required live local-service attestation for Student-state collection",
+    )
     parser.add_argument(
         "--behavior-thinking-mode",
         choices=["enabled", "disabled", "provider_default"],
@@ -63,6 +86,12 @@ def main() -> None:
     parser.add_argument("--reserve-tokens", type=int, default=256)
     parser.add_argument("--behavior-max-tokens", type=int, default=256)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--environment-seed",
+        type=int,
+        required=True,
+        help="master RNG seed deterministically expanded to one seed per game",
+    )
     parser.add_argument("--exclude-jsonl", action="append", default=[])
     args = parser.parse_args()
 
@@ -77,17 +106,74 @@ def main() -> None:
         raise SystemExit("state-pool collection requires an immutable Git revision")
     if not Path(args.tokenizer).exists():
         raise SystemExit("--tokenizer must be a local immutable path that can be fingerprinted")
-    if args.state_source == "student" and not args.behavior_artifact:
-        raise SystemExit("Student-state collection requires at least one --behavior-artifact")
+    if args.state_source == "student" and len(args.behavior_artifact) != 1:
+        raise SystemExit("Student-state collection requires exactly one --behavior-artifact")
+    if args.state_source == "student" and not args.behavior_service_manifest:
+        raise SystemExit("Student-state collection requires --behavior-service-manifest")
+    if args.state_source == "teacher" and args.behavior_service_manifest:
+        raise SystemExit("remote Teacher-state collection must not claim a local service manifest")
     if args.state_source == "teacher" and not (args.behavior_model_revision or "").strip():
         raise SystemExit("Teacher-state collection requires --behavior-model-revision")
     missing_artifacts = [path for path in args.behavior_artifact if not Path(path).exists()]
     if missing_artifacts:
         raise SystemExit(f"behavior artifacts do not exist: {missing_artifacts}")
-    if args.behavior_max_tokens <= 0 or args.reserve_tokens < args.behavior_max_tokens:
+    if (
+        args.behavior_max_tokens <= 0
+        or args.reserve_tokens < args.behavior_max_tokens
+        or args.seed < 0
+        or args.environment_seed < 0
+        or args.limit_games <= 0
+        or args.max_steps <= 0
+        or args.max_context_tokens <= args.reserve_tokens
+        or not args.inference_runtime.strip()
+    ):
         raise SystemExit(
-            "--reserve-tokens must be at least --behavior-max-tokens and both must be positive"
+            "token limits must be coherent, seeds non-negative, and inference runtime non-empty"
         )
+    try:
+        runtime_dependencies = capture_runtime_dependencies()
+    except RuntimeError as error:
+        raise SystemExit(str(error)) from error
+
+    tokenizer_fingerprint = fingerprint_path(args.tokenizer)
+    behavior_artifacts = [fingerprint_path(path) for path in args.behavior_artifact]
+    if (
+        args.state_source == "student"
+        and (
+            behavior_artifacts[0].get("kind") != "directory"
+            or int(behavior_artifacts[0].get("files", 0)) <= 0
+            or content_fingerprint_identity(behavior_artifacts[0])
+            != content_fingerprint_identity(tokenizer_fingerprint)
+        )
+    ):
+        raise SystemExit(
+            "canonical Student-state collection requires one complete model directory "
+            "that is also the tokenizer artifact"
+        )
+    behavior_service_identity = None
+    behavior_service_manifest_sha256 = None
+    if args.state_source == "student":
+        service_path = Path(str(args.behavior_service_manifest))
+        if not service_path.is_file():
+            raise SystemExit("--behavior-service-manifest must exist for Student-state collection")
+        service_manifest = json.loads(service_path.read_text(encoding="utf-8"))
+        try:
+            behavior_service_identity = validate_state_pool_service_attestation_manifest(
+                service_manifest,
+                requested_model=args.behavior_model,
+                base_url=args.behavior_url,
+                inference_runtime=args.inference_runtime,
+                model_fingerprint=behavior_artifacts[0],
+                tokenizer_fingerprint=tokenizer_fingerprint,
+                wrapper_fingerprint=fingerprint_path(ROOT / "scripts/run_vllm_state_pool.sh"),
+                expected_parent_pid=os.getppid(),
+                require_live_process=True,
+            )
+        except (KeyError, ValueError) as error:
+            raise SystemExit(f"invalid Student behavior-service binding: {error}") from error
+        if int(behavior_service_identity["max_model_len"]) < args.max_context_tokens:
+            raise SystemExit("attested Student service context is smaller than state-pool context")
+        behavior_service_manifest_sha256 = sha256_file(service_path)
 
     config = yaml.safe_load(Path(args.env_config).read_text(encoding="utf-8"))
     excluded: set[str] = set()
@@ -104,11 +190,19 @@ def main() -> None:
         ),
         seed=args.seed,
     )
-    games = games[: args.limit_games]
-    if len(games) != args.limit_games:
+    games = [str(game) for game in games[: args.limit_games]]
+    if len(games) != args.limit_games or len(games) != len(set(games)):
         raise SystemExit(
-            f"expected {args.limit_games} eligible games after exclusions, got {len(games)}"
+            f"expected {args.limit_games} unique eligible games after exclusions, got "
+            f"{len(set(games))}"
         )
+    try:
+        game_artifacts = fingerprint_game_artifacts(games)
+    except (FileNotFoundError, ValueError) as error:
+        raise SystemExit(str(error)) from error
+    environment_seeds = {
+        game: derive_environment_seed(args.environment_seed, game) for game in games
+    }
 
     from transformers import AutoTokenizer
 
@@ -153,7 +247,12 @@ def main() -> None:
     prompt = STUDENT_SYSTEM_PROMPT if args.state_source == "student" else TEACHER_SYSTEM_PROMPT
     episodes = []
     for game in games:
-        env = AlfworldEnvironment(config, game)
+        game_environment_seed = environment_seeds[game]
+        env = AlfworldEnvironment(
+            config,
+            game,
+            rollout_seed=game_environment_seed,
+        )
         try:
             turns, won = rollout_episode(
                 env,
@@ -170,7 +269,12 @@ def main() -> None:
         finally:
             env.close()
         episodes.append(
-            {"game_id": game, "won": won, "turns": [turn.to_dict() for turn in turns]}
+            {
+                "game_id": game,
+                "environment_rollout_seed": game_environment_seed,
+                "won": won,
+                "turns": [turn.to_dict() for turn in turns],
+            }
         )
 
     state_count = sum(len(episode["turns"]) for episode in episodes)
@@ -208,19 +312,15 @@ def main() -> None:
                 != sha256_json(state["messages"])
             ):
                 raise RuntimeError("behavior ledger context does not match the frozen state")
-    provider_response_models = sorted(
-        {
-            str(row["response_model"])
-            for row in behavior.request_ledger
-            if row.get("response_model") is not None
-        }
+    provider_response_models = validate_provider_response_model_identity(
+        behavior.request_ledger, args.behavior_model
     )
-    if args.state_source == "student" and provider_response_models != [
-        args.behavior_model
-    ]:
+    try:
+        verify_game_artifacts(game_artifacts)
+    except (RuntimeError, ValueError, FileNotFoundError) as error:
         raise RuntimeError(
-            "Student state-pool provider must report exactly the requested stable model alias"
-        )
+            "ALFWorld game content changed during state-pool collection"
+        ) from error
     requests_partial.rename(requests_path)
     manifest = {
         "protocol_version": "omniopd-v1",
@@ -231,6 +331,8 @@ def main() -> None:
         "behavior_model": args.behavior_model,
         "behavior_model_revision": args.behavior_model_revision,
         "behavior_url": args.behavior_url,
+        "inference_runtime": args.inference_runtime,
+        "runtime_dependencies": runtime_dependencies,
         "behavior_sampling": sampling.to_dict(),
         "behavior_api_calls": state_count,
         "provider_response_models": provider_response_models,
@@ -245,15 +347,33 @@ def main() -> None:
         "games_G": len(games),
         "states": state_count,
         "seed": args.seed,
+        "game_order_seed": args.seed,
+        "student_decoding_seed": args.seed if args.state_source == "student" else None,
+        "environment_rollout": {
+            "master_seed": args.environment_seed,
+            "derivation": "sha256_omniopd_env_seed_v1_uint32",
+            "per_game": [
+                {"game_id": game, "seed": environment_seeds[game]}
+                for game in games
+            ],
+            "adapter_seed_method": "textworld_gym_env.seed_before_first_reset",
+            "alfred_demangler_shuffle": False,
+        },
         "max_steps": args.max_steps,
         "max_context_tokens": args.max_context_tokens,
         "reserve_tokens": args.reserve_tokens,
         "behavior_max_tokens": args.behavior_max_tokens,
         "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
-        "tokenizer": fingerprint_path(args.tokenizer),
-        "behavior_artifacts": [
-            fingerprint_path(path) for path in args.behavior_artifact
-        ],
+        "tokenizer": tokenizer_fingerprint,
+        "behavior_artifacts": behavior_artifacts,
+        "behavior_service_manifest_sha256": behavior_service_manifest_sha256,
+        "behavior_service_attestation": behavior_service_identity,
+        "service_trust_boundary": (
+            "local Student: host-local argv/parent/port/content observation; remote Teacher: "
+            "provider response.model plus operator-supplied revision, not cryptographic attestation"
+        ),
+        "game_artifacts": game_artifacts,
+        "game_artifacts_sha256": game_artifacts_digest(game_artifacts),
         "env_config_sha256": sha256_file(args.env_config),
         "exclusion_jsonl_sha256": {
             str(path): sha256_file(path) for path in args.exclude_jsonl

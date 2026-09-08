@@ -11,6 +11,38 @@ from .protocol import ResetResult, StepResult
 from .provenance import sha256_json
 
 
+def validate_provider_response_model_identity(
+    request_ledger: Sequence[dict[str, Any]],
+    requested_model: str,
+    *,
+    require_success: bool = True,
+) -> list[str]:
+    """Require every successful response to attest the requested model alias."""
+
+    model = str(requested_model).strip()
+    if not model:
+        raise ValueError("requested_model must be non-empty")
+    successful = [row for row in request_ledger if row.get("status") == "ok"]
+    if require_success and not successful:
+        raise RuntimeError(
+            "no successful provider response is available to attest model identity"
+        )
+    mismatches = [
+        {
+            "request_id": row.get("request_id"),
+            "response_model": row.get("response_model"),
+        }
+        for row in successful
+        if row.get("response_model") != model
+    ]
+    if mismatches:
+        raise RuntimeError(
+            "provider response.model does not equal the requested stable model alias: "
+            f"requested={model!r}, mismatches={mismatches[:5]}"
+        )
+    return sorted({str(row["response_model"]) for row in successful})
+
+
 class OpenAIChatPolicy:
     def __init__(
         self,
@@ -229,7 +261,13 @@ def unwrap_batched_info(info: dict[str, Any], index: int = 0) -> dict[str, Any]:
 class AlfworldEnvironment:
     """One-game adapter. Imports ALFWorld/TextWorld only when instantiated."""
 
-    def __init__(self, env_config: dict[str, Any], game_file: str) -> None:
+    def __init__(
+        self,
+        env_config: dict[str, Any],
+        game_file: str,
+        *,
+        rollout_seed: int | None = None,
+    ) -> None:
         import textworld
         import textworld.gym
         from alfworld.agents.environment.alfred_tw_env import AlfredDemangler, AlfredInfos
@@ -255,6 +293,32 @@ class AlfworldEnvironment:
         )
         self._env = textworld.gym.make(env_id)
         self.game_file = str(game_file)
+        self.rollout_seed = rollout_seed
+        self.seed_attestation: dict[str, Any] | None = None
+        if rollout_seed is not None:
+            if rollout_seed < 0 or rollout_seed >= 2**32:
+                self._env.close()
+                raise ValueError("rollout_seed must be in [0, 2**32)")
+            seed_method = getattr(self._env, "seed", None)
+            if not callable(seed_method):
+                self._env.close()
+                raise RuntimeError(
+                    "the installed TextWorld Gym environment cannot accept an explicit "
+                    "rollout seed; refusing a confirmatory rollout"
+                )
+            try:
+                seed_method(rollout_seed)
+            except Exception as error:
+                self._env.close()
+                raise RuntimeError(
+                    "TextWorld rejected the explicit environment rollout seed"
+                ) from error
+            self.seed_attestation = {
+                "method": "textworld_gym_env.seed",
+                "seed": rollout_seed,
+                "seeded_before_first_reset": True,
+                "alfred_demangler_shuffle": False,
+            }
 
     def reset(self) -> ResetResult:
         observations, info = self._env.reset()

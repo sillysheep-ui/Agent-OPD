@@ -14,7 +14,11 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from omniopd.adapters import OpenAIChatPolicy
+from omniopd.adapters import (
+    OpenAIChatPolicy,
+    validate_provider_response_model_identity,
+)
+from omniopd.environment_provenance import content_fingerprint_identity
 from omniopd.io import read_jsonl, rollout_turn_from_dict
 from omniopd.prompts import TEACHER_SYSTEM_PROMPT, replace_system
 from omniopd.protocol import GenerationSettings, TeacherBudget, query_teacher
@@ -26,7 +30,13 @@ from omniopd.provenance import (
 )
 from omniopd.sampling import SamplingProtocol
 from omniopd.tokenization import apply_chat_template_ids
-from omniopd.validation import validate_actual_calls, validate_budget
+from omniopd.validation import (
+    state_pool_behavior_student_contract,
+    validate_actual_calls,
+    validate_budget,
+    validate_selection_manifest_against_rows,
+    validate_uncertainty_score_rows,
+)
 
 
 def main() -> None:
@@ -35,6 +45,8 @@ def main() -> None:
     parser.add_argument("--state-pool-manifest", required=True)
     parser.add_argument("--selection", required=True)
     parser.add_argument("--selection-manifest", required=True)
+    parser.add_argument("--scores")
+    parser.add_argument("--scores-manifest")
     parser.add_argument("--experiment-config", required=True)
     parser.add_argument("--teacher-profile", required=True)
     parser.add_argument("--output-dir", required=True)
@@ -70,6 +82,8 @@ def main() -> None:
         samples_per_state = int(experiment["teacher_samples_per_state_N"])
         teacher_budget = int(experiment["teacher_budget_B"])
         configured_selection = str(experiment["selection"])
+        configured_selection_seed_raw = experiment.get("selection_seed")
+        configured_games = int(experiment["games"])
         configured_states_per_game = int(experiment["states_per_game"])
         configured_profile = str(experiment["teacher_sampling_profile"])
         max_tokens = int(experiment["teacher_max_tokens"])
@@ -84,6 +98,17 @@ def main() -> None:
         raise SystemExit("experiment and Teacher sampling profile disagree")
     if thinking_mode not in {"enabled", "disabled"}:
         raise SystemExit("Teacher profile must explicitly enable or disable thinking")
+    if configured_selection == "uniform_per_game_nested_v1":
+        if isinstance(configured_selection_seed_raw, bool):
+            raise SystemExit("experiment.selection_seed must be an integer, not boolean")
+        try:
+            configured_selection_seed = int(configured_selection_seed_raw)
+        except (TypeError, ValueError) as error:
+            raise SystemExit("uniform selection requires experiment.selection_seed") from error
+        if configured_selection_seed < 0:
+            raise SystemExit("experiment.selection_seed must be non-negative")
+    else:
+        configured_selection_seed = None
 
     output = Path(args.output_dir)
     if output.exists():
@@ -113,10 +138,92 @@ def main() -> None:
         raise SystemExit(
             "annotation state pool must match a canonical manifest from this revision"
         )
+    try:
+        behavior_student = state_pool_behavior_student_contract(state_pool_manifest)
+    except ValueError as error:
+        raise SystemExit(f"annotation requires the frozen behavior Student: {error}") from error
     turns = [rollout_turn_from_dict(row) for row in read_jsonl(state_pool_path)]
     by_hash = {turn.state.state_hash: turn for turn in turns}
     if not turns or len(by_hash) != len(turns):
         raise SystemExit("state pool must be non-empty and contain unique hashes")
+    score_map = None
+    if configured_selection == "top_score_per_game":
+        if not args.scores or not args.scores_manifest:
+            raise SystemExit("top-score annotation requires --scores and --scores-manifest")
+        scores_path = Path(args.scores)
+        scores_manifest_path = Path(args.scores_manifest)
+        if not scores_path.is_file() or not scores_manifest_path.is_file():
+            raise SystemExit("top-score files must exist")
+        scores_manifest = json.loads(
+            scores_manifest_path.read_text(encoding="utf-8")
+        )
+        expected_scores_manifest = {
+            "artifact": "state_uncertainty_scores",
+            "protocol_version": "omniopd-v1",
+            "code": current_code,
+            "code_revision": current_revision,
+            "state_pool_sha256": state_pool_sha256,
+            "state_pool_manifest_sha256": sha256_file(state_pool_manifest_path),
+            "scores_sha256": sha256_file(scores_path),
+            "states": len(turns),
+            "target_tokenization": (
+                "canonical_final_assistant_content_excluding_terminator"
+            ),
+            "enable_thinking": False,
+        }
+        score_manifest_mismatches = {
+            key: (scores_manifest.get(key), expected)
+            for key, expected in expected_scores_manifest.items()
+            if scores_manifest.get(key) != expected
+        }
+        if score_manifest_mismatches:
+            raise SystemExit(
+                "top-score manifest is not bound to this pool/code: "
+                f"{score_manifest_mismatches}"
+            )
+        try:
+            score_model_identity = content_fingerprint_identity(
+                scores_manifest.get("model", {})
+            )
+            score_tokenizer_identity = content_fingerprint_identity(
+                scores_manifest.get("tokenizer", {})
+            )
+            behavior_model_identity = content_fingerprint_identity(
+                behavior_student["behavior_artifact"]
+            )
+            behavior_tokenizer_identity = content_fingerprint_identity(
+                behavior_student["tokenizer"]
+            )
+        except ValueError as error:
+            raise SystemExit(
+                f"top-score model/tokenizer fingerprint is invalid: {error}"
+            ) from error
+        if (
+            score_model_identity != behavior_model_identity
+            or score_tokenizer_identity != behavior_tokenizer_identity
+            or not isinstance(scores_manifest.get("device"), str)
+            or not scores_manifest["device"].strip()
+        ):
+            raise SystemExit(
+                "top-score artifact must use the frozen behavior Student and tokenizer"
+            )
+        score_rows = list(read_jsonl(scores_path))
+        pool_states = {
+            turn.state.state_hash: {
+                "game_id": turn.state.game_id,
+                "turn_index": turn.state.turn_index,
+                "admissible_actions": turn.state.admissible_actions,
+            }
+            for turn in turns
+        }
+        try:
+            score_map = validate_uncertainty_score_rows(
+                score_rows, pool_states=pool_states
+            )
+        except ValueError as error:
+            raise SystemExit(f"top-score rows are invalid: {error}") from error
+    elif args.scores or args.scores_manifest:
+        raise SystemExit("score files are only valid for top-score annotation")
     selections = list(read_jsonl(args.selection))
     selection_policies = sorted({str(row.get("selection_policy")) for row in selections})
     selection_hashes = [str(row["state_hash"]) for row in selections]
@@ -134,9 +241,14 @@ def main() -> None:
         "selection_sha256": sha256_file(args.selection),
         "state_pool_sha256": state_pool_sha256,
         "state_pool_manifest_sha256": sha256_file(state_pool_manifest_path),
+        "behavior_student": behavior_student,
         "policy": configured_selection,
         "states_per_game": configured_states_per_game,
         "distinct_states_M": configured_states,
+        "score_file_sha256": sha256_file(args.scores) if args.scores else None,
+        "score_manifest_sha256": (
+            sha256_file(args.scores_manifest) if args.scores_manifest else None
+        ),
     }
     mismatches = {
         key: (selection_manifest.get(key), expected)
@@ -149,6 +261,26 @@ def main() -> None:
         )
     if len(selections) != configured_states or selection_policies != [configured_selection]:
         raise SystemExit("selection rows do not realize the configured M/policy")
+    pool_state_hashes_by_game: dict[str, list[str]] = {}
+    for turn in sorted(turns, key=lambda value: (value.state.game_id, value.state.turn_index)):
+        pool_state_hashes_by_game.setdefault(turn.state.game_id, []).append(
+            turn.state.state_hash
+        )
+    try:
+        validate_selection_manifest_against_rows(
+            selection_manifest,
+            selections,
+            pool_state_hashes_by_game=pool_state_hashes_by_game,
+            score_by_state=score_map,
+            expected_experiment=str(experiment["experiment"]),
+            expected_policy=configured_selection,
+            expected_seed=configured_selection_seed,
+            expected_games=configured_games,
+            expected_states_per_game=configured_states_per_game,
+            expected_states=configured_states,
+        )
+    except ValueError as error:
+        raise SystemExit(f"selection design validation failed: {error}") from error
     unknown = sorted(set(selection_hashes) - set(by_hash))
     if unknown:
         raise SystemExit(f"selection contains states outside the frozen pool: {unknown[:5]}")
@@ -246,6 +378,10 @@ def main() -> None:
     requests_path = output / "teacher_requests.jsonl"
     if len(teacher.request_ledger) != teacher_budget:
         raise RuntimeError("Teacher request ledger length does not equal declared budget B")
+    provider_response_models = validate_provider_response_model_identity(
+        teacher.request_ledger,
+        args.teacher_model,
+    )
     ledger_by_request = {
         str(row["request_id"]): row for row in teacher.request_ledger
     }
@@ -270,6 +406,7 @@ def main() -> None:
         "experiment_config": fingerprint_path(experiment_path),
         "teacher_profile": fingerprint_path(teacher_profile_path),
         "selection_manifest_sha256": sha256_file(selection_manifest_path),
+        "behavior_student": behavior_student,
         "teacher_model": args.teacher_model,
         "teacher_model_revision": args.teacher_model_revision,
         "teacher_url": args.teacher_url,
@@ -283,13 +420,11 @@ def main() -> None:
             "maximum_prompt_tokens": max(prompt_lengths.values()),
             "all_prompt_plus_generation_within_window": True,
         },
-        "provider_response_models": sorted(
-            {
-                str(row["response_model"])
-                for row in teacher.request_ledger
-                if row.get("response_model") is not None
-            }
-        ),
+        "provider_response_models": provider_response_models,
+        "provider_revision_evidence": {
+            "kind": "operator_supplied_provider_snapshot_label",
+            "cryptographically_verified": False,
+        },
         "provider_system_fingerprints": sorted(
             {
                 str(row["system_fingerprint"])

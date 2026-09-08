@@ -12,6 +12,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from omniopd.features import state_diagnostic_features
+from omniopd.analysis.gradient import (
+    assert_shared_teacher_contract,
+    teacher_contract_from_manifest,
+)
 from omniopd.io import correction_from_dict, read_jsonl, rollout_turn_from_dict
 from omniopd.provenance import (
     fingerprint_code_tree,
@@ -23,7 +27,10 @@ from omniopd.representativeness import (
     common_retained_game_support,
     paired_game_balanced_bootstrap_js,
 )
-from omniopd.validation import audit_correction_records
+from omniopd.validation import (
+    audit_correction_records,
+    validate_correction_manifest_against_records,
+)
 
 
 def _parse_group(value: str) -> tuple[str, Path]:
@@ -123,6 +130,7 @@ def main() -> None:
     group_records = {}
     selected_features = {}
     retained_games_by_group = {}
+    teacher_contracts = {}
     for group_name, path in sorted(groups.items()):
         group_manifest_path = group_manifests[group_name]
         group_manifest = json.loads(
@@ -139,12 +147,26 @@ def main() -> None:
             raise SystemExit(
                 f"M2 group {group_name} is not bound to the canonical state pool"
             )
+        try:
+            teacher_contracts[group_name] = teacher_contract_from_manifest(
+                group_manifest
+            )
+        except ValueError as error:
+            raise SystemExit(
+                f"M2 group {group_name} has an invalid Teacher contract: {error}"
+            ) from error
         records = [correction_from_dict(row) for row in read_jsonl(path)]
         issues = audit_correction_records(records)
         if issues:
             raise SystemExit(
                 f"M2 group {group_name} correction audit failed: {issues[:5]}"
             )
+        try:
+            validate_correction_manifest_against_records(group_manifest, records)
+        except ValueError as error:
+            raise SystemExit(
+                f"M2 group {group_name} manifest contradicts its corrections: {error}"
+            ) from error
         state_hashes = [record.state.state_hash for record in records]
         if len(state_hashes) != len(set(state_hashes)):
             raise SystemExit(f"M2 group {group_name} contains duplicate states")
@@ -172,9 +194,14 @@ def main() -> None:
         }
 
     try:
+        assert_shared_teacher_contract(teacher_contracts.values())
         common_games = common_retained_game_support(retained_games_by_group)
     except ValueError as error:
         raise SystemExit(str(error)) from error
+    if len(common_games) < 2:
+        raise SystemExit(
+            "M2 requires at least two common Teacher-valid games for a game-cluster interval"
+        )
     group_reports = {}
     for group_name in sorted(groups):
         records, retained = group_records[group_name]
@@ -226,6 +253,10 @@ def main() -> None:
             "games_count": len(common_games),
             "sha256": sha256_json(list(common_games)),
         },
+        "shared_teacher_contract": teacher_contracts[sorted(teacher_contracts)[0]],
+        "shared_teacher_contract_sha256": sha256_json(
+            teacher_contracts[sorted(teacher_contracts)[0]]
+        ),
         "group_inputs": group_input_metadata,
         "bootstrap_replicates": args.replicates,
         "bootstrap_seed": args.seed,

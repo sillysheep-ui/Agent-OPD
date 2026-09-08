@@ -14,6 +14,7 @@ state_pool:
   state_source: student
   games_G: 50
   seed: 42
+  environment_seed: 314159
   max_steps: 50
   max_context_tokens: 4096
   reserve_tokens: 256

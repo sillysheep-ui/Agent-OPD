@@ -1,4 +1,5 @@
 from omniopd.representativeness import (
+    bootstrap_js,
     common_retained_game_support,
     game_balanced_probability_mass,
     paired_game_balanced_bootstrap_js,
@@ -24,6 +25,34 @@ def test_paired_js_is_zero_for_equal_per_game_distributions():
     assert interval.estimate == 0.0
     assert interval.lower == 0.0
     assert interval.upper == 0.0
+
+
+def test_unpaired_js_uses_game_balanced_distributions():
+    interval = bootstrap_js(
+        [["a"] * 100, ["b"]],
+        [["a"], ["b"] * 100],
+        replicates=100,
+        rng_seed=1,
+    )
+    assert interval.estimate == 0.0
+
+
+def test_js_intervals_reject_single_game_cluster():
+    try:
+        bootstrap_js([["a"]], [["a"]], replicates=10)
+    except ValueError as error:
+        assert "two game clusters" in str(error)
+    else:
+        raise AssertionError("one game cannot identify game-cluster uncertainty")
+
+    try:
+        paired_game_balanced_bootstrap_js(
+            {"g1": ["a"]}, {"g1": ["a"]}, replicates=10
+        )
+    except ValueError as error:
+        assert "two paired games" in str(error)
+    else:
+        raise AssertionError("one paired game cannot identify game-cluster uncertainty")
 
 
 def test_m2_uses_one_common_retained_game_support_across_groups():

@@ -1,5 +1,8 @@
 from omniopd.context import TaskPreservingTruncator
-from omniopd.counterfactual import run_paired_counterfactual
+from omniopd.counterfactual import (
+    run_paired_counterfactual,
+    summarize_position_counterfactuals,
+)
 from omniopd.history import ConversationHistory
 from omniopd.prompts import STUDENT_SYSTEM_PROMPT, TEACHER_SYSTEM_PROMPT
 from omniopd.protocol import ResetResult, StepResult
@@ -161,3 +164,105 @@ def test_counterfactual_continuation_restores_full_history_and_student_prompt():
         "Action: p0",
         "Action: p1",
     }
+
+
+def _position_row(
+    state_hash,
+    game_id,
+    student_won,
+    teacher_won,
+    probability,
+    *,
+    disagreement=1,
+):
+    return {
+        "state_hash": state_hash,
+        "game_id": game_id,
+        "inclusion_probability": probability,
+        "student_action": "student",
+        "teacher_action": "teacher" if disagreement else "student",
+        "disagreement": disagreement,
+        "student_branch": {"won": student_won},
+        "teacher_branch": {"won": teacher_won},
+        "consequence": int(teacher_won) - int(student_won),
+    }
+
+
+def test_position_summary_averages_draws_within_state_then_weights_games_equally():
+    rows = [
+        _position_row("s1", "g1", False, True, 0.5),
+        _position_row("s1", "g1", False, True, 0.5),
+        _position_row("s2", "g2", True, False, 0.5),
+    ]
+    summary = summarize_position_counterfactuals(
+        rows,
+        population_states_by_game={"g1": 2, "g2": 2},
+        expected_state_hashes=["s1", "s2"],
+        bootstrap_replicates=1_000,
+        bootstrap_seed=7,
+    )
+    assert summary["population_identified"]
+    assert len(summary["state_summaries"]) == 2
+    assert summary["population_game_balanced_ht"]["consequence"] == 0.0
+    assert summary["population_game_balanced_ht"]["per_game"]["g1"][
+        "consequence"
+    ] == 1.0
+    assert summary["population_game_balanced_ht"]["per_game"]["g2"][
+        "consequence"
+    ] == -1.0
+    assert summary["paired_game_bootstrap"]["resampling_unit"] == (
+        "paired_game_cluster"
+    )
+    assert summary["paired_game_bootstrap"]["lower"] <= 0.0
+    assert summary["paired_game_bootstrap"]["upper"] >= 0.0
+    assert summary["primary_population_identified"]
+    assert summary["population_game_balanced_ht_given_disagreement"][
+        "consequence"
+    ] == 0.0
+
+
+def test_position_population_is_explicitly_unidentified_without_design_probability():
+    summary = summarize_position_counterfactuals(
+        [_position_row("s1", "g1", False, True, None)],
+        population_states_by_game={"g1": 1},
+        expected_state_hashes=["s1"],
+        bootstrap_replicates=10,
+    )
+    assert not summary["population_identified"]
+    assert summary["population_game_balanced_ht"] is None
+    assert summary["paired_game_bootstrap"] is None
+    assert "inclusion_probability" in summary["nonidentification_reasons"][0]
+
+
+def test_position_primary_estimand_is_conditioned_on_disagreement():
+    rows = [
+        _position_row("s1", "g1", False, True, 1.0),
+        _position_row("s2", "g1", False, False, 1.0, disagreement=0),
+        _position_row("s3", "g2", False, True, 1.0),
+        _position_row("s4", "g2", False, False, 1.0, disagreement=0),
+    ]
+    summary = summarize_position_counterfactuals(
+        rows,
+        population_states_by_game={"g1": 2, "g2": 2},
+        expected_state_hashes=["s1", "s2", "s3", "s4"],
+        bootstrap_replicates=100,
+        bootstrap_seed=3,
+    )
+    assert summary["population_game_balanced_ht"]["consequence"] == 0.5
+    assert summary["population_game_balanced_ht_given_disagreement"][
+        "consequence"
+    ] == 1.0
+
+
+def test_position_population_is_unidentified_when_a_selected_state_has_no_valid_draw():
+    summary = summarize_position_counterfactuals(
+        [_position_row("s1", "g1", False, True, 1.0)],
+        population_states_by_game={"g1": 2},
+        expected_state_hashes=["s1", "s2"],
+        bootstrap_replicates=10,
+    )
+    assert not summary["population_identified"]
+    assert any(
+        "replayable state set differs" in reason
+        for reason in summary["nonidentification_reasons"]
+    )

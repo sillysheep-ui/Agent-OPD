@@ -10,6 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from omniopd.analysis.gradient import (
+    assert_shared_teacher_contract,
+    teacher_contract_from_manifest,
+)
 from omniopd.analysis.m3_panel import build_m3_panel
 from omniopd.io import read_jsonl, rollout_turn_from_dict, write_jsonl
 from omniopd.provenance import (
@@ -112,7 +116,7 @@ def main() -> None:
         action="append",
         type=_named_path,
         required=True,
-        help="A1=TRAIN_DATA and A3=TRAIN_DATA",
+        help="A1=ACTUAL_TRAIN_SPLIT and A3=ACTUAL_TRAIN_SPLIT",
     )
     parser.add_argument(
         "--source-audit",
@@ -246,6 +250,7 @@ def main() -> None:
     source_rows = {name: _load_table(path) for name, path in sources.items()}
     source_input_metadata = {}
     source_experiments = {}
+    source_teacher_contracts = {}
     for name in sorted(sources):
         audit = json.loads(source_audits[name].read_text(encoding="utf-8"))
         expected_source_hash = sha256_file(sources[name])
@@ -274,6 +279,14 @@ def main() -> None:
         correction = json.loads(
             correction_manifest_path.read_text(encoding="utf-8")
         )
+        try:
+            source_teacher_contracts[name] = teacher_contract_from_manifest(
+                correction
+            )
+        except ValueError as error:
+            raise SystemExit(
+                f"M3 source {name} has an invalid Teacher contract: {error}"
+            ) from error
         experiment = audit.get("experiment")
         experiment_config = audit.get("experiment_config")
         if (
@@ -283,9 +296,8 @@ def main() -> None:
             or audit.get("code") != current_code
             or audit.get("code_revision") != current_revision
             or audit.get("weighting_mode") != "game_state_mean"
-            or "split" not in audit
-            or audit.get("split") is not None
-            or int(audit.get("validation_rows", -1)) != 0
+            or not isinstance(audit.get("split"), dict)
+            or int(audit.get("validation_rows", 0)) <= 0
             or int(audit.get("training_rows", -1)) != len(source_rows[name])
             or not isinstance(experiment, str)
             or not experiment.strip()
@@ -299,11 +311,21 @@ def main() -> None:
             or correction.get("code_revision") != current_revision
             or correction.get("experiment") != experiment
             or correction.get("corrections_sha256") != audit.get("input_sha256")
+            or int(correction.get("teacher_samples_per_state_N", -1)) != 1
             or correction.get("experiment_config", {}).get("sha256")
             != experiment_config.get("sha256")
         ):
             raise SystemExit(
-                f"M3 source {name} must be the complete unsplit canonical action table"
+                f"M3 source {name} must be the actual canonical training split and use N=1"
+            )
+        state_hashes = [str(row.get("state_hash", "")) for row in source_rows[name]]
+        if (
+            not all(state_hashes)
+            or len(state_hashes) != len(set(state_hashes))
+            or any(int(row.get("teacher_sample_index", -1)) != 0 for row in source_rows[name])
+        ):
+            raise SystemExit(
+                f"M3 source {name} must contain exactly one trained Teacher action per state"
             )
         source_experiments[name] = experiment.strip()
         source_input_metadata[name] = {
@@ -314,6 +336,9 @@ def main() -> None:
             "audit_sha256": sha256_file(source_audits[name]),
             "experiment": experiment.strip(),
             "experiment_config": experiment_config,
+            "data_role": "actual_training_split_examples",
+            "split": audit["split"],
+            "validation_rows_excluded": int(audit["validation_rows"]),
             "correction_manifest": {
                 "path": str(correction_manifest_path),
                 "sha256": correction_manifest_sha,
@@ -321,6 +346,12 @@ def main() -> None:
         }
     if len(set(source_experiments.values())) != 2:
         raise SystemExit("M3 A1/A3 must be bound to two distinct experiment identities")
+    try:
+        assert_shared_teacher_contract(source_teacher_contracts.values())
+    except ValueError as error:
+        raise SystemExit(
+            "M3 A1/A3 panels must share one exact Teacher contract: " + str(error)
+        ) from error
     score_rows, metadata, attrition = build_m3_panel(
         turns,
         source_rows,
@@ -359,6 +390,13 @@ def main() -> None:
             "states": len(turns),
         },
         "source_inputs": source_input_metadata,
+        "source_role": "actual_training_split_examples_only",
+        "validation_split_examples_excluded": True,
+        "teacher_samples_per_state_N": 1,
+        "shared_teacher_contract": source_teacher_contracts["A1"],
+        "shared_teacher_contract_sha256": sha256_json(
+            source_teacher_contracts["A1"]
+        ),
         "experiment_identities": source_experiments,
         "selection_inputs": selection_inputs,
         "excluded_state_set_sha256": sha256_json(sorted(set().union(*selected_hashes.values()))),
@@ -377,6 +415,11 @@ def main() -> None:
         },
         "source_metadata_sha256": sha256_file(metadata_path),
         "source_rows_retained": len(metadata),
+        "common_retained_game_support": sorted(
+            {row["game_id"] for row in metadata if row["group"] == "A1"}
+            & {row["game_id"] for row in metadata if row["group"] == "A3"}
+        ),
+        "common_retained_game_support_required": True,
         "attrition_sha256": sha256_file(attrition_path),
         "source_rows_attrited": len(attrition),
         "score_outputs": score_outputs,

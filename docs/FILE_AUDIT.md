@@ -45,7 +45,7 @@
 | matched-count只匹配parquet行数 | `build_mc_data.py`、`mc_final.py` | 不能排除API预算、state/token/step与任务构成混杂 | `exact_stratified_sample()`只支持预注册strata且support不足时失败；训练步数另行固定 |
 | LoRA合并精度和base/tokenizer未统一验证 | `merge_lora.py`、`merge_a1s.py` | checkpoint差异可能混入数值误差 | 统一FP32 merge、记录base/tokenizer hash，并在固定prompt上做adapter/merged logits等价测试后才发布 |
 | 文件系统返回顺序直接进入shuffle/抽样 | 多个collector与game-list脚本 | 同seed在不同机器仍会选择不同games | `stable_shuffled()`先排序再以独立seed洗牌 |
-| entropy score与selection只按`state_hash`松散连接 | `score_a1_entropy.py`、A3/A4/A5 builders | 可混入另一pool、模型或token定义的score | score/selection双manifest绑定pool、代码、生成该pool的同一Student/Tokenizer及action-content token契约 |
+| entropy score与selection只按`state_hash`松散连接 | `score_a1_entropy.py`、A3/A4/A5 builders | 可混入另一pool、模型或token定义的score | score/selection双manifest绑定pool、代码、生成该pool的同一Student/Tokenizer及action-content token契约；从逐action log score重算entropy |
 | SAGE judge失败无一致missing语义、population来自未知pool | `sage_judge.py`、`sage_analyze.py` | 失败可能被删、误填或与错误总体做HT估计 | label manifest绑定correction/pool；失败保留`None`，总体估计在缺失或top-k概率未知时明确不可识别 |
 | 未固定veRL来源且可误导入旧patched trainer | `run_verl_sft*.sh` | 不同节点运行不同loss/precision代码 | launcher直接执行仓库trainer，要求veRL 0.4.1声明与Git revision，并记录实现文件hash |
 
@@ -66,3 +66,31 @@
   `verify_lossmask.py`、`verify_thinking.py`、`transcribe_audit.py`。
 
 这些文件全部保存在`legacy/`，但README明确禁止把它们当作canonical runtime。
+
+## 对规范重写版的第二轮交叉审计
+
+第一轮重写消除了旧 Word 代码中的主要算法错误，但“函数测试通过”仍不足以证明跨阶段
+实验身份闭环。第二轮以可替换输入为对手模型，继续发现并关闭以下缺口：
+
+| 缺口 | 涉及规范文件 | 修复后的拒绝条件 |
+|---|---|---|
+| annotation manifest 可自报错误的 (M,N,B)、valid/invalid totals 或 selected states | `validation.py`、`build_data.py`、`analyze_m2_representativeness.py`、`run_position_counterfactual.py` | 消费者从 corrections 实体重算并要求逐字段相等 |
+| 两臂只比较配置，未绑定 realized annotation bytes 和效应方向 | `validate_experiment_pair.py`、`evaluation.py`、`run_verl_train.sh` | 仅接受恰好 breadth/depth 两臂的 schema-v2 pair；绑定完整成员清单、共同契约和 `breadth_minus_depth` |
+| state pool 的 behavior Student 可与训练 base 不同 | `collect_state_pool.py`、`evaluation.py`、`run_verl_train.sh` | pair/launch 继承 pool behavior artifact 与Tokenizer内容身份；不相等即拒绝 |
+| launch 目录存在就被当作完成训练 | `run_verl_train.sh`、`evaluation.py` | 仅在 trainer 与日志管道成功后生成 completion manifest，并绑定最终step、checkpoint、resolved config与日志 |
+| vLLM alias 与实际服务模型可脱离 | `run_vllm_state_pool.sh`、`run_vllm_eval.sh`、`run_vllm_position.sh`、`service_attestation.py` | 现场核验wrapper子进程、PID、argv、端口、runtime及模型/Tokenizer/checkpoint内容 |
+| M1只用有效action rows检查game-disjoint；零梯度cosine被写成0 | `analyze_m1_gradients.py`、`analysis/gradient.py` | 用完整selected-game集合检查；零范数时明确不可识别/拒绝 |
+| M2 turn-pooled/单game bootstrap或清单实体不一致 | `representativeness.py`、`analyze_m2_representativeness.py` | 先game内归一再game等权；共同支持至少两个games；重算correction契约 |
+| M3六格可共同使用与训练不同的Tokenizer | `score_action_logp.py`、`assemble_m3.py` | updated cells与各自训练Tokenizer一致，base cells与共同训练Tokenizer一致 |
+| SAGE缺少A3−A1检验且 (U_g) 混入Student-invalid分母 | `analysis/sage.py`、`analyze_sage.py` | 主报`student_valid=1`条件指标；共同game support上做配对差与cluster bootstrap |
+| SAGE correction manifest可自报伪造的state/count/validity | `judge_sage.py`、`validation.py` | 盲评前从correction records重算M/N/B、selected hashes、逐game计数、valid/invalid与selection policy |
+| Position或评测汇总可接受与records/traces矛盾的派生字段 | `run_position_counterfactual.py`、`aggregate_evaluations.py` | 从源records/traces重算 inclusion/计数/逐game success，拒绝缓存字段漂移 |
+| 只冻结game路径，不冻结真实环境 | `freeze_game_list.py`、`environment_provenance.py`、各rollout入口 | 绑定trial内容、runtime版本、显式TextWorld per-game seed；无法设seed即拒绝确认性运行 |
+| selection/correction 生成器遗漏下游必需的 behavior Student 契约 | `select_states.py`、`annotate_states.py`、`validation.py` | 两级manifest均从已验证state-pool统一派生`behavior_student`；pool→selection→annotation→pair端到端测试必须通过 |
+| selection manifest 可自报逐game数量、状态集合或错误的 (m/T_g) | `select_states.py`、`annotate_states.py`、`validation.py` | 花费Teacher预算前从冻结pool复建逐game精确 seeded-uniform/top-score 子集；uniform复算 (m/T_g)，top-score不得携带design probability |
+| final checkpoint 仅检查目录非空，未证明是可加载LoRA | `fsdp_sft_trainer.py`、`run_verl_train.sh`、`evaluation.py` | trainer与completion schema v2验证PEFT语义、唯一safetensors、Tokenizer、launch rank/alpha、成对A/B tensor和target覆盖；消费者重解析当前目录 |
+| state-pool的运行中服务证明未进入behavior Student契约 | `collect_state_pool.py`、`validation.py`、`evaluation.py` | 规范化service attestation及其摘要沿selection/correction/pair传播，训练与Position复核同一模型、Tokenizer、runtime和context容量 |
+| top-score只绑定缓存score，未证明其动作级定义 | `score_entropy.py`、`select_states.py`、`annotate_states.py`、`validation.py` | score rows与pool一一对应，game/turn/admissibles一致，模型/Tokenizer一致，并从完整有限action log scores重算entropy |
+
+这一区分很重要：`legacy/` 记录的是原始实现问题；上表记录的是规范实现自身在独立复核中
+被发现并修复的“验证器缺口”。二者都属于最终审计的一部分。

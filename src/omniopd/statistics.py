@@ -42,7 +42,14 @@ def paired_hierarchical_bootstrap(
     rng_seed: int = 42,
     resample_seeds: bool = True,
 ) -> BootstrapResult:
-    """Paired game bootstrap, optionally including training-seed uncertainty."""
+    """Paired game bootstrap, optionally including training-seed uncertainty.
+
+    At least two evaluation games are required to estimate game-cluster
+    uncertainty.  Resampling training seeds additionally requires at least two
+    independently trained seeds; callers with one fixed checkpoint must set
+    ``resample_seeds=False`` and interpret the interval as conditional on that
+    checkpoint.
+    """
 
     if replicates <= 0:
         raise ValueError("replicates must be positive")
@@ -54,6 +61,17 @@ def paired_hierarchical_bootstrap(
     game_ids = sorted(treatment[seed_ids[0]])
     if not game_ids:
         raise ValueError("per-game results cannot be empty")
+    if len(game_ids) < 2:
+        raise ValueError(
+            "at least two paired evaluation games are required to estimate "
+            "game-cluster uncertainty"
+        )
+    if resample_seeds and len(seed_ids) < 2:
+        raise ValueError(
+            "at least two independent training seeds are required to propagate "
+            "training-seed uncertainty; use resample_seeds=False for an interval "
+            "conditional on the fixed checkpoint"
+        )
     expected_games = set(game_ids)
     for seed in seed_ids:
         if set(treatment[seed]) != expected_games or set(control[seed]) != expected_games:

@@ -9,7 +9,11 @@ import yaml
 from omniopd.dataset import audit_acceptance, build_training_rows, split_rows_by_game
 from omniopd.io import correction_from_dict, read_jsonl
 from omniopd.provenance import fingerprint_code_tree, git_revision, sha256_file
-from omniopd.validation import audit_correction_records
+from omniopd.validation import (
+    annotation_member_contract,
+    audit_correction_records,
+    validate_correction_manifest_against_records,
+)
 
 
 def _require_new(path: Path) -> None:
@@ -49,8 +53,9 @@ def main() -> None:
     parser.add_argument("--split-seed", type=int)
     args = parser.parse_args()
 
-    experiment_path = Path(args.experiment_config)
-    correction_manifest_path = Path(args.correction_manifest)
+    input_path = Path(args.input).resolve()
+    experiment_path = Path(args.experiment_config).resolve()
+    correction_manifest_path = Path(args.correction_manifest).resolve()
     experiment = yaml.safe_load(experiment_path.read_text(encoding="utf-8"))
     correction_manifest = json.loads(
         correction_manifest_path.read_text(encoding="utf-8")
@@ -90,7 +95,7 @@ def main() -> None:
         "protocol_version": "omniopd-v1",
         "code": current_code,
         "code_revision": current_revision,
-        "corrections_sha256": sha256_file(args.input),
+        "corrections_sha256": sha256_file(input_path),
         "experiment": experiment.get("experiment"),
     }
     mismatches = {
@@ -106,11 +111,17 @@ def main() -> None:
     if mismatches:
         raise SystemExit(f"correction artifact is not bound to this experiment: {mismatches}")
 
-    records = [correction_from_dict(record) for record in read_jsonl(args.input)]
+    records = [correction_from_dict(record) for record in read_jsonl(input_path)]
     issues = audit_correction_records(records)
     if issues:
         preview = [f"{issue.code}:{issue.message}" for issue in issues[:10]]
         raise SystemExit(f"correction protocol audit failed: {preview}")
+    try:
+        annotation_contract = validate_correction_manifest_against_records(
+            correction_manifest, records
+        )
+    except ValueError as error:
+        raise SystemExit(f"correction manifest contradicts its records: {error}") from error
     state_hashes = [record.state.state_hash for record in records]
     if len(state_hashes) != len(set(state_hashes)):
         raise SystemExit(
@@ -130,18 +141,18 @@ def main() -> None:
     rows = [row.to_dict() for row in train_rows]
     if not rows:
         raise SystemExit("no valid Teacher samples were available")
-    output = Path(args.output)
-    audit_path = Path(args.audit_output or str(output) + ".audit.json")
+    output = Path(args.output).resolve()
+    audit_path = Path(args.audit_output or str(output) + ".audit.json").resolve()
     destinations = [output, audit_path]
     if args.validation_output:
-        destinations.append(Path(args.validation_output))
+        destinations.append(Path(args.validation_output).resolve())
     if len(destinations) != len(set(destinations)):
         raise SystemExit("training, validation, and audit outputs must be distinct paths")
     for destination in destinations:
         _require_new(destination)
     _write_rows(output, rows)
     if args.validation_output:
-        validation_output = Path(args.validation_output)
+        validation_output = Path(args.validation_output).resolve()
         values = [row.to_dict() for row in validation_rows]
         _write_rows(validation_output, values)
     report = audit_acceptance(records)
@@ -149,10 +160,12 @@ def main() -> None:
     report["code"] = current_code
     report["code_revision"] = current_revision
     report["split"] = split_metadata
-    report["input_sha256"] = sha256_file(args.input)
+    report["input_sha256"] = sha256_file(input_path)
     report["training_output_sha256"] = sha256_file(output)
     report["validation_output_sha256"] = (
-        sha256_file(args.validation_output) if args.validation_output else None
+        sha256_file(Path(args.validation_output).resolve())
+        if args.validation_output
+        else None
     )
     report["protocol_version"] = next(iter(versions))
     report["weighting_mode"] = weighting
@@ -164,6 +177,13 @@ def main() -> None:
     report["correction_manifest"] = {
         "path": str(correction_manifest_path),
         "sha256": sha256_file(correction_manifest_path),
+    }
+    report["annotation_contract"] = {
+        **annotation_contract,
+        "member": annotation_member_contract(
+            correction_manifest,
+            annotation_manifest_sha256=sha256_file(correction_manifest_path),
+        ),
     }
     report["training_contract"] = {
         "global_batch_size": int(experiment["training"]["global_batch_size"]),

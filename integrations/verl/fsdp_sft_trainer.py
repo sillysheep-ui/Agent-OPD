@@ -72,6 +72,7 @@ from verl.utils.tracking import Tracking
 from omniopd.loss import weighted_causal_ce_components
 from omniopd.sampler import ZeroPaddedDistributedSampler
 from omniopd.torch_dataset import FinalTurnActionDataset
+from omniopd.validation import validate_lora_checkpoint_directory
 from omniopd.verl_adapter import uniform_sampling_normalizer
 
 logger = logging.getLogger(__file__)
@@ -633,6 +634,16 @@ class FSDPSFTTrainer:
                 os.makedirs(path, exist_ok=True)
                 self.model.save_pretrained(path, state_dict=state_dict)
                 self.tokenizer.save_pretrained(path)
+
+        # All ranks wait for the PEFT/tokenizer files and independently reject
+        # a full-model, empty, or hyperparameter-mismatched checkpoint.
+        torch.distributed.barrier()
+        validate_lora_checkpoint_directory(
+            path,
+            expected_rank=int(self.config.model.lora_rank),
+            expected_alpha=float(self.config.model.lora_alpha),
+            expected_target_modules_policy="all-linear",
+        )
 
         # Copy to HDFS if configured
         if self.device_mesh.get_rank() == 0 and self.config.trainer.default_hdfs_dir:

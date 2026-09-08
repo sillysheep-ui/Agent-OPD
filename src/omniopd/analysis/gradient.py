@@ -26,7 +26,17 @@ def gradient_alignment(correction: Any, reference: Any) -> GradientAlignment:
     dot = torch.dot(correction, reference)
     correction_norm = torch.linalg.vector_norm(correction)
     reference_norm = torch.linalg.vector_norm(reference)
-    cosine = dot / (correction_norm * reference_norm).clamp_min(1e-12)
+    if not bool(
+        torch.isfinite(dot)
+        & torch.isfinite(correction_norm)
+        & torch.isfinite(reference_norm)
+    ):
+        raise ValueError("gradient alignment requires finite vectors")
+    if correction_norm.item() == 0.0 or reference_norm.item() == 0.0:
+        raise ValueError("gradient cosine is undefined for a zero-norm vector")
+    cosine = dot / (correction_norm * reference_norm)
+    if not bool(torch.isfinite(cosine)):
+        raise ValueError("gradient cosine is numerically undefined")
     return GradientAlignment(
         float(dot), float(cosine), float(correction_norm), float(reference_norm)
     )
@@ -155,10 +165,17 @@ def teacher_contract_from_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("M1 Teacher context preflight was not attested")
     provider_models = manifest.get("provider_response_models")
     provider_fingerprints = manifest.get("provider_system_fingerprints")
-    if not isinstance(provider_models, list) or not provider_models or not isinstance(
-        provider_fingerprints, list
+    if (
+        not isinstance(provider_models, list)
+        or len(provider_models) != 1
+        or provider_models != [manifest["teacher_model"]]
+        or not isinstance(provider_fingerprints, list)
+        or len(provider_fingerprints) > 1
     ):
-        raise ValueError("M1 Teacher provider identity fields are missing")
+        raise ValueError(
+            "M1 Teacher provider identity is missing or response.model differs "
+            "from the requested model"
+        )
     request_ledger_sha256 = manifest.get("teacher_requests_sha256")
     if not isinstance(request_ledger_sha256, str) or not request_ledger_sha256:
         raise ValueError("M1 Teacher request ledger digest is missing")
@@ -193,7 +210,11 @@ def teacher_contract_from_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         "provider_system_fingerprints": sorted(
             str(value) for value in provider_fingerprints
         ),
-        "teacher_requests_sha256": request_ledger_sha256,
+        # Each dataset necessarily has a different request ledger.  Its digest
+        # is validated above and preserved by the per-input manifest binding,
+        # but it must not be compared as though it were a shared sampling
+        # hyperparameter across reference/A1/A3.
+        "teacher_request_ledger_bound": bool(request_ledger_sha256),
         "invalid_calls_count_toward_budget": True,
         "free_retries": 0,
     }

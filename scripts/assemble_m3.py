@@ -45,6 +45,45 @@ def _identity(value: Any) -> Any:
     }
 
 
+def _artifact_digest(value: Any) -> str | None:
+    if not isinstance(value, dict):
+        return None
+    digest = value.get("sha256") or value.get("tree_sha256")
+    return str(digest) if isinstance(digest, str) and digest else None
+
+
+def _validate_checkpoint_source_binding(
+    training: dict[str, Any], source_binding: dict[str, Any]
+) -> dict[str, str]:
+    """Prove that one checkpoint trained on the panel's exact source bytes."""
+
+    training_inputs = training.get("training_inputs")
+    arm_contract = training.get("arm_contract")
+    experiment_config = source_binding.get("experiment_config")
+    if (
+        not isinstance(training_inputs, dict)
+        or not isinstance(arm_contract, dict)
+        or source_binding.get("data_role") != "actual_training_split_examples"
+        or not isinstance(experiment_config, dict)
+        or _artifact_digest(training_inputs.get("train_files"))
+        != source_binding.get("sha256")
+        or _artifact_digest(training_inputs.get("train_audit"))
+        != source_binding.get("audit_sha256")
+        or _artifact_digest(training_inputs.get("experiment_config"))
+        != experiment_config.get("sha256")
+        or int(arm_contract.get("teacher_samples_per_state_N", -1)) != 1
+    ):
+        raise ValueError(
+            "checkpoint was not trained on its exact frozen source panel "
+            "input/audit/config with N=1"
+        )
+    return {
+        "training_data_sha256": str(source_binding["sha256"]),
+        "training_audit_sha256": str(source_binding["audit_sha256"]),
+        "experiment_config_sha256": str(experiment_config["sha256"]),
+    }
+
+
 def _unique(values, label):
     result = dict(values)
     if len(result) != len(values):
@@ -92,6 +131,10 @@ def main() -> None:
     if (
         preparation.get("artifact") != "m3_frozen_scoring_panel"
         or preparation.get("analysis_ready") is not True
+        or preparation.get("source_role") != "actual_training_split_examples_only"
+        or preparation.get("validation_split_examples_excluded") is not True
+        or int(preparation.get("teacher_samples_per_state_N", -1)) != 1
+        or not isinstance(preparation.get("shared_teacher_contract_sha256"), str)
         or not isinstance(experiments, dict)
         or set(experiments) != M3_GROUPS
         or len(set(experiments.values())) != 2
@@ -106,6 +149,7 @@ def main() -> None:
     common_identity = None
     comparison_contract = None
     checkpoint_identities: dict[str, str] = {}
+    checkpoint_source_bindings: dict[str, dict[str, str]] = {}
     manifests = {}
     base_rows = {}
     updated_rows = {}
@@ -129,6 +173,11 @@ def main() -> None:
             or manifest.get("token_contract")
             != "assistant_action_content_tokens_v1"
             or manifest.get("enable_thinking") is not False
+            or manifest.get("training_tokenizer_verified") is not True
+            or manifest.get("training_tokenizer_source")
+            != "base_model_directory_model.partial_pretrain"
+            or _identity(manifest.get("tokenizer"))
+            != _identity(manifest.get("base_model"))
         ):
             raise SystemExit(f"M3 score manifest identity mismatch at {checkpoint}×{panel}")
         identity = json.dumps(
@@ -163,10 +212,23 @@ def main() -> None:
                 or manifest.get("checkpoint_experiment") != experiments[checkpoint]
                 or not training.get("completion_sha256")
                 or not isinstance(training.get("comparison_contract"), dict)
+                or not isinstance(training.get("training_inputs"), dict)
+                or not isinstance(training.get("arm_contract"), dict)
             ):
                 raise SystemExit(
                     f"M3 {checkpoint} checkpoint lacks a completed matching experiment"
                 )
+            source_binding = preparation.get("source_inputs", {}).get(checkpoint)
+            if not isinstance(source_binding, dict):
+                raise SystemExit(
+                    f"M3 {checkpoint} has no frozen source-panel binding"
+                )
+            try:
+                checkpoint_source_bindings[checkpoint] = (
+                    _validate_checkpoint_source_binding(training, source_binding)
+                )
+            except ValueError as error:
+                raise SystemExit(f"M3 {checkpoint}: {error}") from error
             run_identity = json.dumps(
                 {
                     "adapter": _identity(adapter),
@@ -243,6 +305,7 @@ def main() -> None:
             for (checkpoint, panel), (path, manifest_path, _) in manifests.items()
         },
         "comparison_contract": json.loads(comparison_contract),
+        "checkpoint_source_bindings": checkpoint_source_bindings,
         "design": "checkpoint_by_panel_2x2_with_shared_base_per_panel",
         "token_contract": "assistant_action_content_tokens_v1",
         "rows": len(assembled),

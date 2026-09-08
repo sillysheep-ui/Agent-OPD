@@ -27,6 +27,15 @@ self-normalized estimate and would erase all weights at batch size one.
 Backpropagate each contribution directly; do not divide after `backward()` and
 do not normalize independently inside each microbatch.
 
+Before any output directory is created, the launcher also validates the whole
+realized fixed-budget experiment, not just the current parquet file.  It requires
+the schema-v2 `ANNOTATION_PAIR_MANIFEST`, verifies both breadth/depth members and
+their common Teacher/state-pool contract, and checks that the current build audit
+is exactly the corresponding member.  The frozen state-pool manifest is part of
+that contract.  For a Student-state on-policy run, `MODEL_PATH` and the training
+Tokenizer must have the same content identity as the behavior Student and
+Tokenizer that generated the pool; a model alias is never sufficient.
+
 `omniopd.verl_adapter.uniform_sampling_normalizer` and
 `backward_optimizer_batch` are the executable references. The design makes one
 optimizer-batch update identical under any microbatch partition, up to
@@ -48,6 +57,21 @@ trainer from an installed veRL checkout. It additionally enforces:
   the system/task prefix;
 - exact numerator/denominator aggregation over the full validation split;
 - no checkpoint resume until optimizer and scheduler state are also saved.
+
+`launch_manifest.json` means only that a launch passed preflight.  It is not proof
+of a completed training run.  `completion_manifest.json` is written only after
+the distributed trainer and its logging pipeline exit successfully and the
+`global_step_<TOTAL_TRAINING_STEPS>` has passed a PEFT LoRA layout check (adapter
+config semantics, exactly one `adapter_model.safetensors`, tokenizer config,
+launch-matching rank/alpha/`all-linear`, paired LoRA A/B tensors, compatible
+shapes/dtypes, valid contiguous safetensors ranges, target-module coverage, and
+the absence of full-model weight files),
+and the checkpoint, resolved config, and log have all been content-fingerprinted.
+The completion manifest uses schema v2. Evaluation and updated-checkpoint M3
+scoring require both manifests, reparse the current checkpoint directory, and
+reject a launch-only, changed, structurally empty, or non-LoRA directory. This
+structural validation does not replace a real PEFT/vLLM load test on the target
+cluster.
 
 Sequence parallel and remove-padding are intentionally rejected. Their packed
 token boundaries need a separate target-mask audit before they can be enabled.

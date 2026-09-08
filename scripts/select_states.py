@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -13,9 +12,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from omniopd.environment_provenance import content_fingerprint_identity
 from omniopd.io import read_jsonl, rollout_turn_from_dict, write_jsonl
 from omniopd.provenance import fingerprint_code_tree, git_revision, sha256_file
 from omniopd.selection import select_top_score, select_uniform_nested
+from omniopd.validation import (
+    state_pool_behavior_student_contract,
+    validate_uncertainty_score_rows,
+)
 
 
 def main() -> None:
@@ -42,7 +46,7 @@ def main() -> None:
         configured_states_per_game = int(experiment["states_per_game"])
         configured_states = int(experiment["distinct_states_M"])
         configured_games = int(experiment["games"])
-        configured_seed = int(experiment["selection_seed"])
+        configured_seed_raw = experiment.get("selection_seed")
         configured_state_pool = dict(experiment["state_pool"])
     except (KeyError, TypeError, ValueError) as error:
         raise SystemExit(f"experiment config is incomplete: {error}") from error
@@ -54,11 +58,22 @@ def main() -> None:
     )
     if policy != configured_policy or states_per_game != configured_states_per_game:
         raise SystemExit("selection CLI overrides disagree with the preregistered config")
-    seed = configured_seed if args.seed is None else args.seed
-    if seed != configured_seed:
-        raise SystemExit("--seed disagrees with experiment.selection_seed")
     if policy not in {"uniform_per_game_nested_v1", "top_score_per_game"}:
         raise SystemExit(f"unsupported configured selection policy: {policy}")
+    if policy == "uniform_per_game_nested_v1":
+        if isinstance(configured_seed_raw, bool):
+            raise SystemExit("experiment.selection_seed must be an integer, not boolean")
+        try:
+            configured_seed = int(configured_seed_raw)
+        except (TypeError, ValueError) as error:
+            raise SystemExit("uniform selection requires experiment.selection_seed") from error
+        seed = configured_seed if args.seed is None else args.seed
+        if seed != configured_seed or seed < 0:
+            raise SystemExit("--seed disagrees with the non-negative experiment.selection_seed")
+    else:
+        if args.seed is not None:
+            raise SystemExit("--seed is not meaningful for deterministic top-score selection")
+        seed = None
     if states_per_game <= 0:
         raise SystemExit("--states-per-game must be positive")
     state_pool_manifest_path = Path(args.state_pool_manifest)
@@ -77,10 +92,17 @@ def main() -> None:
         raise SystemExit(
             "state-pool manifest must come from this immutable code revision"
         )
+    try:
+        behavior_student = state_pool_behavior_student_contract(state_pool_manifest)
+    except ValueError as error:
+        raise SystemExit(f"selection requires the frozen behavior Student: {error}") from error
     realized_state_pool = {
         "state_source": state_pool_manifest.get("state_source"),
         "games_G": state_pool_manifest.get("games_G"),
         "seed": state_pool_manifest.get("seed"),
+        "environment_seed": state_pool_manifest.get(
+            "environment_rollout", {}
+        ).get("master_seed"),
         "max_steps": state_pool_manifest.get("max_steps"),
         "max_context_tokens": state_pool_manifest.get("max_context_tokens"),
         "reserve_tokens": state_pool_manifest.get("reserve_tokens"),
@@ -133,6 +155,7 @@ def main() -> None:
             "state_pool_sha256": sha256_file(args.state_pool),
             "state_pool_manifest_sha256": sha256_file(state_pool_manifest_path),
             "scores_sha256": sha256_file(args.scores),
+            "states": len(turns),
             "target_tokenization": (
                 "canonical_final_assistant_content_excluding_terminator"
             ),
@@ -147,12 +170,47 @@ def main() -> None:
             raise SystemExit(
                 f"uncertainty scores disagree with their manifest: {score_mismatches}"
             )
+        try:
+            score_model_identity = content_fingerprint_identity(
+                scores_manifest.get("model", {})
+            )
+            score_tokenizer_identity = content_fingerprint_identity(
+                scores_manifest.get("tokenizer", {})
+            )
+            behavior_model_identity = content_fingerprint_identity(
+                behavior_student["behavior_artifact"]
+            )
+            behavior_tokenizer_identity = content_fingerprint_identity(
+                behavior_student["tokenizer"]
+            )
+        except ValueError as error:
+            raise SystemExit(
+                f"uncertainty model/tokenizer fingerprint is invalid: {error}"
+            ) from error
+        if (
+            score_model_identity != behavior_model_identity
+            or score_tokenizer_identity != behavior_tokenizer_identity
+            or not isinstance(scores_manifest.get("device"), str)
+            or not scores_manifest["device"].strip()
+        ):
+            raise SystemExit(
+                "uncertainty scores must use the frozen behavior Student and tokenizer"
+            )
         score_rows = list(read_jsonl(args.scores))
-        score_map = {str(row["state_hash"]): float(row["score"]) for row in score_rows}
-        if len(score_map) != len(score_rows) or set(score_map) != set(hashes):
-            raise SystemExit("scores must map one-to-one onto the complete frozen state pool")
-        if not all(math.isfinite(score) for score in score_map.values()):
-            raise SystemExit("all selection scores must be finite")
+        pool_states = {
+            turn.state.state_hash: {
+                "game_id": turn.state.game_id,
+                "turn_index": turn.state.turn_index,
+                "admissible_actions": turn.state.admissible_actions,
+            }
+            for turn in turns
+        }
+        try:
+            score_map = validate_uncertainty_score_rows(
+                score_rows, pool_states=pool_states
+            )
+        except ValueError as error:
+            raise SystemExit(f"uncertainty score rows are invalid: {error}") from error
     elif args.scores or args.scores_manifest:
         raise SystemExit(
             "--scores/--scores-manifest are only valid for top-score selection"
@@ -207,6 +265,7 @@ def main() -> None:
         "experiment": experiment["experiment"],
         "experiment_config_sha256": sha256_file(experiment_path),
         "state_pool_manifest_sha256": sha256_file(state_pool_manifest_path),
+        "behavior_student": behavior_student,
         "policy": policy,
         "seed": seed if policy == "uniform_per_game_nested_v1" else None,
         "games_G": len(by_game),

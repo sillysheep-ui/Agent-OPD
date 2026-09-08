@@ -291,7 +291,45 @@ def build_m3_panel(
                     "neighbors": neighbor_rows,
                 }
             )
+    # The panel comparison must target the same game support. Teacher-valid
+    # filtering and neighbor attrition can otherwise leave A1 and A3 defined on
+    # different games, confounding the panel effect with task composition.
+    retained_games = {
+        group: {
+            str(row["game_id"])
+            for row in metadata
+            if row["group"] == group
+        }
+        for group in M3_GROUPS
+    }
+    common_games = set.intersection(*retained_games.values())
+    dropped_metadata = [
+        row for row in metadata if str(row["game_id"]) not in common_games
+    ]
+    for row in dropped_metadata:
+        attrition.append(
+            {
+                "source_id": row["source_id"],
+                "group": row["group"],
+                "source_state_hash": row["source_state_hash"],
+                "reason": "outside_cross_panel_common_game_support",
+                "source_game": row["game_id"],
+            }
+        )
+    retained_source_ids = {
+        str(row["source_id"])
+        for row in metadata
+        if str(row["game_id"]) in common_games
+    }
+    metadata = [
+        row for row in metadata if str(row["source_id"]) in retained_source_ids
+    ]
     for group in score_rows:
+        score_rows[group] = [
+            row
+            for row in score_rows[group]
+            if str(row["source_id"]) in retained_source_ids
+        ]
         score_rows[group].sort(key=lambda row: row["score_id"])
     metadata.sort(key=lambda row: row["source_id"])
     attrition.sort(key=lambda row: row["source_id"])

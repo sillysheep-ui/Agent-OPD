@@ -11,7 +11,10 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from omniopd.io import read_jsonl, write_jsonl
 from omniopd.loss import mean_target_log_probability
-from omniopd.evaluation import validate_training_completion_manifest
+from omniopd.evaluation import (
+    validate_artifact_fingerprint,
+    validate_training_completion_manifest,
+)
 from omniopd.provenance import (
     fingerprint_code_tree,
     fingerprint_path,
@@ -19,12 +22,7 @@ from omniopd.provenance import (
     sha256_file,
 )
 from omniopd.tokenization import encode_final_assistant_content
-
-
-def _artifact_digest(value):
-    if not isinstance(value, dict):
-        return None
-    return value.get("sha256") or value.get("tree_sha256")
+from omniopd.validation import validate_lora_checkpoint_directory
 
 
 def _training_comparison_contract(manifest: dict) -> dict:
@@ -51,7 +49,13 @@ def _training_comparison_contract(manifest: dict) -> dict:
         "sampler_padding_weight",
         "encoded_sequence_overflow_policy",
     ]
-    hyperparameter_keys = ["learning_rate", "max_length", "lora_rank", "lora_alpha"]
+    hyperparameter_keys = [
+        "learning_rate",
+        "max_length",
+        "lora_rank",
+        "lora_alpha",
+        "target_modules",
+    ]
     missing = [key for key in training_keys if key not in training]
     missing += [
         f"hyperparameters.{key}"
@@ -89,6 +93,27 @@ def _load_rows(path: Path) -> list[dict]:
             for row in pd.read_parquet(path).to_dict(orient="records")
         ]
     raise SystemExit("--data must end in .jsonl or .parquet")
+
+
+def _resolve_training_tokenizer_path(
+    base_model_path: Path, tokenizer_argument: str | None
+) -> Path:
+    """Return the tokenizer path proven to be the training tokenizer.
+
+    The audited trainer loads its tokenizer from ``model.partial_pretrain``.
+    M3 therefore cannot accept an independently supplied tokenizer, even when
+    all six score cells happen to share that alternative tokenizer.
+    """
+
+    tokenizer_path = (
+        Path(tokenizer_argument) if tokenizer_argument is not None else base_model_path
+    )
+    if tokenizer_path.resolve() != base_model_path.resolve():
+        raise ValueError(
+            "M3 scoring tokenizer must be the exact base-model directory used by "
+            "training; an independent tokenizer would change the action-token estimand"
+        )
+    return tokenizer_path
 
 
 def main() -> None:
@@ -149,8 +174,13 @@ def main() -> None:
         raise SystemExit(
             "BASE scoring must omit an adapter; A1/A3 scoring must load one"
         )
-    tokenizer_name = args.tokenizer or args.base_model
-    required_paths = [base_model_path, Path(tokenizer_name)]
+    try:
+        tokenizer_path = _resolve_training_tokenizer_path(
+            base_model_path, args.tokenizer
+        )
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    required_paths = [base_model_path, tokenizer_path]
     if adapter_path is not None:
         required_paths.append(adapter_path)
         required_paths.append(training_manifest_path)
@@ -180,6 +210,14 @@ def main() -> None:
                 launch_manifest_sha256=sha256_file(training_manifest_path),
                 completion_manifest_sha256=sha256_file(training_completion_path),
                 checkpoint_fingerprint=adapter_fingerprint,
+                current_checkpoint_format=validate_lora_checkpoint_directory(
+                    adapter_path,
+                    expected_rank=int(training_manifest["hyperparameters"]["lora_rank"]),
+                    expected_alpha=float(training_manifest["hyperparameters"]["lora_alpha"]),
+                    expected_target_modules_policy=str(
+                        training_manifest["hyperparameters"]["target_modules"]
+                    ),
+                ),
                 resolved_config_fingerprint=fingerprint_path(
                     training_manifest_path.parent / "resolved_config.yaml"
                 ),
@@ -192,6 +230,14 @@ def main() -> None:
             comparison_contract = _training_comparison_contract(training_manifest)
         except (KeyError, TypeError, ValueError) as error:
             raise SystemExit(f"M3 training manifest is incomplete: {error}") from error
+        try:
+            validate_artifact_fingerprint(
+                training_manifest.get("inputs", {}).get("model_path", {}),
+                base_fingerprint,
+                role="M3 scoring base/training base",
+            )
+        except ValueError as error:
+            raise SystemExit(str(error)) from error
         expected_adapter = training_manifest_path.parent / f"global_step_{total_steps}"
         if (
             training_manifest.get("artifact") != "omniopd_training_launch"
@@ -199,10 +245,6 @@ def main() -> None:
             or training_manifest.get("code") != current_code
             or training_manifest.get("code_revision") != current_revision
             or adapter_path.resolve() != expected_adapter.resolve()
-            or _artifact_digest(
-                training_manifest.get("inputs", {}).get("model_path")
-            )
-            != _artifact_digest(base_fingerprint)
             or not isinstance(training_manifest.get("experiment"), str)
             or not training_manifest["experiment"].strip()
         ):
@@ -219,6 +261,8 @@ def main() -> None:
             "training_seed": training_seed,
             "total_optimizer_steps": total_steps,
             "comparison_contract": comparison_contract,
+            "training_inputs": completion_identity["inputs"],
+            "arm_contract": completion_identity["arm_contract"],
             "final_checkpoint": completion_identity["final_checkpoint"],
             "final_checkpoint_verified": True,
         }
@@ -227,7 +271,7 @@ def main() -> None:
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
     if tokenizer.pad_token_id is None:
         if tokenizer.eos_token_id is None:
             raise SystemExit("tokenizer has neither pad_token_id nor eos_token_id")
@@ -376,7 +420,9 @@ def main() -> None:
         ),
         "panel_group": args.panel_group,
         "panel_experiment": rows[0]["panel_experiment"],
-        "tokenizer": fingerprint_path(tokenizer_name),
+        "tokenizer": fingerprint_path(tokenizer_path),
+        "training_tokenizer_verified": True,
+        "training_tokenizer_source": "base_model_directory_model.partial_pretrain",
         "model_dtype": args.model_dtype,
         "device": device,
         "rows": len(results),

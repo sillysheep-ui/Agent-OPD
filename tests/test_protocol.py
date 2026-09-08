@@ -1,7 +1,10 @@
 from omniopd.context import TaskPreservingTruncator
 from omniopd.prompts import STUDENT_SYSTEM_PROMPT, TEACHER_SYSTEM_PROMPT
 from omniopd.protocol import GenerationSettings, ResetResult, StepResult, TeacherBudget, query_teacher, rollout_episode
-from omniopd.validation import audit_correction_records
+from omniopd.validation import (
+    audit_correction_records,
+    validate_correction_manifest_against_records,
+)
 
 
 class FakeTokenizer:
@@ -129,6 +132,44 @@ def test_invalid_teacher_output_still_consumes_budget():
     )
     assert budget.used_calls == 1
     assert not record.teacher_samples[0].valid
+
+
+def test_correction_manifest_counts_are_recomputed_from_records():
+    turns, _ = rollout_episode(
+        Env(), Policy("Action: look"), TaskPreservingTruncator(FakeTokenizer())
+    )
+    record = query_teacher(
+        turns[0].state,
+        turns[0].student,
+        Policy("Action: look"),
+        TeacherBudget(1),
+        samples_per_state=1,
+        selection_policy="uniform_per_game_nested_v1",
+        inclusion_probability=1.0,
+    )
+    manifest = {
+        "distinct_states_M": 1,
+        "teacher_samples_per_state_N": 1,
+        "declared_teacher_budget_B": 1,
+        "actual_teacher_api_calls": 1,
+        "valid_teacher_samples": 1,
+        "invalid_teacher_samples": 0,
+        "selected_state_hashes": [record.state.state_hash],
+        "selected_counts_by_game": {record.state.game_id: 1},
+        "selection_policies": [record.selection_policy],
+        "invalid_calls_count_toward_budget": True,
+        "free_retries": 0,
+    }
+    identity = validate_correction_manifest_against_records(manifest, [record])
+    assert identity["record_contract"]["actual_teacher_api_calls"] == 1
+
+    manifest["selected_state_hashes"] = ["forged-state"]
+    try:
+        validate_correction_manifest_against_records(manifest, [record])
+    except ValueError as error:
+        assert "do not match" in str(error)
+    else:
+        raise AssertionError("a manifest cannot invent state membership over fixed bytes")
 
 
 class FailingPolicy:

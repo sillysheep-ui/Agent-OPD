@@ -60,13 +60,42 @@ def main() -> None:
     manifest = {
         "protocol_version": "omniopd-v1",
         "artifact": "hierarchical_bootstrap_input",
+        "schema_version": 2,
         "code": current_code,
         "code_revision": current_revision,
+        "experiment": contract["experiment"],
+        "arm_contract": contract["arm_contract"],
         "evaluation_inputs": [
             {"seed": seed, "path": str(path), "sha256": sha256_file(path)}
             for seed, path in sorted(args.evaluation)
         ],
         "evaluation_contract": contract,
+        "training_runs": {
+            str(seed): {
+                "experiment": evaluations[seed]["experiment"],
+                "training_seed": seed,
+                "completion_status": evaluations[seed]["training_completion"][
+                    "completion_status"
+                ],
+                "final_global_step": evaluations[seed]["training_completion"][
+                    "final_global_step"
+                ],
+                "checkpoint_artifact": evaluations[seed]["checkpoint_artifact"],
+                "training_launch_manifest_sha256": evaluations[seed][
+                    "training_launch_manifest_sha256"
+                ],
+                "training_completion_manifest_sha256": evaluations[seed][
+                    "training_completion_manifest_sha256"
+                ],
+                "service_manifest_sha256": evaluations[seed][
+                    "service_manifest_sha256"
+                ],
+                "annotation_pair_contract_sha256": evaluations[seed][
+                    "training_completion"
+                ]["annotation_pair_binding"]["pair_contract_sha256"],
+            }
+            for seed in sorted(evaluations)
+        },
         "seeds": sorted(bundle),
         "games": len(next(iter(bundle.values()))),
         "game_ids": sorted(next(iter(bundle.values()))),

@@ -69,24 +69,28 @@ def bootstrap_js(
 ) -> JsInterval:
     """Game-cluster bootstrap for a marginal diagnostic, not a causal test."""
 
-    if not reference_clusters or not selected_clusters:
-        raise ValueError("both cluster collections are required")
+    if len(reference_clusters) < 2 or len(selected_clusters) < 2:
+        raise ValueError(
+            "at least two game clusters are required in each distribution"
+        )
     if replicates <= 0:
         raise ValueError("replicates must be positive")
 
-    def flatten(clusters: Sequence[Sequence[Hashable]]) -> list[Hashable]:
-        return [item for cluster in clusters for item in cluster]
-
     estimate = jensen_shannon(
-        probability_mass(flatten(reference_clusters)),
-        probability_mass(flatten(selected_clusters)),
+        game_balanced_probability_mass(reference_clusters),
+        game_balanced_probability_mass(selected_clusters),
     )
     rng = random.Random(rng_seed)
     values = []
     for _ in range(replicates):
         ref = [rng.choice(reference_clusters) for _ in reference_clusters]
         sel = [rng.choice(selected_clusters) for _ in selected_clusters]
-        values.append(jensen_shannon(probability_mass(flatten(ref)), probability_mass(flatten(sel))))
+        values.append(
+            jensen_shannon(
+                game_balanced_probability_mass(ref),
+                game_balanced_probability_mass(sel),
+            )
+        )
     values.sort()
     return JsInterval(estimate, values[int(0.025 * (replicates - 1))], values[int(0.975 * (replicates - 1))])
 
@@ -109,6 +113,10 @@ def paired_game_balanced_bootstrap_js(
     games = sorted(reference_by_game)
     if not games or set(games) != set(selected_by_game):
         raise ValueError("reference and selected data must cover the same non-empty game set")
+    if len(games) < 2:
+        raise ValueError(
+            "at least two paired games are required for game-cluster uncertainty"
+        )
     reference = [list(reference_by_game[game]) for game in games]
     selected = [list(selected_by_game[game]) for game in games]
     estimate = jensen_shannon(

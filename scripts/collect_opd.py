@@ -13,7 +13,12 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from omniopd.adapters import AlfworldEnvironment, OpenAIChatPolicy, list_alfworld_games
+from omniopd.adapters import (
+    AlfworldEnvironment,
+    OpenAIChatPolicy,
+    list_alfworld_games,
+    validate_provider_response_model_identity,
+)
 from omniopd.context import TaskPreservingTruncator
 from omniopd.io import read_jsonl, record_game_id, write_jsonl
 from omniopd.protocol import GenerationSettings, TeacherBudget, query_teacher, rollout_episode
@@ -332,6 +337,14 @@ def main() -> None:
         raise RuntimeError("behavior request ledger length does not match collected states")
     if len(teacher.request_ledger) != maximum_calls:
         raise RuntimeError("Teacher request ledger length does not equal declared budget B")
+    behavior_provider_response_models = validate_provider_response_model_identity(
+        behavior_policy.request_ledger,
+        args.behavior_model,
+    )
+    teacher_provider_response_models = validate_provider_response_model_identity(
+        teacher.request_ledger,
+        args.teacher_model,
+    )
     behavior_ledger = {
         str(row["request_id"]): row for row in behavior_policy.request_ledger
     }
@@ -373,6 +386,7 @@ def main() -> None:
         "declared_teacher_budget_B": maximum_calls,
         "actual_teacher_api_calls": budget.used_calls,
         "invalid_calls_count_toward_budget": True,
+        "free_retries": 0,
         "teacher_prompt_is_distinct": True,
         "behavior_model": args.behavior_model,
         "behavior_url": args.behavior_url,
@@ -398,20 +412,12 @@ def main() -> None:
             "minimum_prompt_tokens": min(teacher_prompt_lengths.values()),
             "maximum_prompt_tokens": max(teacher_prompt_lengths.values()),
         },
-        "behavior_provider_response_models": sorted(
-            {
-                str(row["response_model"])
-                for row in behavior_policy.request_ledger
-                if row.get("response_model") is not None
-            }
-        ),
-        "teacher_provider_response_models": sorted(
-            {
-                str(row["response_model"])
-                for row in teacher.request_ledger
-                if row.get("response_model") is not None
-            }
-        ),
+        "behavior_provider_response_models": behavior_provider_response_models,
+        "teacher_provider_response_models": teacher_provider_response_models,
+        "teacher_provider_revision_evidence": {
+            "kind": "operator_supplied_provider_snapshot_label",
+            "cryptographically_verified": False,
+        },
         "student_prompt_sha256": hashlib.sha256(
             STUDENT_SYSTEM_PROMPT.encode("utf-8")
         ).hexdigest(),

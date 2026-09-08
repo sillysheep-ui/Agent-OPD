@@ -1,5 +1,8 @@
 experiment: teacher_state_source
 protocol_version: omniopd-v1
+artifact_status: design_constraint_template
+confirmatory_use_allowed: false
+implementation_note: not_wired_to_canonical_fixed_budget_training_launcher
 state_source:
   name: teacher
   behavior_policy: frozen_teacher

@@ -62,6 +62,13 @@ def parse_sage_label(response: str) -> str | None:
 
 
 def normalize_teacher_sample(value: Any) -> dict[str, Any]:
+    if hasattr(value, "executed_action") and hasattr(value, "valid"):
+        action = str(getattr(value, "executed_action", "")).strip()
+        return {
+            "action": action or None,
+            "valid": bool(getattr(value, "valid", False)) and bool(action),
+            "raw": getattr(value, "raw", None),
+        }
     if isinstance(value, dict):
         action = value.get("executed_action") or value.get("teacher_action") or value.get("action")
         normalized_action = str(action).strip() if action is not None else None
@@ -138,6 +145,16 @@ class ClusterBootstrapEstimate:
     replicates: int
 
 
+@dataclass(frozen=True)
+class ObservedSampleRatio:
+    """Descriptive ratio on the realized sample, with equal game weight."""
+
+    estimate: float
+    games: int
+    observed_rows: int
+    estimand: str = "realized_selected_sample_game_balanced_ratio"
+
+
 def game_balanced_indicator(
     rows: Iterable[dict[str, Any]], *, indicator_key: str
 ) -> GameBalancedProportion:
@@ -159,6 +176,43 @@ def game_balanced_indicator(
         len(game_means),
         sum(len(group) for group in by_game.values()),
         missing,
+    )
+
+
+def observed_sample_game_balanced_ratio(
+    rows: Iterable[dict[str, Any]],
+    *,
+    numerator_key: str,
+    denominator_key: str,
+) -> ObservedSampleRatio:
+    """Return a descriptive conditional rate on the realized selected sample.
+
+    This function deliberately does not use inclusion probabilities.  It is
+    therefore useful for deterministic top-k samples, but it must not be
+    interpreted as a finite-population estimate.  Games receive equal weight;
+    within each game the realized sampled rows receive equal weight.
+    """
+
+    rows = list(rows)
+    if not rows:
+        raise ValueError("no observed rows for the requested ratio")
+    by_game: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        if row.get(numerator_key) is None or row.get(denominator_key) is None:
+            raise ValueError("missing outcomes make the observed-sample ratio undefined")
+        by_game[str(row["game_id"])].append(row)
+    numerator = 0.0
+    denominator = 0.0
+    for group in by_game.values():
+        size = len(group)
+        numerator += sum(float(row[numerator_key]) for row in group) / size
+        denominator += sum(float(row[denominator_key]) for row in group) / size
+    if denominator <= 0.0:
+        raise ValueError("conditioning event has zero observed probability")
+    return ObservedSampleRatio(
+        estimate=numerator / denominator,
+        games=len(by_game),
+        observed_rows=len(rows),
     )
 
 
@@ -321,5 +375,94 @@ def game_cluster_bootstrap_design_ratio(
         draws[int(0.025 * (replicates - 1))],
         draws[int(0.975 * (replicates - 1))],
         len(games),
+        replicates,
+    )
+
+
+def paired_game_cluster_bootstrap_indicator_difference(
+    reference_rows: Iterable[dict[str, Any]],
+    comparison_rows: Iterable[dict[str, Any]],
+    *,
+    indicator_key: str,
+    population_states_by_game: dict[str, int] | None = None,
+    probability_key: str = "inclusion_probability",
+    replicates: int = 10_000,
+    rng_seed: int = 42,
+) -> ClusterBootstrapEstimate:
+    """Estimate comparison-reference on common games with paired resampling.
+
+    Without ``population_states_by_game`` this is the realized selected-sample,
+    game-balanced contrast.  With population counts it is the difference of
+    two game-balanced Horvitz--Thompson means and therefore requires a known,
+    non-zero inclusion probability for every membership in both groups.
+    """
+
+    reference_rows = list(reference_rows)
+    comparison_rows = list(comparison_rows)
+    if replicates <= 0:
+        raise ValueError("replicates must be positive")
+    by_reference: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    by_comparison: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for rows, destination in [
+        (reference_rows, by_reference),
+        (comparison_rows, by_comparison),
+    ]:
+        for row in rows:
+            destination[str(row["game_id"])].append(row)
+    common_games = sorted(set(by_reference) & set(by_comparison))
+    if len(common_games) < 2:
+        raise ValueError(
+            "paired group contrast requires at least two common game clusters"
+        )
+
+    def game_mean(rows: list[dict[str, Any]], game: str) -> float:
+        if any(row.get(indicator_key) is None for row in rows):
+            raise ValueError(
+                "missing outcomes on common games make the paired group contrast "
+                "nonidentified"
+            )
+        if population_states_by_game is None:
+            return sum(float(row[indicator_key]) for row in rows) / len(rows)
+        if game not in population_states_by_game:
+            raise ValueError(
+                f"common game {game!r} is absent from the target population"
+            )
+        population_size = int(population_states_by_game[game])
+        if population_size <= 0:
+            raise ValueError("population state counts must be positive")
+        weighted_total = 0.0
+        for row in rows:
+            try:
+                probability = float(row[probability_key])
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError(
+                    "valid design inclusion probabilities are required for the "
+                    "population group contrast"
+                ) from error
+            if not math.isfinite(probability) or not 0.0 < probability <= 1.0:
+                raise ValueError(
+                    "valid design inclusion probabilities are required; deterministic "
+                    "top-k does not identify a population group contrast"
+                )
+            weighted_total += float(row[indicator_key]) / probability
+        return weighted_total / population_size
+
+    game_differences = [
+        game_mean(by_comparison[game], game)
+        - game_mean(by_reference[game], game)
+        for game in common_games
+    ]
+    point = sum(game_differences) / len(game_differences)
+    rng = random.Random(rng_seed)
+    draws = sorted(
+        sum(rng.choice(game_differences) for _ in common_games)
+        / len(common_games)
+        for _ in range(replicates)
+    )
+    return ClusterBootstrapEstimate(
+        point,
+        draws[int(0.025 * (replicates - 1))],
+        draws[int(0.975 * (replicates - 1))],
+        len(common_games),
         replicates,
     )
