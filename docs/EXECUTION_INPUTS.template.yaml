@@ -1,0 +1,91 @@
+# Operator handoff template only. Do not pass this file directly to experiment scripts.
+# Copy it outside the repository, replace every REQUIRED_* value, and keep secrets out.
+
+authorization:
+  operator: REQUIRED_OPERATOR
+  run_mode: smoke  # smoke or confirmatory
+  paid_teacher_api_authorized: false
+  gpu_jobs_authorized: false
+  maximum_teacher_api_calls_authorized: REQUIRED_INTEGER
+  maximum_gpu_hours_authorized: REQUIRED_NUMBER
+
+repository:
+  extracted_repository: REQUIRED_ABSOLUTE_PATH
+  frozen_git_revision: REQUIRED_AFTER_GIT_INIT_AND_COMMIT
+  expected_release_archive_sha256: REQUIRED_FROM_RELEASE_MESSAGE
+
+behavior_student:
+  model_directory: REQUIRED_ABSOLUTE_PATH
+  tokenizer_directory: REQUIRED_SAME_COMPLETE_MODEL_PATH
+  served_model_alias: REQUIRED_STABLE_ALIAS
+  vllm_version: REQUIRED_VERSION
+  max_model_len: 8192
+  state_context_tokens: 4096
+  reserve_tokens: 256
+  generation_max_tokens: 256
+
+environment:
+  alfworld_config: REQUIRED_ABSOLUTE_PATH
+  alfworld_version: REQUIRED_VERSION
+  textworld_version: REQUIRED_VERSION
+  game_split: REQUIRED_SPLIT
+  game_order_seed: 42
+  environment_master_seed: 314159
+  state_pool_games: 50
+  maximum_steps_per_game: 50
+
+teacher:
+  api_key_source: environment:DEEPSEEK_API_KEY
+  base_url: REQUIRED_PROVIDER_BASE_URL
+  model: REQUIRED_PROVIDER_MODEL
+  model_revision: REQUIRED_PROVIDER_SNAPSHOT_OR_REVISION
+  tokenizer: REQUIRED_IMMUTABLE_TOKENIZER_PATH_OR_IDENTITY
+  context_window: REQUIRED_INTEGER
+  sampling_profile: configs/teacher_sampling_nonthinking.yaml
+
+training:
+  verl_checkout: REQUIRED_CLEAN_VERL_0_4_1_ABSOLUTE_PATH
+  cuda_visible_devices: [0, 1, 2, 3]
+  number_of_gpus: 4
+  training_seeds: [7, 42, 123, 2024]
+  optimizer_steps: 102
+  learning_rate: 0.00002
+  train_batch_size: 4
+  micro_batch_size: 1
+  maximum_length: 4096
+  model_dtype: fp32
+  training_dtype: bf16
+  lora_rank: 16
+  lora_alpha: 32
+
+local_services:
+  state_pool_gpu: 0
+  state_pool_port: REQUIRED_FREE_LOOPBACK_PORT
+  evaluation_ports:
+    base: REQUIRED_FREE_LOOPBACK_PORT
+    breadth: REQUIRED_FREE_LOOPBACK_PORT
+    depth: REQUIRED_FREE_LOOPBACK_PORT
+  position_port: REQUIRED_FREE_LOOPBACK_PORT
+
+outputs:
+  smoke_root: REQUIRED_NEW_EMPTY_ABSOLUTE_PATH
+  confirmatory_root: REQUIRED_NEW_EMPTY_ABSOLUTE_PATH
+  checkpoint_root: REQUIRED_NEW_EMPTY_ABSOLUTE_PATH
+  evaluation_root: REQUIRED_NEW_EMPTY_ABSOLUTE_PATH
+  archival_root: REQUIRED_WRITABLE_ABSOLUTE_PATH
+
+confirmatory_design:
+  breadth_config: configs/breadth_150x1.yaml
+  depth_config: configs/depth_50x3.yaml
+  games_G: 50
+  breadth:
+    states_per_game_m: 3
+    distinct_states_M: 150
+    teacher_samples_per_state_N: 1
+    teacher_budget_B: 150
+  depth:
+    states_per_game_m: 1
+    distinct_states_M: 50
+    teacher_samples_per_state_N: 3
+    teacher_budget_B: 150
+
