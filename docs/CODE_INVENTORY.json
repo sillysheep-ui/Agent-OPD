@@ -2,17 +2,17 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "4647e9ed72fe8865c47edd9966e11a10fea81cb0",
+  "code_revision_at_generation": "4daf09c13835b69c4ef435ce34d42f19c93b84d1",
   "canonical_code": {
     "tree_sha256": "a3df20f3df8d38379861a0374da0cd174aaf271162d57004774172886efc197a",
     "files": 80,
     "bytes": 755008
   },
-  "files": 222,
-  "bytes": 1425924,
+  "files": 225,
+  "bytes": 1436408,
   "counts_by_root": {
     "configs": 8,
-    "docs": 8,
+    "docs": 11,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
@@ -82,9 +82,27 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "docs/00_START_HERE.md",
+      "bytes": 4830,
+      "sha256": "7063b67c2f00e116873d223582b67eaddb38fe0f00633f82906a85cb8e296d71",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "docs/AUDIT.md",
       "bytes": 13349,
       "sha256": "45e84948c6a7818844f8eafc893311b4b1c456050678abc07ada737ccb387f88",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/EXECUTION_INPUTS.template.yaml",
+      "bytes": 2777,
+      "sha256": "7620582378353d0ad7003de5784b70db75d39ef0df8591947d5f9dda5d4e1f9b",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/EXECUTOR_PROMPT.md",
+      "bytes": 2877,
+      "sha256": "4aedc3bd25394995ef856a33933a36160d2ab8bcf15e8096a5f7d81220413f2c",
       "role": "canonical_or_documentation"
     },
     {
