@@ -19,6 +19,18 @@ def test_vllm_launch_wrappers_bind_only_loopback():
         assert "--host 127.0.0.1" in command, name
 
 
+def test_vllm_launch_wrappers_allow_cold_start_compilation():
+    root = Path(__file__).resolve().parents[1]
+    for name in (
+        "run_vllm_state_pool.sh",
+        "run_vllm_eval.sh",
+        "run_vllm_position.sh",
+    ):
+        source = (root / "scripts" / name).read_text(encoding="utf-8")
+        readiness = source.split('scripts/wait_for_model.py" \\', 1)[1].split("\n\n", 1)[0]
+        assert "--timeout 600" in readiness, name
+
+
 @contextmanager
 def _process_fakes(*, argv, parent=88, owners=None):
     owner_set = {99} if owners is None else set(owners)

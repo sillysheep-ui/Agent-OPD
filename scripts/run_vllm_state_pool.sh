@@ -93,7 +93,7 @@ server_pid=$!
 python3 "${repo_root}/scripts/wait_for_model.py" \
   --url "http://127.0.0.1:${PORT}/v1" \
   --expected-model "${SERVED_MODEL}" \
-  --timeout 200
+  --timeout 600
 
 python3 - \
   "${service_manifest}" "${server_pid}" "$$" "${PORT}" \

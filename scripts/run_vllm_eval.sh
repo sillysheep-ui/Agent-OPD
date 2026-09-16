@@ -97,7 +97,7 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 python3 "${repo_root}/scripts/wait_for_model.py" \
   --url "http://127.0.0.1:${PORT}/v1" \
   --expected-model "${SERVED_MODEL}" \
-  --timeout 200
+  --timeout 600
 
 # Record the exact argv and content identities only after the locally launched
 # child reports ready.  evaluate.py additionally verifies that it is a direct
