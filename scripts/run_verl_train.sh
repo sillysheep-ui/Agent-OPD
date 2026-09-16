@@ -703,6 +703,7 @@ cd "${repo_root}"
   model.lora_rank="${LORA_RANK}" \
   model.lora_alpha="${LORA_ALPHA}" \
   model.target_modules=all-linear \
+  model.strategy=fsdp \
   optim.lr="${LR}" \
   trainer.total_epochs="${EPOCHS}" \
   trainer.total_training_steps="${TOTAL_TRAINING_STEPS}" \
