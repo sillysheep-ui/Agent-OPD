@@ -7,13 +7,14 @@
 1. **代码与离线协议核验通过**：规范运行树的状态机、Teacher 预算、action
    token mask、加权 loss、训练—评测身份链、环境身份、机制分析 join 和统计
    边界已通过 synthetic/offline 测试与静态检查；
-2. **论文经验结论尚未重新验证**：本次没有执行真实 DeepSeek 调用、ALFWorld
-   完整轨迹、4-GPU veRL 0.4.1 训练或 vLLM 在线评测，因此不得据此声称
+2. **论文经验结论尚未重新验证**：已在目标服务器完成 ALFWorld 单游戏 reset/step、
+   CUDA 可见性和 veRL/OmniOPD 训练器导入检查，但没有执行真实 DeepSeek 调用、
+   ALFWorld 完整轨迹、4-GPU veRL 0.4.1 训练或 vLLM 在线评测，因此不得据此声称
    成功率、breadth 优势、selection/state-source 排序或任何论文数值已复现。
 
 精确的 audited implementation revision、全部文件字节数和 SHA256 记录在
-`docs/CODE_INVENTORY.json`。canonical runtime 树为80个文件、755008字节，指纹为
-`a3df20f3df8d38379861a0374da0cd174aaf271162d57004774172886efc197a`。该指纹
+`docs/CODE_INVENTORY.json`。canonical runtime 树为83个文件、756727字节，指纹为
+`9ca9310434f94178430b62c51937bcb15fba2c2daccd2ade4024fc774fc33a4b`。该指纹
 不包含仅作说明的 `docs/` 与只读的 `legacy/`。
 
 旧 Word 代码生成的产物受 P0 级状态错位、Teacher prompt 未生效、mask 错位、
@@ -35,10 +36,10 @@ loss 缩放和实验混杂影响。确认性结果必须从新 state pool 开始
 
 | 检查 | 实际结果 | 状态 |
 |---|---:|---|
-| Pytest回归测试 | 142 passed | 通过 |
-| 独立测试入口 `scripts/run_tests.py` | 142 passed, 0 skipped | 通过 |
+| Pytest回归测试 | 143 passed | 通过 |
+| 独立测试入口 `scripts/run_tests.py` | 143 passed, 0 skipped | 通过 |
 | Ruff（`src/scripts/tests/integrations`） | All checks passed | 通过 |
-| Python编译 | 98个规范 Python 文件无错误 | 通过 |
+| Python编译 | 99个规范 Python 文件无错误 | 通过 |
 | Shell语法 | 4个规范 Shell 与42个 legacy Shell 无错误 | 通过 |
 | Shell内嵌 Python | 9个 heredoc block 均可编译 | 通过 |
 | 命令入口 | 24个 argparse 脚本与3个 package CLI 的 `--help` 均成功；另有1个独立测试入口 | 通过 |
@@ -49,8 +50,9 @@ loss 缩放和实验混杂影响。确认性结果必须从新 state pool 开始
 | diff格式 | `git diff --check` 无错误 | 通过 |
 
 测试中出现的 macOS `sysctlbyname` CPU-cache 警告来自受限容器中的第三方依赖，
-测试返回码为0。本报告不保留无内容指纹的“真实 Qwen spot-check”声称；真实
-Tokenizer/GPU 集成需在目标环境按重跑手册另行验证。
+测试返回码为0。目标服务器上的候选 Qwen3-4B 模型和 Tokenizer 元数据已离线解析、
+两个权重分片存在；尚未做完整模型加载。A100 CUDA 可用，veRL 0.4.1 与 OmniOPD
+训练器联合导入通过；不等于训练已成功。
 
 ## 4. 公式与研究目的契合性
 
@@ -102,7 +104,8 @@ Tokenizer/GPU 集成需在目标环境按重跑手册另行验证。
 
 - DeepSeek 真实 Teacher/SAGE judge 调用，包括 provider revision、response model、token
   usage 和 system fingerprint 的实际返回；
-- ALFWorld 真实 ID/OOD game list、state pool、replay fidelity 和成功率；
+- ALFWorld 真实 game list 已枚举（train 3553、ID 140、OOD 134），首局
+  reset/step 已通过；state pool、完整轨迹、replay fidelity 和成功率尚未运行；
 - veRL 0.4.1 目标 checkout 上的4-GPU FSDP/LoRA 训练与最终 `global_step_102`；
 - vLLM 加载base+LoRA、在线评测、四training-seed分层区间和论文表图；
 - M1/M3 在目标大模型上的显存可行性与数值结果。
@@ -124,7 +127,7 @@ action log scores 重算 entropy，但不会再次运行模型复算这些 logit
 
 ## 7. 最终判定
 
-- **代码正确性**：在可离线验证范围内通过；关键输入身份与不可识别边界采用
+- **代码正确性**：在已执行的离线与单游戏集成验证范围内通过；关键输入身份与不可识别边界采用
   fail closed；
 - **公式契合性**：状态/context、(q_T^V)、(B=MN)、(N)-dependent retention、
   分层方差、action CE、加权目标与机制估计量均有对应实现和验收门槛；

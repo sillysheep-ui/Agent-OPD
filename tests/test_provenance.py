@@ -28,3 +28,16 @@ def test_code_fingerprint_excludes_legacy_and_cache_files():
         assert fingerprint_code_tree(root) == before
         (root / "src" / "code.py").write_text("x = 2\n", encoding="utf-8")
         assert fingerprint_code_tree(root)["tree_sha256"] != before["tree_sha256"]
+
+
+def test_code_fingerprint_includes_docker_runtime_definition():
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        (root / "src").mkdir()
+        (root / "src" / "code.py").write_text("x = 1\n", encoding="utf-8")
+        (root / "docker").mkdir()
+        dockerfile = root / "docker" / "Dockerfile.verl041"
+        dockerfile.write_text("FROM base:one\n", encoding="utf-8")
+        before = fingerprint_code_tree(root)
+        dockerfile.write_text("FROM base:two\n", encoding="utf-8")
+        assert fingerprint_code_tree(root)["tree_sha256"] != before["tree_sha256"]

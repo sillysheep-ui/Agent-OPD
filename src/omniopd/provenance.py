@@ -73,7 +73,7 @@ def fingerprint_code_tree(repository_root: str | Path) -> dict[str, Any]:
 
     root = Path(repository_root).resolve()
     candidates: list[Path] = []
-    for relative in ["src", "scripts", "integrations", "configs"]:
+    for relative in ["src", "scripts", "integrations", "configs", "docker"]:
         directory = root / relative
         if directory.exists():
             candidates.extend(
