@@ -2,21 +2,22 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "4daf09c13835b69c4ef435ce34d42f19c93b84d1",
+  "code_revision_at_generation": "11f6e7183dc70860acd9744f7371721d7d462042",
   "canonical_code": {
-    "tree_sha256": "a3df20f3df8d38379861a0374da0cd174aaf271162d57004774172886efc197a",
-    "files": 80,
-    "bytes": 755008
+    "tree_sha256": "9ca9310434f94178430b62c51937bcb15fba2c2daccd2ade4024fc774fc33a4b",
+    "files": 83,
+    "bytes": 756727
   },
-  "files": 225,
-  "bytes": 1436408,
+  "files": 230,
+  "bytes": 1458116,
   "counts_by_root": {
-    "configs": 8,
-    "docs": 11,
+    "configs": 9,
+    "docker": 1,
+    "docs": 13,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 29,
+    "scripts": 30,
     "src": 40,
     "tests": 32
   },
@@ -31,6 +32,12 @@
       "path": "README.md",
       "bytes": 7400,
       "sha256": "92a1301855786ba542b51c576b3d819e4af4dcd05e94389b61365ec62dacd500",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "configs/alfworld_textworld.yaml",
+      "bytes": 875,
+      "sha256": "015e04b5ab94ab80b1bdfbeda8b5c1a54fb8cd999a0d38b38f0dca198e75a726",
       "role": "canonical_or_documentation"
     },
     {
@@ -82,9 +89,21 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "docker/Dockerfile.verl041",
+      "bytes": 737,
+      "sha256": "52ea52ed2be151415d122a836652f2b6f42f61f7361ebc51b4a5bd4793b5ee26",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "docs/00_START_HERE.md",
-      "bytes": 4830,
-      "sha256": "7063b67c2f00e116873d223582b67eaddb38fe0f00633f82906a85cb8e296d71",
+      "bytes": 5032,
+      "sha256": "7fa49ba1b3ab94647db303b82e6dc1ac94c5bb8e5aa51bba41100b22f62ce11c",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/ALFWORLD_REBUILD_20260916.md",
+      "bytes": 3913,
+      "sha256": "d16045900b29e0a5df02fe84f2fc0a4ecc2ffa097fef0ac877698f2c3ca709a2",
       "role": "canonical_or_documentation"
     },
     {
@@ -112,6 +131,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "docs/LOCAL_EXECUTION_AND_GITHUB_REQUIREMENTS_ZH.md",
+      "bytes": 14618,
+      "sha256": "138990f60677239e2400f7bb4286d4ad438572be0db6917eadf1773f689c21f3",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "docs/MODIFICATION_PLAN.md",
       "bytes": 6616,
       "sha256": "7488769a7752aab82e57abe642583841222cc416224045bb17013d81bd315900",
@@ -119,8 +144,8 @@
     },
     {
       "path": "docs/REPRODUCTION.md",
-      "bytes": 23660,
-      "sha256": "799e2f7229324e266f84f2cee265d3cbe1e300d2ec88c5e86405bf91849e0f31",
+      "bytes": 23970,
+      "sha256": "5f904894eab31e4e4face6fa3e9f463251e1a6ee842e3b76f3770958b9ab7316",
       "role": "canonical_or_documentation"
     },
     {
@@ -137,8 +162,8 @@
     },
     {
       "path": "docs/VERIFICATION_REPORT.md",
-      "bytes": 9928,
-      "sha256": "cfe8a886d677a4600c706f0d475fc23b2c6d5162268691280ace840065d991fa",
+      "bytes": 10262,
+      "sha256": "2c02d7e767db6ba8ab49833dea740117f7c6cec9620e22eea326de25895b4229",
       "role": "canonical_or_documentation"
     },
     {
@@ -766,6 +791,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/__init__.py",
+      "bytes": 52,
+      "sha256": "dabae6bc965c8eb5442b86fd53001a40b8a5dd37c7d1b6151d05afa5176f0bfa",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/aggregate_evaluations.py",
       "bytes": 4303,
       "sha256": "e3c41b2cb0cab0edf709026694e222adc507db2a3c201393f4bc249d9ac3864b",
@@ -809,8 +840,8 @@
     },
     {
       "path": "scripts/build_code_inventory.py",
-      "bytes": 4348,
-      "sha256": "a847ab4f5f93127ba5a5524f28ac7795c137fd56984a0aee75e6237c3fda1c1c",
+      "bytes": 4393,
+      "sha256": "7eb1d602700b48bc2d335eb3061261385ab80a1671f13b75174559de7dee9371",
       "role": "canonical_or_documentation"
     },
     {
@@ -1109,8 +1140,8 @@
     },
     {
       "path": "src/omniopd/provenance.py",
-      "bytes": 5222,
-      "sha256": "58f450be9085bfbb3ef3e22e2ec08f4c70ea9292f3886d08985ed1e6054f1207",
+      "bytes": 5232,
+      "sha256": "6e849fcd1d5151ce29ae996da5556825d8c3c991597806b302c7a09349a5e003",
       "role": "canonical_or_documentation"
     },
     {
@@ -1289,8 +1320,8 @@
     },
     {
       "path": "tests/test_provenance.py",
-      "bytes": 1361,
-      "sha256": "8feaa7464d87e05970976ac9dca3ad34217e4a8332979b04d9846ec21911e68b",
+      "bytes": 1973,
+      "sha256": "f695caba119d8a08a86d09693ee1e8fdde219e77eafce5cfd41add4e67d02bfa",
       "role": "canonical_or_documentation"
     },
     {
