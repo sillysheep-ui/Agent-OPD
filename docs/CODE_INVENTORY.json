@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "11f6e7183dc70860acd9744f7371721d7d462042",
+  "code_revision_at_generation": "83d3a7d337e21a68be454cfe5e37486efc1bb5cb",
   "canonical_code": {
-    "tree_sha256": "9ca9310434f94178430b62c51937bcb15fba2c2daccd2ade4024fc774fc33a4b",
+    "tree_sha256": "7679b481da3fac3d543dc265bc3ab40a2f7beb29d06242b32f5447372e9b34c2",
     "files": 83,
-    "bytes": 756727
+    "bytes": 756784
   },
   "files": 230,
-  "bytes": 1458116,
+  "bytes": 1459400,
   "counts_by_root": {
     "configs": 9,
     "docker": 1,
@@ -144,8 +144,8 @@
     },
     {
       "path": "docs/REPRODUCTION.md",
-      "bytes": 23970,
-      "sha256": "5f904894eab31e4e4face6fa3e9f463251e1a6ee842e3b76f3770958b9ab7316",
+      "bytes": 24095,
+      "sha256": "70c0d94359efaca25607499c919f835ffee986355a9071e8f1ffc1524522cb77",
       "role": "canonical_or_documentation"
     },
     {
@@ -162,8 +162,8 @@
     },
     {
       "path": "docs/VERIFICATION_REPORT.md",
-      "bytes": 10262,
-      "sha256": "2c02d7e767db6ba8ab49833dea740117f7c6cec9620e22eea326de25895b4229",
+      "bytes": 10843,
+      "sha256": "e9e09050d176c488d7285175c81cec4c779e99a253430bb091fae3cae3fb0951",
       "role": "canonical_or_documentation"
     },
     {
@@ -924,20 +924,20 @@
     },
     {
       "path": "scripts/run_vllm_eval.sh",
-      "bytes": 9163,
-      "sha256": "7af09f39c2318d72c8586a2c9a4696b5a1180addf35969e72808c7bbe951901e",
+      "bytes": 9182,
+      "sha256": "bc06077ca223022227e8ead83faf571adfb02bd5eee94886f9438126273325c0",
       "role": "canonical_or_documentation"
     },
     {
       "path": "scripts/run_vllm_position.sh",
-      "bytes": 7121,
-      "sha256": "adaf0874c534645c4b92a9a53e3d7f3bfa791f53d3cca6d7dac76de5f8bdfa9c",
+      "bytes": 7140,
+      "sha256": "34483fdebd576dc5001a0ab6e126d78fd57e7e6d7a2f6cc306c0079981011ac4",
       "role": "canonical_or_documentation"
     },
     {
       "path": "scripts/run_vllm_state_pool.sh",
-      "bytes": 6565,
-      "sha256": "c1c11d677d14659fe8fce7363a19a6178432f27d9db776979b83bdb844e6e6e5",
+      "bytes": 6584,
+      "sha256": "1591cf51cee863531ef9cda3926e43a93274fbfef16f8ba52d093ba910d2f978",
       "role": "canonical_or_documentation"
     },
     {
@@ -1362,8 +1362,8 @@
     },
     {
       "path": "tests/test_service_attestation.py",
-      "bytes": 2148,
-      "sha256": "4fd92a150c6623833e30ba370daeca7dbff126e94d20b03586be74af8a5c5b45",
+      "bytes": 2669,
+      "sha256": "6d82376e3787d3cc27cd4d46fcc93779e74d7e644ed07a2376a2e6684c89b037",
       "role": "canonical_or_documentation"
     },
     {
