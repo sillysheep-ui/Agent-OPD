@@ -714,6 +714,7 @@ cd "${repo_root}"
   trainer.project_name="${PROJECT_NAME}" \
   trainer.experiment_name="${EXPERIMENT_NAME}" \
   trainer.logger='["console"]' \
+  hydra.run.dir="${OUTPUT_DIR}/hydra" \
   ulysses_sequence_parallel_size=1 \
   use_remove_padding=false \
   2>&1 | tee "${OUTPUT_DIR}/train.log"
