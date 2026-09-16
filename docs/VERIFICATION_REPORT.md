@@ -13,9 +13,14 @@
    成功率、breadth 优势、selection/state-source 排序或任何论文数值已复现。
 
 精确的 audited implementation revision、全部文件字节数和 SHA256 记录在
-`docs/CODE_INVENTORY.json`。canonical runtime 树为83个文件、756727字节，指纹为
-`9ca9310434f94178430b62c51937bcb15fba2c2daccd2ade4024fc774fc33a4b`。该指纹
+`docs/CODE_INVENTORY.json`。canonical runtime 树为83个文件、756784字节，指纹为
+`7679b481da3fac3d543dc265bc3ab40a2f7beb29d06242b32f5447372e9b34c2`。该指纹
 不包含仅作说明的 `docs/` 与只读的 `legacy/`。
+
+2026-09-16 增补：三个 vLLM wrapper 已显式使用 `--host 127.0.0.1`，防止
+无鉴权模型接口意外监听非本机地址。新增回归检查在本机定向测试中通过（3 passed），
+Shell 语法、Ruff 与 diff 检查通过；下表的完整测试数仍是这一改动前的结果，
+须在目标容器同步新提交后重跑，不能把本次定向测试当成全量核验。
 
 旧 Word 代码生成的产物受 P0 级状态错位、Teacher prompt 未生效、mask 错位、
 loss 缩放和实验混杂影响。确认性结果必须从新 state pool 开始重跑，不能
@@ -36,8 +41,9 @@ loss 缩放和实验混杂影响。确认性结果必须从新 state pool 开始
 
 | 检查 | 实际结果 | 状态 |
 |---|---:|---|
-| Pytest回归测试 | 143 passed | 通过 |
-| 独立测试入口 `scripts/run_tests.py` | 143 passed, 0 skipped | 通过 |
+| Pytest回归测试 | 上一代码版本 143 passed；本次改动后待容器全量复验 | 待复验 |
+| 独立测试入口 `scripts/run_tests.py` | 上一代码版本 143 passed, 0 skipped；本次改动后待容器全量复验 | 待复验 |
+| 本次服务监听地址定向测试 | 3 passed | 通过 |
 | Ruff（`src/scripts/tests/integrations`） | All checks passed | 通过 |
 | Python编译 | 99个规范 Python 文件无错误 | 通过 |
 | Shell语法 | 4个规范 Shell 与42个 legacy Shell 无错误 | 通过 |

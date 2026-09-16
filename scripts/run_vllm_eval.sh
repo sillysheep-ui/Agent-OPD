@@ -87,6 +87,7 @@ command=(python3 -m vllm.entrypoints.openai.api_server
   --served-model-name "${BASE_SERVED_MODEL}"
   --max-model-len "${VLLM_MAX_MODEL_LEN}"
   --gpu-memory-utilization 0.8
+  --host 127.0.0.1
   --port "${PORT}")
 command+=(--enable-lora --lora-modules "${SERVED_MODEL}=${LORA_PATH}")
 CUDA_VISIBLE_DEVICES="${CUDA_DEVICE}" "${command[@]}" >"${server_log}" 2>&1 &

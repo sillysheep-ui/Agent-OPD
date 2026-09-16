@@ -1,7 +1,22 @@
 from contextlib import contextmanager
+from pathlib import Path
 from unittest.mock import patch
 
 from omniopd import service_attestation
+
+
+def test_vllm_launch_wrappers_bind_only_loopback():
+    root = Path(__file__).resolve().parents[1]
+    for name in (
+        "run_vllm_state_pool.sh",
+        "run_vllm_eval.sh",
+        "run_vllm_position.sh",
+    ):
+        source = (root / "scripts" / name).read_text(encoding="utf-8")
+        command = source.split(
+            "command=(python3 -m vllm.entrypoints.openai.api_server", 1
+        )[1].split("CUDA_VISIBLE_DEVICES=", 1)[0]
+        assert "--host 127.0.0.1" in command, name
 
 
 @contextmanager

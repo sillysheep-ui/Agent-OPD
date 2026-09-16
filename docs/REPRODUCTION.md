@@ -41,7 +41,8 @@ python scripts/validate_experiment_pair.py --kind fixed_budget \
 ## 1. 一次性冻结 Student state pool
 
 确认性 Student-state 采集必须通过 wrapper 启动本地 vLLM，并在服务仍是 wrapper
-存活子进程时校验实际 argv、端口、模型、Tokenizer 和 runtime：
+存活子进程时校验实际 argv、端口、模型、Tokenizer 和 runtime。三个 vLLM wrapper
+均显式将服务绑定到 `127.0.0.1`；若在容器中运行，不要发布该服务端口到外网：
 
 ```bash
 CUDA_DEVICE=0 \
