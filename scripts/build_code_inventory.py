@@ -15,7 +15,16 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from omniopd.provenance import fingerprint_code_tree, git_revision, sha256_file
 
-INVENTORIED_ROOTS = ("src", "scripts", "integrations", "configs", "tests", "docs", "legacy")
+INVENTORIED_ROOTS = (
+    "src",
+    "scripts",
+    "integrations",
+    "configs",
+    "docker",
+    "tests",
+    "docs",
+    "legacy",
+)
 ROOT_FILES = ("README.md", "pyproject.toml", ".gitignore")
 
 

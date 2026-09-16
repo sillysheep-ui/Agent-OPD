@@ -26,9 +26,12 @@ python -m compileall -q src scripts tests integrations
 `docs/CODE_INVENTORY.json` 用于核对发布时的实现提交与逐文件 SHA256，新建的本地冻结
 提交则作为本次实验 manifest 的 revision。
 
-ALFWorld/TextWorld、vLLM 和 CUDA 需在目标集群安装。训练另外要求一个干净的
-**veRL 0.4.1** checkout；本仓库与 veRL checkout 都必须有不可变 revision。先验收
-预注册配置：
+目标集群可用 `docker/Dockerfile.verl041` 构建锁定的 ALFWorld 0.4.2、TextWorld
+1.6.2 与 veRL 0.4.1 运行环境。官方 TextWorld 数据的来源、SHA256、目标集群验收结果
+和不可上传边界记录在 `docs/ALFWORLD_REBUILD_20260916.md`；规范环境配置为
+`configs/alfworld_textworld.yaml`。vLLM 和 CUDA 仍须在目标集群真实验收，训练另外要求
+一个干净的 **veRL 0.4.1** checkout；本仓库与 veRL checkout 都必须有不可变
+revision。先验收预注册配置：
 
 ```bash
 python scripts/validate_experiment_pair.py --kind fixed_budget \

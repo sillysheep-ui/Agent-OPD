@@ -1,0 +1,34 @@
+# ALFWorld 0.4.2 TextWorld configuration for the canonical OmniOPD runs.
+# ALFWORLD_DATA must point at a read-only downloaded ALFWorld data directory.
+
+dataset:
+  data_path: "$ALFWORLD_DATA/json_2.1.1/train"
+  eval_id_data_path: "$ALFWORLD_DATA/json_2.1.1/valid_seen"
+  eval_ood_data_path: "$ALFWORLD_DATA/json_2.1.1/valid_unseen"
+  num_train_games: -1
+  num_eval_games: -1
+
+logic:
+  domain: "$ALFWORLD_DATA/logic/alfred.pddl"
+  grammar: "$ALFWORLD_DATA/logic/alfred.twl2"
+
+env:
+  type: AlfredTWEnv
+  domain_randomization: false
+  task_types: [1, 2, 3, 4, 5, 6]
+  goal_desc_human_anns_prob: 0.0
+
+general:
+  random_seed: 42
+  use_cuda: false
+  training_method: dqn
+
+rl:
+  action_space: admissible
+  training:
+    max_nb_steps_per_episode: 50
+
+# Kept explicit because the adapter validates either supported ALFWorld method.
+dagger:
+  training:
+    max_nb_steps_per_episode: 50

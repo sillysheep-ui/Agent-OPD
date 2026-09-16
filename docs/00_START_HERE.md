@@ -21,12 +21,14 @@ state-source control 配置是不可运行的设计约束模板。M3/SAGE 分析
 - `src/omniopd/`：规范实现；
 - `scripts/`：state pool、选择、Teacher标注、数据、训练、评测和分析入口；
 - `configs/`：预注册协议和固定预算配置；
+- `docker/Dockerfile.verl041`：锁定 veRL/ALFWorld/TextWorld 运行依赖的目标集群镜像；
 - `integrations/verl/`：锁定 veRL 0.4.1 的训练器；
 - `tests/`：离线协议与对抗式回归测试；
 - `docs/REPRODUCTION.md`：完整命令顺序；
 - `docs/EXECUTION_INPUTS.template.yaml`：外部资源填写模板；
 - `docs/EXECUTOR_PROMPT.md`：可直接提供给另一个执行模型的任务说明；
 - `docs/CODE_INVENTORY.json`：逐文件字节数和 SHA256；
+- `docs/ALFWORLD_REBUILD_20260916.md`：官方 TextWorld 数据重建与目标服务器验收记录；
 - `legacy/`：两份 Word 中旧代码的只读审计快照，禁止作为运行时代码。
 
 ## 3. 无法安全内嵌、必须由实验者提供的资源
@@ -92,4 +94,3 @@ git status --short
 - M1 surrogate alignment、M2 marginal representativeness、M3 action-imitation transfer、
   SAGE intervention labels 和 Position consequentiality；
 - 代码验证、目标环境集成验证与最终经验结论复现。
-
