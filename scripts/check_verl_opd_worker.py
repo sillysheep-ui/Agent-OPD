@@ -27,7 +27,9 @@ def main() -> None:
     args = parser.parse_args()
     from transformers import AutoTokenizer
     from omniopd.verl_opd import OmniOPDAgentLoopWorker
+    from verl.trainer.distillation.losses import distillation_loss
     from verl.workers.utils.padding import no_padding_2_padding
+    from verl.workers.config import DistillationLossConfig
     from tensordict import TensorDict
     import torch
 
@@ -108,7 +110,53 @@ def main() -> None:
         raise AssertionError("worker response scores disagree with the HF reference")
     if len(actual_scores) != len(response_ids) or actual_scores[-1] != 0.0:
         raise AssertionError("worker did not mask the Student EOS score")
-    print("real-state OPD worker prompt/scoring/remap contract: OK")
+
+    # Exercise veRL's real sampled-token KL estimator and response mask. The
+    # artificial Student scores straddle the fixed Teacher scores so the
+    # expected gradient signs are unambiguous; EOS must have zero gradient.
+    offsets = torch.tensor([0, sequence_length], dtype=torch.int64)
+    nested_teacher = torch.nested.nested_tensor_from_jagged(
+        values=output.extra_fields["teacher_logprobs"], offsets=offsets
+    )
+    student_scores = torch.tensor(
+        [0.0] * (len(prompt_ids) - 1)
+        + [score + (0.5 if index % 2 == 0 else -0.5) for index, score in enumerate(expected_scores)]
+        + [100.0, 0.0],
+        requires_grad=True,
+    )
+    if student_scores.numel() != sequence_length:
+        raise AssertionError("Student score fixture has the wrong width")
+    loss_data = TensorDict(
+        {
+            "prompts": data["prompts"],
+            "responses": data["responses"],
+            "attention_mask": data["attention_mask"],
+            "response_mask": torch.tensor([[1] * len(content_ids) + [0]], dtype=torch.int64),
+            "teacher_logprobs": nested_teacher,
+        },
+        batch_size=[1],
+    )
+    loss_config = DistillationLossConfig(
+        loss_mode="k3", use_task_rewards=False, use_policy_gradient=False
+    )
+    loss, _ = distillation_loss(
+        config=SimpleNamespace(loss_agg_mode="token-mean", global_batch_info={}),
+        distillation_config=SimpleNamespace(distillation_loss=loss_config),
+        model_output={"log_probs": student_scores},
+        data=loss_data,
+    )
+    loss.backward()
+    response_gradients = student_scores.grad[len(prompt_ids) - 1 : -1].tolist()
+    if any(
+        gradient <= 0 if index % 2 == 0 else gradient >= 0
+        for index, gradient in enumerate(response_gradients[:-1])
+    ):
+        raise AssertionError("veRL sampled-token KL gradients have unexpected directions")
+    if response_gradients[-1] != 0.0 or student_scores.grad[-1].item() != 0.0:
+        raise AssertionError("masked EOS or dummy final row received a distillation gradient")
+    if not torch.isfinite(loss).item():
+        raise AssertionError("veRL sampled-token KL loss is not finite")
+    print("real-state OPD worker and veRL sampled-token KL gradient contract: OK")
 
 
 if __name__ == "__main__":
