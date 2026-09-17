@@ -40,3 +40,28 @@ Teacher 预算都不同，不应声称“各 150 次请求”等价于同等计�
 完成前两项只表示**旧行动模仿链路在新版环境通过技术验收**；第三、四项完成
 之前，不得宣称传统 OPD 对照可运行。任何正式结果必须用新代码 revision
 重新生成上游清单，旧版 `code_revision`/code-tree 哈希不得复用。
+
+## 2026-09-17 已完成的技术烟测
+
+- 服务器上独立 checkout：OmniOPD `d35ce4768aa72e2e9fc40562e6395fccd9853572`
+  与 veRL `7aed6b230776f963fa09509c10d9c3a767d1102c`，工作树干净。
+- 新镜像 `omniopd-verl080:alfworld` 的 ID 为
+  `sha256:1a13f969aa56412e0a73f85f1b334caee07b52cdb8d2cbb71285ed15f36c3ebb`；
+  继承旧镜像
+  `sha256:55257bca4c7d02a3a5f42833b62f3edd595048b413826c64b4c7393080dbcdf6`。
+  只升级 TensorDict `0.6.2→0.8.3`，`pip check` 无断裂依赖。
+- veRL `0.8.0.dev`、`verl.trainer.distillation.losses` 与 `main_ppo` 可导入；
+  本仓 149 项离线测试和 Ruff 静态检查通过；Hydra 自有配置可解析，
+  自有 FSDP trainer 在新版 veRL 上可导入。
+- 使用旧预检中的两条**合成** JSONL 和既有 Qwen3-4B Student，
+  GPU 0–3 完成一次 FSDP1/LoRA 训练、完整验证和 `global_step_1` 保存：
+  train loss `1.1026837682948099e-06`，val loss `6.854526191091281e-07`，
+  grad norm `8.722222992219031e-05`。结构校验确认 PEFT LoRA rank 16、
+  alpha 32、252 对 A/B tensor；GPU 0 上 base+LoRA 实际加载成功。
+  输出保存在 `/data/yangchunyu/ld/omniopd_runs/verl080_migration_smoke_20260917`。
+  训练后记录的 LR 为 0，是 1-step cosine scheduler **下一步**的学习率，
+  不表示本步梯度为零。
+
+这些结果不包含 Qwen3-14B Teacher、Teacher Token 分布、ALFWorld 正式数据、
+正式 launch/completion manifest 或环境交互对照；它们不验证论文结论。
+第 3、4、5 项仍未完成，当前**不能启动传统 OPD 确认性实验**。
