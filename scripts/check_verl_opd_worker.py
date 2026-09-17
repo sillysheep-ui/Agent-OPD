@@ -24,12 +24,14 @@ def main() -> None:
     parser.add_argument("--student-model", type=Path, required=True)
     parser.add_argument("--teacher-model", type=Path, required=True)
     parser.add_argument("--hf-smoke", type=Path, required=True)
+    parser.add_argument("--vllm-student-smoke", type=Path)
     args = parser.parse_args()
     from transformers import AutoTokenizer
-    from omniopd.verl_opd import OmniOPDAgentLoopWorker
+    from omniopd.verl_opd import OmniOPDActionLoop, OmniOPDAgentLoopWorker
     from verl.trainer.distillation.losses import distillation_loss
     from verl.workers.utils.padding import no_padding_2_padding
     from verl.workers.config import DistillationLossConfig
+    from verl.workers.rollout.replica import TokenOutput
     from tensordict import TensorDict
     import torch
 
@@ -156,6 +158,41 @@ def main() -> None:
         raise AssertionError("masked EOS or dummy final row received a distillation gradient")
     if not torch.isfinite(loss).item():
         raise AssertionError("veRL sampled-token KL loss is not finite")
+
+    if args.vllm_student_smoke is not None:
+        sampled = json.loads(args.vllm_student_smoke.read_text(encoding="utf-8"))
+        if sampled["state_hash"] != turn.state.state_hash or not sampled["strict_action_valid"]:
+            raise ValueError("vLLM Student smoke is not a valid output for the same state")
+        generated_ids = [int(value) for value in sampled["generated_token_ids"]]
+
+        class FakeStudentServer:
+            async def generate(self, *, prompt_ids, **kwargs):
+                if prompt_ids != expected_prompt_ids:
+                    raise AssertionError("AgentLoop changed the Student prompt")
+                return TokenOutput(token_ids=generated_ids, stop_reason="completed")
+
+        expected_prompt_ids = prompt_ids
+        action_loop = object.__new__(OmniOPDActionLoop)
+        action_loop.tokenizer = student
+        action_loop.processor = None
+        action_loop.rollout_config = SimpleNamespace(prompt_length=2048)
+        action_loop.response_length = 64
+        action_loop.apply_chat_template_kwargs = {"enable_thinking": False}
+        action_loop.mm_processor_kwargs = {}
+        action_loop.server_manager = FakeStudentServer()
+
+        async def run_action_loop():
+            action_loop.loop = asyncio.get_running_loop()
+            return await action_loop.run(
+                sampling_params={}, raw_prompt=row["prompt"], extra_info=row["extra_info"]
+            )
+
+        generated = asyncio.run(run_action_loop())
+        if generated.prompt_ids != prompt_ids or generated.response_ids != generated_ids:
+            raise AssertionError("AgentLoop did not preserve the real vLLM Student tokens")
+        if generated.response_mask != [1] * (len(generated_ids) - 1) + [0]:
+            raise AssertionError("AgentLoop failed to mask only the real vLLM Student EOS")
+        print("real vLLM Student tokens through OmniOPD AgentLoop: OK")
     print("real-state OPD worker and veRL sampled-token KL gradient contract: OK")
 
 
