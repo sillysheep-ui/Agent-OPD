@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "746254d2a246faf7a4d8d32048cb531c7926ab2d",
+  "code_revision_at_generation": "5ff7b9fc2aed664fd3861152dc55440aba2495a6",
   "canonical_code": {
-    "tree_sha256": "3c393f8d127e144e2b6c5875a50aed978cdbda5fcfd97715e1fbce9f6793e9e9",
+    "tree_sha256": "99fda19978193ad857ff6571cc879a83608d8e1c0e8eebe45b2ee59f42c2d418",
     "files": 92,
-    "bytes": 808455
+    "bytes": 808858
   },
   "files": 243,
-  "bytes": 1534999,
+  "bytes": 1535976,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -192,8 +192,8 @@
     },
     {
       "path": "docs/VERL_V080_MIGRATION.md",
-      "bytes": 8780,
-      "sha256": "181243f672a731653ac9ebbe74716ce360cdf7d611ab406eda4b7c7b8f71c956",
+      "bytes": 9126,
+      "sha256": "a5e99cee17896515555827cee070dc205c1d18d8cf177f06fd2183128a86e639",
       "role": "canonical_or_documentation"
     },
     {
@@ -1170,8 +1170,8 @@
     },
     {
       "path": "src/omniopd/opd_adapter.py",
-      "bytes": 12460,
-      "sha256": "824174f3a67c7f66099978e67f46878f3e317af16f1ffe0783e684f9bbe4524e",
+      "bytes": 12803,
+      "sha256": "b647991b456ea86f287f05f852f483070a74fdcefa60f06ebed498e96e48f2e4",
       "role": "canonical_or_documentation"
     },
     {
@@ -1266,8 +1266,8 @@
     },
     {
       "path": "src/omniopd/verl_opd.py",
-      "bytes": 6902,
-      "sha256": "e33eb8d4f34d1e9541b6fa2d227d518bc75cc1e9f996e48420aedd228ebb3e67",
+      "bytes": 6962,
+      "sha256": "2bcfb5ab4f9dc9c502ed91b30ee1ff85cb24ebff3f3a6e0cabad365f599172c9",
       "role": "canonical_or_documentation"
     },
     {
@@ -1368,8 +1368,8 @@
     },
     {
       "path": "tests/test_opd_adapter.py",
-      "bytes": 5975,
-      "sha256": "1d87d2ec944b6f8170c76e3ce2c1a02a30b2f220a35aeb92125d978a0251ffd7",
+      "bytes": 6203,
+      "sha256": "1e9c7808cf1c939670070b1632cb1b90ec89e12116b993f30945acf7478f83f3",
       "role": "canonical_or_documentation"
     },
     {
