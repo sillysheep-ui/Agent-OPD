@@ -145,7 +145,17 @@ veRL 的 vLLM 服务把第 `i+1` 个 Token 的 logprob 放在序列第 `i` 个�
 `Action: go to countertop 2<|im_end|>`，`finish_reason=stop`，生成 ID
 确实以 EOS 结尾，严格解析为有效动作。该结果保存于
 `/data/yangchunyu/ld/omniopd_runs/opd_preflight_20260917/smoke_vllm_student_state0_seed42.json`；
-只覆盖一个随机种子和一个旧池状态，不证明无效 rollout 的发生率为零。
+它与 Hugging Face 参考烟测碰巧使用了完全相同的动作 Token ID。把这些
+实际 vLLM Token 输入自有 `OmniOPDActionLoop.run` 后，提示词和响应 ID
+保持不变，动作位掩码为 1、EOS 为 0。只覆盖一个随机种子和一个旧池状态，
+不证明无效 rollout 的发生率为零。
+
+`scripts/smoke_opd_vllm_teacher.py` 另用真实 Qwen3-14B vLLM 返回值运行
+veRL 原生 `extract_prompt_logprobs`：返回的 ID 具有预期左移关系，8 个
+动作 Token 分数与直接读取 vLLM prompt logprobs 逐项相同。新记录位于
+`/data/yangchunyu/ld/omniopd_runs/opd_preflight_20260917/smoke_vllm_vs_hf_verl_extractor_state0_seed42.json`。
+它验证了提取器对真实 vLLM 返回结构的处理，但尚未运行完整 Teacher
+服务、Ray 批处理或模型参数更新。
 
 在进入正式实验前，还必须：完成实际 veRL Teacher 服务调用和 Student
 单步反向/保存核验；明确无效 Student rollout 如何计预算、保留及处理；
