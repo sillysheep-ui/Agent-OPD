@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "ca3c24fa02e31de2cb5a49fad810b0a11b88d381",
+  "code_revision_at_generation": "6b68ceb15bf2ecc438b74f5e088ed88975f56464",
   "canonical_code": {
-    "tree_sha256": "55ec74689595757b057c6614ef546bc2b31a172a70fba456bf3fb864d96ab43e",
-    "files": 96,
-    "bytes": 828265
+    "tree_sha256": "e75cc65d5e800f780cc8c1bc2416cfcf91b7871b69a0b6b46d8a21fd5cf92b89",
+    "files": 97,
+    "bytes": 831881
   },
-  "files": 248,
-  "bytes": 1575303,
+  "files": 249,
+  "bytes": 1578919,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 38,
+    "scripts": 39,
     "src": 42,
     "tests": 35
   },
@@ -974,6 +974,12 @@
       "path": "scripts/run_tests.py",
       "bytes": 1687,
       "sha256": "8ad9f1bc5bf18b759d82b865f449c978af75d6ce533b37bf458d407e798b2395",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/run_verl_opd_smoke.sh",
+      "bytes": 3616,
+      "sha256": "a000e3e96c9ce4cd7103f556efd78bbf40ac68f0dac7bfbaa3b3346a410e770f",
       "role": "canonical_or_documentation"
     },
     {
