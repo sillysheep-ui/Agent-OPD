@@ -84,12 +84,13 @@ Teacher 预算都不同，不应声称“各 150 次请求”等价于同等计�
   Token ID 语义、两侧提示词各自正确编码、Teacher 在其独立前缀下给同一批
   Student 动作 Token 评分。审计会记录两份模板哈希及实际生成前缀。
 - `align_teacher_sampled_token_logprobs` 为 Student 生成的 Token 对齐 Teacher
-  的逐位置 logprob，并拒绝缺失、非有限值和序列错位。尚未与 veRL worker
-  的实际返回结构连接，也未通过真实模型端到端测试。
+  的逐位置 logprob，并拒绝缺失、非有限值和序列错位。自有 Worker 已接入
+  veRL 的左移评分结构；真实状态与真实 Tokenizer 的 Worker 合同检查已通过，
+  但尚未运行完整 Ray/vLLM Teacher 服务及真实参数更新。
 
-下一道实现关口是：从 Student **实际采样**的动作构造 action-only 掩码，按
-`P_T(s)` 加同一组 Student Token ID 请求冻结 Teacher 的逐位置评分，再将
-对齐后的有效 Token logprob 接入 veRL 的 OPD 损失。官方 veRL 当前默认的
+已实现从 Student **实际采样**的动作构造 action-only 掩码，按
+`P_T(s)` 加同一组 Student Token ID 请求冻结 Teacher 的逐位置评分，并把
+有效 Token 的 logprob 对齐到 veRL 的 OPD 损失。官方 veRL 当前默认的
 Teacher 打分把 Student 提示词和响应 Token 一起传入，不能满足这里两个系统
 提示词不同的定义；必须使用本仓自有的评分适配。固定状态池只代表条件于
 所选状态的 Token-on-policy 更新，不代表训练中实时交互形成的新状态分布。
@@ -115,7 +116,13 @@ Teacher 打分把 Student 提示词和响应 Token 一起传入，不能满足�
 `agent_loop_config_path` 指向上述 YAML、
 `default_agent_loop=omniopd_action_token_opd`、
 `data.apply_chat_template_kwargs.enable_thinking=false`。
-该接线尚未通过 vLLM Teacher API 对拍与梯度/保存烟测，不能投入确认性训练；
+该接线通过了无 GPU 的 Worker 级核验：使用真实 ALFWorld 状态和真实两侧
+Tokenizer，模拟 veRL 的左移 Teacher 返回，`no_padding_2_padding` 恢复出的
+8 个动作 Token 分数与 Hugging Face 前向记录逐项一致。另用 veRL 原生 `k3`
+损失验证了有效动作 Token 的梯度方向和 EOS 梯度为零。该测试的 Teacher
+服务是模拟的，Student 分数也是人工构造的，**不是**模型反向传播或保存测试。
+尚未通过完整 Ray/vLLM Teacher 服务、真实模型梯度与 checkpoint 烟测，
+不能投入确认性训练；
 目前它对非单行、不可执行或未以 EOS 结束的 Student 响应直接报错，必须先
 定义并测试无效 rollout 的预算及训练处理策略。
 veRL 的 vLLM 服务把第 `i+1` 个 Token 的 logprob 放在序列第 `i` 个位置，
@@ -127,3 +134,21 @@ veRL 的 vLLM 服务把第 `i+1` 个 Token 的 logprob 放在序列第 `i` 个�
 上调用 vLLM `prompt_logprobs=0`，与上述 Hugging Face 前向逐 Token 对拍。
 即使对拍通过，也只证明 Teacher 推理端的数值与 Token 定位，尚不证明 veRL
 批处理、梯度或 checkpoint 正确。
+
+此次真实 Qwen3-14B 的 vLLM/Hugging Face 对拍中，8 个动作 Token 的分数
+都有限，前 7 个位置差异不超过约 `0.00033`，最后一个位置差 `0.25`
+（HF `-17.0`、vLLM `-16.75`）。目前只能将其记录为推理后端数值差异；
+不能声称两后端逐 Token 数值完全相同，也不能未经实测归因为某个特定算子。
+
+`scripts/smoke_opd_vllm_student.py` 在同一条真实状态上用 vLLM 0.8.5
+实际生成了一次 Qwen3-4B SFT Student 动作：输出为
+`Action: go to countertop 2<|im_end|>`，`finish_reason=stop`，生成 ID
+确实以 EOS 结尾，严格解析为有效动作。该结果保存于
+`/data/yangchunyu/ld/omniopd_runs/opd_preflight_20260917/smoke_vllm_student_state0_seed42.json`；
+只覆盖一个随机种子和一个旧池状态，不证明无效 rollout 的发生率为零。
+
+在进入正式实验前，还必须：完成实际 veRL Teacher 服务调用和 Student
+单步反向/保存核验；明确无效 Student rollout 如何计预算、保留及处理；
+用当前代码重建正式状态池和清单；为传统 OPD 与 OmniOPD 预先定义
+Teacher Token 成本、状态覆盖和训练步数的比较口径。当前仍不具备
+确认性实验启动条件。
