@@ -93,3 +93,9 @@ Teacher 预算都不同，不应声称“各 150 次请求”等价于同等计�
 Teacher 打分把 Student 提示词和响应 Token 一起传入，不能满足这里两个系统
 提示词不同的定义；必须使用本仓自有的评分适配。固定状态池只代表条件于
 所选状态的 Token-on-policy 更新，不代表训练中实时交互形成的新状态分布。
+
+`scripts/smoke_opd_teacher_scores.py` 是单条真实状态的**无更新技术烟测**：
+现场采样 Student 动作、拒绝非单行或不可执行的响应、排除 EOS 并用 Teacher
+独立提示词对同一动作 Token 逐位置评分。旧状态池可供这一烟测，但不能产生
+确认性结果。该脚本的 Hugging Face 前向分数仍需与后续 veRL worker 的实际
+分数逐 Token 对拍；它不替代 veRL 损失接线、梯度检查、训练清单或预算审计。

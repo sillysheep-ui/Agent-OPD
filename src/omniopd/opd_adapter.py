@@ -26,7 +26,8 @@ def _canonical_sha256(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _messages_for_opd(turn: RolloutTurn) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+def prompts_for_opd_turn(turn: RolloutTurn) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """Return the distinct Student-generation and Teacher-scoring prompt views."""
     state = turn.state
     if state.state_source != "student":
         raise ValueError("fixed-pool token OPD requires Student-source states")
@@ -77,7 +78,7 @@ def build_fixed_pool_opd_prompts(
             or selection.get("turn_index") != state.turn_index
         ):
             raise ValueError("selection row does not identify its frozen state")
-        student_prompt, teacher_prompt = _messages_for_opd(turn)
+        student_prompt, teacher_prompt = prompts_for_opd_turn(turn)
         weight = 1.0 / counts_by_game[state.game_id]
         rows.append(
             {
