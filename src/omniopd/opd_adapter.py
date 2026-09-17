@@ -11,11 +11,13 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from .prompts import STUDENT_SYSTEM_PROMPT, TEACHER_SYSTEM_PROMPT, replace_system
+from .parser import parse_action
 from .schema import RolloutTurn
 
 
@@ -89,6 +91,7 @@ def build_fixed_pool_opd_prompts(
                     "state_hash": state_hash,
                     "game_id": state.game_id,
                     "turn_index": state.turn_index,
+                    "admissible_actions": list(state.admissible_actions),
                     "selection_policy": selection.get("selection_policy"),
                     "state_weight": weight,
                     "teacher_prompt": teacher_prompt,
@@ -174,3 +177,75 @@ def align_teacher_sampled_token_logprobs(
     if any(value is None or not math.isfinite(float(value)) for value in result):
         raise ValueError("Student response has missing or non-finite Teacher logprobs")
     return [float(value) for value in result]
+
+
+def remap_teacher_scores_to_student_layout(
+    *,
+    student_prompt_ids: Sequence[int],
+    teacher_prompt_ids: Sequence[int],
+    student_response_ids: Sequence[int],
+    teacher_scored_ids: Sequence[Sequence[int]],
+    teacher_scored_logprobs: Sequence[Sequence[float]],
+    pad_token_id: int,
+) -> tuple[list[list[int]], list[list[float]]]:
+    """Align veRL sampled-token Teacher scores to the Student sequence width.
+
+    The Teacher prompt can have a different token length. The Student prompt
+    positions are marked as padding in teacher_ids and zero in logprobs; only
+    the Student response positions are used by the reverse-KL estimator.
+    This adapter rejects top-k outputs and is not valid for forward_kl_topk.
+    """
+
+    student_prompt = [int(value) for value in student_prompt_ids]
+    teacher_prompt = [int(value) for value in teacher_prompt_ids]
+    response = [int(value) for value in student_response_ids]
+    if not student_prompt or not teacher_prompt or not response:
+        raise ValueError("Student prompt, Teacher prompt, and response must be non-empty")
+    expected = teacher_prompt + response
+    if len(teacher_scored_ids) != len(expected) or len(teacher_scored_logprobs) != len(expected):
+        raise ValueError("Teacher score length does not match its prompt plus Student response")
+    if any(len(row) != 1 for row in teacher_scored_ids) or any(
+        len(row) != 1 for row in teacher_scored_logprobs
+    ):
+        raise ValueError("sampled-token OPD requires one Teacher score per position")
+    actual = [int(row[0]) for row in teacher_scored_ids]
+    if actual != expected:
+        raise ValueError("Teacher scored token IDs disagree with the requested sequence")
+    try:
+        response_scores = [
+            float(row[0]) for row in teacher_scored_logprobs[len(teacher_prompt) :]
+        ]
+    except (TypeError, ValueError) as error:
+        raise ValueError("Teacher response has a missing or invalid token score") from error
+    if any(not math.isfinite(score) for score in response_scores):
+        raise ValueError("Teacher response contains missing or non-finite token scores")
+    remapped_ids = [[int(pad_token_id)] for _ in student_prompt] + [[token] for token in response]
+    remapped_scores = [[0.0] for _ in student_prompt] + [[score] for score in response_scores]
+    return remapped_ids, remapped_scores
+
+
+def extract_strict_action_tokens(tokenizer: Any, generated_ids: Sequence[int], admissible_actions):
+    """Require one executable action line ending in EOS, with EOS masked out.
+
+    This fail-closed pilot policy is not yet a general invalid-rollout strategy
+    for confirmatory OPD training.
+    """
+
+    ids = [int(token_id) for token_id in generated_ids]
+    if len(ids) < 2 or ids[-1] != tokenizer.eos_token_id:
+        raise ValueError("Student did not finish an action with its EOS token")
+    content_ids = ids[:-1]
+    special_ids = set(tokenizer.all_special_ids)
+    if any(token_id in special_ids for token_id in content_ids):
+        raise ValueError("Student action contains a special/reasoning token")
+    response_text = tokenizer.decode(
+        content_ids, skip_special_tokens=False, clean_up_tokenization_spaces=False
+    )
+    if not re.fullmatch(r"Action:[^\r\n]+(?:\r?\n)?", response_text):
+        raise ValueError(f"Student response is not exactly one action line: {response_text!r}")
+    parsed = parse_action(response_text, admissible_actions)
+    if not parsed.valid:
+        raise ValueError(
+            f"Student action is not admissible: {parsed.failure_reason}: {response_text!r}"
+        )
+    return content_ids, response_text, parsed.canonical_action

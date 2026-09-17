@@ -12,7 +12,6 @@ import argparse
 import gc
 import json
 import math
-import re
 import sys
 import time
 from pathlib import Path
@@ -24,31 +23,11 @@ from omniopd.io import read_jsonl, rollout_turn_from_dict
 from omniopd.opd_adapter import (
     align_teacher_sampled_token_logprobs,
     audit_shared_token_id_space,
+    extract_strict_action_tokens,
     prompts_for_opd_turn,
 )
-from omniopd.parser import parse_action
 from omniopd.provenance import fingerprint_code_tree, git_revision, sha256_file
 from omniopd.tokenization import apply_chat_template_ids
-
-
-def extract_strict_action_tokens(tokenizer, generated_ids, admissible_actions):
-    """Require exactly one action line terminated by EOS; exclude EOS from loss."""
-
-    ids = [int(token_id) for token_id in generated_ids]
-    if len(ids) < 2 or ids[-1] != tokenizer.eos_token_id:
-        raise ValueError("Student did not finish an action with its EOS token")
-    content_ids = ids[:-1]
-    if any(token_id in set(tokenizer.all_special_ids) for token_id in content_ids):
-        raise ValueError("Student action contains a special/reasoning token")
-    text = tokenizer.decode(
-        content_ids, skip_special_tokens=False, clean_up_tokenization_spaces=False
-    )
-    if not re.fullmatch(r"Action:[^\r\n]+(?:\r?\n)?", text):
-        raise ValueError(f"Student response is not exactly one action line: {text!r}")
-    parsed = parse_action(text, admissible_actions)
-    if not parsed.valid:
-        raise ValueError(f"Student action is not admissible: {parsed.failure_reason}: {text!r}")
-    return content_ids, text, parsed.canonical_action
 
 
 def _sampled_logprobs(model, prompt_ids, response_ids, torch):

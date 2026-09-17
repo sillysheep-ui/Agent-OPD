@@ -99,3 +99,22 @@ Teacher 打分把 Student 提示词和响应 Token 一起传入，不能满足�
 独立提示词对同一动作 Token 逐位置评分。旧状态池可供这一烟测，但不能产生
 确认性结果。该脚本的 Hugging Face 前向分数仍需与后续 veRL worker 的实际
 分数逐 Token 对拍；它不替代 veRL 损失接线、梯度检查、训练清单或预算审计。
+
+2026-09-17 服务器烟测已在旧版状态池的第 0 条状态通过：Student 新采样
+`Action: go to countertop 2`，生成共 9 Token（含 EOS），8 个动作 Token
+两侧 logprob 均有限且一一对齐；EOS 掩码为 0。Qwen3-14B 成功加载，GPU 0
+结束后释放。结果为
+`/data/yangchunyu/ld/omniopd_runs/opd_preflight_20260917/smoke_teacher_scores_state0_seed42.json`。
+该旧状态池仅用于接口烟测，不得并入新版正式实验。
+
+`src/omniopd/verl_opd.py` 与 `configs/verl_v080_opd_agent_loops.yaml`
+提供 veRL v0.8.0 的**试验性**接线：通过自定义 AgentLoopManager/Worker
+在 Teacher 独立前缀下评分，将动作位置重映射到 Student 布局，EOS 对应分数
+置零，并在 AgentLoop 中设置 action-only 掩码。需要显式配置
+`actor_rollout_ref.rollout.agent.agent_loop_manager_class=omniopd.verl_opd.OmniOPDAgentLoopManager`、
+`agent_loop_config_path` 指向上述 YAML、
+`default_agent_loop=omniopd_action_token_opd`、
+`data.apply_chat_template_kwargs.enable_thinking=false`。
+该接线尚未通过 vLLM Teacher API 对拍与梯度/保存烟测，不能投入确认性训练；
+目前它对非单行、不可执行或未以 EOS 结束的 Student 响应直接报错，必须先
+定义并测试无效 rollout 的预算及训练处理策略。

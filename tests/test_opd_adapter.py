@@ -4,6 +4,7 @@ from omniopd.opd_adapter import (
     align_teacher_sampled_token_logprobs,
     audit_shared_token_id_space,
     build_fixed_pool_opd_prompts,
+    remap_teacher_scores_to_student_layout,
 )
 from omniopd.prompts import STUDENT_SYSTEM_PROMPT, TEACHER_SYSTEM_PROMPT
 from omniopd.schema import ActionSample, AgentState, RolloutTurn
@@ -56,6 +57,7 @@ def test_fixed_pool_opd_prompt_preserves_two_policy_views_without_behavior_actio
     assert len(rows) == 2
     assert rows[0]["prompt"][0]["content"] == STUDENT_SYSTEM_PROMPT
     assert rows[0]["extra_info"]["teacher_prompt"][0]["content"] == TEACHER_SYSTEM_PROMPT
+    assert rows[0]["extra_info"]["admissible_actions"] == ["take book", "look"]
     assert rows[0]["prompt"][1:] == rows[0]["extra_info"]["teacher_prompt"][1:]
     assert rows[0]["extra_info"]["state_weight"] == 1.0
     assert "Action: look" not in json.dumps(rows[0], ensure_ascii=False)
@@ -137,4 +139,30 @@ def test_teacher_scores_slice_only_student_response_and_reject_bad_alignment():
     _raises_value_error(
         align_teacher_sampled_token_logprobs,
         **dict(kwargs, scored_token_logprobs=[None, -1.0, -2.0, None, -4.0]),
+    )
+
+
+def test_teacher_scores_remap_distinct_prompt_lengths_for_verl_estimator():
+    kwargs = {
+        "student_prompt_ids": [1, 2],
+        "teacher_prompt_ids": [3, 4, 5],
+        "student_response_ids": [6, 7],
+        "teacher_scored_ids": [[3], [4], [5], [6], [7]],
+        "teacher_scored_logprobs": [[0.0], [-0.1], [-0.2], [-1.5], [-2.5]],
+        "pad_token_id": 0,
+    }
+    ids, scores = remap_teacher_scores_to_student_layout(**kwargs)
+    assert ids == [[0], [0], [6], [7]]
+    assert scores == [[0.0], [0.0], [-1.5], [-2.5]]
+    _raises_value_error(
+        remap_teacher_scores_to_student_layout,
+        **dict(kwargs, teacher_scored_ids=[[3], [4], [5], [7], [6]]),
+    )
+    _raises_value_error(
+        remap_teacher_scores_to_student_layout,
+        **dict(kwargs, teacher_scored_logprobs=[[0], [0], [0], [None], [-2.5]]),
+    )
+    _raises_value_error(
+        remap_teacher_scores_to_student_layout,
+        **dict(kwargs, teacher_scored_logprobs=[[0], [0], [0], [-1.5, -1.0], [-2.5]]),
     )

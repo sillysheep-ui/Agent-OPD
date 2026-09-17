@@ -1,4 +1,4 @@
-from scripts.smoke_opd_teacher_scores import extract_strict_action_tokens
+from omniopd.opd_adapter import extract_strict_action_tokens
 
 
 class _Tokenizer:
