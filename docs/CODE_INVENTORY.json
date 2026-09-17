@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "5ff7b9fc2aed664fd3861152dc55440aba2495a6",
+  "code_revision_at_generation": "7f7f367f361ab1e609d091924608ecc80eafafc9",
   "canonical_code": {
-    "tree_sha256": "99fda19978193ad857ff6571cc879a83608d8e1c0e8eebe45b2ee59f42c2d418",
-    "files": 92,
-    "bytes": 808858
+    "tree_sha256": "b4a167188b499e03c0fd8a0d08649791c3ec870ac28c817c7789e13532c11269",
+    "files": 93,
+    "bytes": 811002
   },
-  "files": 243,
-  "bytes": 1535976,
+  "files": 244,
+  "bytes": 1538120,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 34,
+    "scripts": 35,
     "src": 42,
     "tests": 35
   },
@@ -878,6 +878,12 @@
       "path": "scripts/build_opd_prompts.py",
       "bytes": 8641,
       "sha256": "2c986949c394a2b7124c4dc67068df08b6a8d1191b9a915e8b027e9d2d3b61cd",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_verl_opd_alignment.py",
+      "bytes": 2144,
+      "sha256": "eac5bb217492f499a8e549f76b0a69f9a6708ed4a423ff6707dda64b43e6cce8",
       "role": "canonical_or_documentation"
     },
     {
