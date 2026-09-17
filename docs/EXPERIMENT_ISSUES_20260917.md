@@ -71,6 +71,7 @@
 | O11 | OPD prompt builder 将逐 game 的 `state_weight` 写进 `extra_info`，但当前自定义 AgentLoop/Worker 与已测试的 veRL `k3` 损失没有消费此字段。仅有元数据不能证明训练目标按 game 加权。 | 若正式设计要求 game-balanced 目标，必须在实际损失或经证明等价的采样器中接入权重，并做多 game、不等状态数的梯度测试；若每 game 固定相同状态数且目标是均匀状态均值，也应明确证明该等价条件。**待决策并待实现/验收**。 |
 | O12 | `build_opd_prompts.py` 目前输出经审计的 JSONL 提示词行和 `training_ready=false` 清单；还没有经过正式 veRL 数据加载、训练配置、启动与完成清单的全链验证。不能把“已构造 prompt 行”解释为“有可运行的 OPD 数据集”。 | 在冻结无效处理和权重口径后，增加受审计的数据加载/转换及一条完整的 veRL 技术启动链，并验证行数、state 哈希、`extra_info` 透传与产物身份。**待实现/验收**。 |
 | O13 | “同一模型在不同 ALFWorld 框架的准确率不同”不能直接归因为模型变化。AgentBoard 的任务代码默认 `max_num_steps=30`，本仓协议为 50；它还使用自己的示例提示词、动作解析与成功/进度/grounding 记录路径。游戏集合、`done`/`won` 语义、Token 模板及解码参数是否一致需要逐项核对。 | 跨框架报告先区分成功率、进度率和动作 grounding，不按指标名称猜测同义；冻结同一游戏文件及 split、逐 game 种子、最大步数、prompt/历史截断、动作解析/无效动作、模型与 Tokenizer 身份、推理后端和采样设置，再做逐游戏配对对拍。**已确认存在协议设置差异；它们对具体分数差的贡献仍待实测**。来源：AgentBoard `agentboard/tasks/alfworld.py`、`assets/agent_customization.md`，本仓 `configs/alfworld_textworld.yaml`、`src/omniopd/adapters.py` 与 `src/omniopd/protocol.py`。 |
+| O14 | Agent-R1 现有 ALFWorld 的多步环境流转和另一个 `opd` 分支的通用蒸馏入口，可能减少本仓自建在线轨迹调度代码；但 `main` 的 ALFWorld recipe 与 `opd` 分支的 GSM8K OPD 示例并不是一个已验证的“ALFWorld+OPD”组合。`opd` 分支固定依赖 `fishsure/verl@5779c7c6782733f77ef640f557bea572dfeacc12`，不能直接假设与当前官方 veRL v0.8.0 接线兼容。 | **待架构评估**：在独立 checkout/镜像中固定 Agent-R1 的提交，核对 ALFWorld `reset/step`、状态提示词、动作解析、轨迹掩码和奖励；核对 OPD Teacher 是在本研究独立 `P_T(s)` 下对 Student 实际动作 Token 评分，及无效尝试、状态加权、预算与 checkpoint。当前 veRL v0.8.0 单状态接线保留作对拍基线，不把两个分支或版本混装。来源：Agent-R1 官方 `README.md`、`recipes/alfworld/README.md`、`examples/gsm8k/run_opd.sh`、`requirements-opd.txt`（2026-09-17 查阅）。 |
 
 ## 证据索引与下一步顺序
 
@@ -104,5 +105,7 @@
 
 更新记录：2026-09-17 建立 E01–E07、D01–D04、O01–O12；同日补充持续维护规则和
 跨实验复用检查。2026-09-17 追加 O13（跨框架 ALFWorld 评测可比性；来源为 AgentBoard
-官方代码及本仓协议，具体分数归因尚未验证）。后续更新应在此处追加日期、涉及 ID 和
-证据，不覆盖旧条目。
+官方代码及本仓协议，具体分数归因尚未验证）与 O14（Agent-R1 候选路线及版本兼容风险）。
+同日完成当前 veRL v0.8.0 单状态非确认性输入生成、156 项离线测试和 Hydra 配置解析；
+**尚未**启动 Ray/vLLM 完整单步反向训练。后续更新应在此处追加日期、涉及 ID 和证据，
+不覆盖旧条目。
