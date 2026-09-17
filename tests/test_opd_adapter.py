@@ -147,22 +147,25 @@ def test_teacher_scores_remap_distinct_prompt_lengths_for_verl_estimator():
         "student_prompt_ids": [1, 2],
         "teacher_prompt_ids": [3, 4, 5],
         "student_response_ids": [6, 7],
-        "teacher_scored_ids": [[3], [4], [5], [6], [7]],
-        "teacher_scored_logprobs": [[0.0], [-0.1], [-0.2], [-1.5], [-2.5]],
+        # veRL stores the score/ID of the next token at the current position.
+        "teacher_scored_ids": [[4], [5], [6], [7], [0]],
+        "teacher_scored_logprobs": [[-0.1], [-0.2], [-1.5], [-2.5], [0.0]],
         "pad_token_id": 0,
     }
     ids, scores = remap_teacher_scores_to_student_layout(**kwargs)
-    assert ids == [[0], [0], [6], [7]]
-    assert scores == [[0.0], [0.0], [-1.5], [-2.5]]
+    assert ids == [[0], [6], [7], [0]]
+    assert scores == [[0.0], [-1.5], [-2.5], [0.0]]
+    # veRL slices one position before the response: prompt_len - 1.
+    assert scores[len(kwargs["student_prompt_ids"]) - 1 : -1] == [[-1.5], [-2.5]]
     _raises_value_error(
         remap_teacher_scores_to_student_layout,
-        **dict(kwargs, teacher_scored_ids=[[3], [4], [5], [7], [6]]),
+        **dict(kwargs, teacher_scored_ids=[[4], [5], [7], [6], [0]]),
     )
     _raises_value_error(
         remap_teacher_scores_to_student_layout,
-        **dict(kwargs, teacher_scored_logprobs=[[0], [0], [0], [None], [-2.5]]),
+        **dict(kwargs, teacher_scored_logprobs=[[0], [0], [None], [-2.5], [0]]),
     )
     _raises_value_error(
         remap_teacher_scores_to_student_layout,
-        **dict(kwargs, teacher_scored_logprobs=[[0], [0], [0], [-1.5, -1.0], [-2.5]]),
+        **dict(kwargs, teacher_scored_logprobs=[[0], [0], [-1.5, -1.0], [-2.5], [0]]),
     )

@@ -126,8 +126,9 @@ class OmniOPDAgentLoopWorker(AgentLoopWorker):
             teacher_scored_logprobs=teacher_logprobs.tolist(),
             pad_token_id=self.tokenizer.pad_token_id,
         )
-        # The Student EOS is present in veRL's response but is not part of the
-        # action-only loss or Teacher request. Keep its position masked/zero.
+        # The remap already stores zero at the last action-ID position, which
+        # veRL's one-left response slice reads for the masked EOS. Add the
+        # final dummy row for the EOS sequence position itself.
         remapped_ids.append([self.tokenizer.pad_token_id])
         remapped_scores.append([0.0])
         if len(remapped_scores) != len(prompt_ids) + len(response_ids):

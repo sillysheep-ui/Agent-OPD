@@ -188,11 +188,13 @@ def remap_teacher_scores_to_student_layout(
     teacher_scored_logprobs: Sequence[Sequence[float]],
     pad_token_id: int,
 ) -> tuple[list[list[int]], list[list[float]]]:
-    """Align veRL sampled-token Teacher scores to the Student sequence width.
+    """Align veRL *left-shifted* Teacher scores to the Student sequence width.
 
-    The Teacher prompt can have a different token length. The Student prompt
-    positions are marked as padding in teacher_ids and zero in logprobs; only
-    the Student response positions are used by the reverse-KL estimator.
+    veRL's `extract_prompt_logprobs` stores the score/ID of token i+1 at
+    sequence position i and appends a dummy final row. Later,
+    `no_padding_2_padding` slices from the *last prompt position* so that the
+    score for the first response token is read at that position. Preserve
+    this convention even when Teacher and Student prompt lengths differ.
     This adapter rejects top-k outputs and is not valid for forward_kl_topk.
     """
 
@@ -209,18 +211,29 @@ def remap_teacher_scores_to_student_layout(
     ):
         raise ValueError("sampled-token OPD requires one Teacher score per position")
     actual = [int(row[0]) for row in teacher_scored_ids]
-    if actual != expected:
-        raise ValueError("Teacher scored token IDs disagree with the requested sequence")
+    if actual != expected[1:] + [0]:
+        raise ValueError("veRL-shifted Teacher token IDs disagree with the requested sequence")
     try:
         response_scores = [
-            float(row[0]) for row in teacher_scored_logprobs[len(teacher_prompt) :]
+            float(row[0])
+            for row in teacher_scored_logprobs[
+                len(teacher_prompt) - 1 : len(teacher_prompt) - 1 + len(response)
+            ]
         ]
     except (TypeError, ValueError) as error:
         raise ValueError("Teacher response has a missing or invalid token score") from error
     if any(not math.isfinite(score) for score in response_scores):
         raise ValueError("Teacher response contains missing or non-finite token scores")
-    remapped_ids = [[int(pad_token_id)] for _ in student_prompt] + [[token] for token in response]
-    remapped_scores = [[0.0] for _ in student_prompt] + [[score] for score in response_scores]
+    remapped_ids = (
+        [[int(pad_token_id)] for _ in student_prompt[:-1]]
+        + [[token] for token in response]
+        + [[int(pad_token_id)]]
+    )
+    remapped_scores = (
+        [[0.0] for _ in student_prompt[:-1]]
+        + [[score] for score in response_scores]
+        + [[0.0]]
+    )
     return remapped_ids, remapped_scores
 
 

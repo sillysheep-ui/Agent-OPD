@@ -118,6 +118,10 @@ Teacher 打分把 Student 提示词和响应 Token 一起传入，不能满足�
 该接线尚未通过 vLLM Teacher API 对拍与梯度/保存烟测，不能投入确认性训练；
 目前它对非单行、不可执行或未以 EOS 结束的 Student 响应直接报错，必须先
 定义并测试无效 rollout 的预算及训练处理策略。
+veRL 的 vLLM 服务把第 `i+1` 个 Token 的 logprob 放在序列第 `i` 个位置，
+训练端 `no_padding_2_padding` 又从响应前一位切片；Teacher/Student 前缀长度
+不同的重映射必须保留这一左移约定。位置级测试覆盖首个动作 Token、末个
+动作 Token 和被掩掉的 EOS，不能仅比较张量长度。
 
 `scripts/smoke_opd_vllm_teacher.py` 可在同一条旧状态/Student 动作 Token
 上调用 vLLM `prompt_logprobs=0`，与上述 Hugging Face 前向逐 Token 对拍。
