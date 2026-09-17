@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "430c0987746f5a2dd67e776ef907183c58f0bf93",
+  "code_revision_at_generation": "85596c65015e80eb4375e09d367a037f4a51ca41",
   "canonical_code": {
-    "tree_sha256": "aa7fa48ca8e4eda1cf1877d7771e653d965b4da1f55cc55893cb5a70bcf14c64",
-    "files": 85,
-    "bytes": 759483
+    "tree_sha256": "517dbaf9e77f922901883a96e3c8277d490e0afd71805ee590c8a2c925111606",
+    "files": 88,
+    "bytes": 782033
   },
-  "files": 234,
-  "bytes": 1472170,
+  "files": 238,
+  "bytes": 1503566,
   "counts_by_root": {
     "configs": 10,
     "docker": 2,
@@ -17,9 +17,9 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 30,
-    "src": 40,
-    "tests": 33
+    "scripts": 32,
+    "src": 41,
+    "tests": 34
   },
   "entries": [
     {
@@ -186,8 +186,8 @@
     },
     {
       "path": "docs/VERL_V080_MIGRATION.md",
-      "bytes": 4426,
-      "sha256": "709bd9c8d6838e25b71610c43e89320039bd5516094ba910abfe353692d481fe",
+      "bytes": 6188,
+      "sha256": "f62e310abb65ed4cbef350eb2553b5aed116242e45565a5a5f21b67151b8d10b",
       "role": "canonical_or_documentation"
     },
     {
@@ -857,9 +857,21 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/audit_opd_tokenizers.py",
+      "bytes": 5558,
+      "sha256": "aea108531712538c89ce50c5f6c7c1a243620f77b289581fdd658204c34aeab9",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/build_code_inventory.py",
       "bytes": 4393,
       "sha256": "7eb1d602700b48bc2d335eb3061261385ab80a1671f13b75174559de7dee9371",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/build_opd_prompts.py",
+      "bytes": 8641,
+      "sha256": "2c986949c394a2b7124c4dc67068df08b6a8d1191b9a915e8b027e9d2d3b61cd",
       "role": "canonical_or_documentation"
     },
     {
@@ -1139,6 +1151,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "src/omniopd/opd_adapter.py",
+      "bytes": 8351,
+      "sha256": "c904177255ae6e9e576a6c863fcd1f18c3e089de865b6f15e194c26b040b81a0",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "src/omniopd/parser.py",
       "bytes": 2371,
       "sha256": "a87a642d72244349139c797358edf6f159798397aad2637f21668d06047f0ae5",
@@ -1325,6 +1343,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "tests/test_opd_adapter.py",
+      "bytes": 4654,
+      "sha256": "4b346c2d1cc53bc7560f0df9f63a13e8ef19453ccf079b149d41b6376b9f6c96",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "tests/test_parser.py",
       "bytes": 718,
       "sha256": "5557149e8d9f1ddef0341805077fbb1bbb2dffd4700015e9b9ea8e7e53703237",
@@ -1386,8 +1410,8 @@
     },
     {
       "path": "tests/test_stage_manifest_chain.py",
-      "bytes": 17959,
-      "sha256": "9383c8b997e4655152f2566f27240d607d1cfbef301a3e75a1716a96d3cb6fd3",
+      "bytes": 20389,
+      "sha256": "3e43406d551bf455a276d03a2c3b897a2ee6ea4017dc21728a04a047c707b33c",
       "role": "canonical_or_documentation"
     },
     {
