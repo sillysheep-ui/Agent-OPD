@@ -1,9 +1,14 @@
 # veRL integration contract
 
-This integration is intentionally locked to **veRL 0.4.1**, the version named
-by the recovered experiment launcher. The launcher resolves version declarations
-from the selected checkout/package, requires an immutable veRL Git revision,
-and fails before creating the run directory if either contract is absent.
+The current repository-owned action-supervision trainer is migrating to
+**veRL v0.8.0** (release commit
+`7aed6b230776f963fa09509c10d9c3a767d1102c`; package reports
+`0.8.0.dev`). The launcher resolves the version declarations, requires the
+exact tag/commit and clean Git trees, and fails before creating a run directory
+if these contracts are absent. Its legacy-shaped Hydra schema is now owned by
+`configs/verl_v080_omniopd_sft.yaml`, not by upstream veRL. This SFT path is
+**not** veRL's token-level OPD trainer; migration status and remaining gates are
+in `docs/VERL_V080_MIGRATION.md`.
 
 The canonical dataset returns two separate concepts:
 

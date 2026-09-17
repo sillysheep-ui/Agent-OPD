@@ -1,0 +1,42 @@
+# veRL v0.8.0 迁移与传统 OPD 对照边界
+
+## 版本和隔离
+
+- 官方发布标签：`v0.8.0`；提交：`7aed6b230776f963fa09509c10d9c3a767d1102c`。
+- 该标签源码的 Python 包版本字符串是 `0.8.0.dev`，不是 `0.8.0`；启动器同时核验版本、标签、提交。
+- 旧 veRL 0.4.1 checkout、旧镜像和历史产物保留。新版 checkout 应单独放在
+  `/data/yangchunyu/ld/verl-v0.8.0`，构建 `docker/Dockerfile.verl080` 的新镜像。
+- 仓库自有 `integrations/verl/fsdp_sft_trainer.py` 继续执行行动模仿的加权 CE，
+  其 Hydra 配置迁到仓库自有 `configs/verl_v080_omniopd_sft.yaml`。不能把这个配置
+  传给 veRL 官方 `main_ppo`，也不能把此训练器称为逐 Token OPD。
+
+## 理论映射
+
+令 Student 在 ALFWorld 状态 (s_t) 下产生动作 Token 序列
+(y=(y_1,\ldots,y_L))。传统逐 Token OPD 在 Student 自己的前缀
+((s_t,y_{<j})) 上读取 Teacher 的 Token 分布或对应 Token 的 logprob，
+对每个有效位置构造 KL/其单样本估计并更新 Student。Teacher 应是被冻结的
+本地 Qwen3-14B；Student、Teacher 的 Tokenizer、chat template、思考模式和
+响应掩码都要事先核验。
+
+现有 OmniOPD 方法是在 Student 到达的状态上让 Teacher **重新采样动作**，
+从有效动作构造监督数据并对 Teacher 动作做加权 CE；它虽然使用 Token CE，
+却不是在 Student 的每个输出 Token 前缀查询 Teacher。因此两者的监督单位和
+Teacher 预算都不同，不应声称“各 150 次请求”等价于同等计算成本。
+
+## 迁移验收顺序
+
+1. 构建新版镜像并运行 `pip check`、核心依赖与 veRL OPD 模块导入检查。
+2. 在新版 checkout 上运行全仓离线测试、静态检查和一个可加载/可保存的
+   多卡合成输入 SFT 单步训练；检查梯度、最终 step、LoRA checkpoint 和日志。
+3. 再实现 ALFWorld prompt/Student rollout 到 veRL OPD 数据结构的适配，
+   明确 action-only response mask、停止条件、环境轨迹和 Teacher token 打分语义。
+4. 对传统 OPD 路径做一条真实状态的无更新前向检查，再做单步反向/保存检查；
+   记录 Student/Teacher/Tokenizer 的内容指纹与每 Token/每状态 Teacher 成本。
+5. 用同一 SFT 初始 Student、相同训练/测试游戏划分及评测协议，分别重跑
+   无更新基线、传统逐 Token OPD、随机状态动作校正、所提选样策略；
+   预先定义预算匹配方式和超参搜索预算，避免用旧清单混用新版实验。
+
+完成前两项只表示**旧行动模仿链路在新版环境通过技术验收**；第三、四项完成
+之前，不得宣称传统 OPD 对照可运行。任何正式结果必须用新代码 revision
+重新生成上游清单，旧版 `code_revision`/code-tree 哈希不得复用。

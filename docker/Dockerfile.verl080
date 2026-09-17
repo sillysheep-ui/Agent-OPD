@@ -1,0 +1,10 @@
+FROM omniopd-verl041:alfworld
+
+# Reuse the validated CUDA/PyTorch/vLLM/ALFWorld environment. The veRL source
+# checkout is mounted read-only at run time. Record both image IDs before a
+# confirmatory run; this Dockerfile changes only the declared TensorDict range.
+RUN python -m pip install --no-cache-dir "tensordict==0.8.3" \
+    && python -m pip check
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1

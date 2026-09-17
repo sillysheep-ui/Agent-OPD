@@ -1,5 +1,9 @@
 # Agent OmniOPD
 
+> 当前正在将行动模仿训练入口迁到 veRL v0.8.0；传统逐 Token OPD 对照尚未
+> 接入 ALFWorld，也尚未完成新版多卡验收。不要将迁移分支或历史 0.4.1
+> 烟测视为可直接启动确认性新实验。详见 `docs/VERL_V080_MIGRATION.md`。
+
 这是依据论文定义重新整理的、协议优先的 Black-box Agent On-Policy Distillation
 代码库。它不把历史实验产物自动视为可信输入，而是显式记录状态 schema、
 \(P_S/P_T\) 分离、角色安全的模板规则、action-token 契约以及
