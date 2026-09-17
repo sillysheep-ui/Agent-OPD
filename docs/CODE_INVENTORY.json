@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "3b6d5788a571c86741335a241aea4544b94ac945",
+  "code_revision_at_generation": "f78395aa24f0271c0dbeb3b3ea655ff4917f1d33",
   "canonical_code": {
-    "tree_sha256": "0c8cc4824596b4481b7d8fb6778141a49c2fd331f85a4fa60ae5a7f894fef106",
-    "files": 94,
-    "bytes": 818223
+    "tree_sha256": "9acacfb719239eb0035a6c6d3a2de55912e00b4ba37be43534c83c9789efd0d8",
+    "files": 95,
+    "bytes": 823179
   },
-  "files": 245,
-  "bytes": 1545341,
+  "files": 246,
+  "bytes": 1550297,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 36,
+    "scripts": 37,
     "src": 42,
     "tests": 35
   },
@@ -1010,6 +1010,12 @@
       "path": "scripts/smoke_opd_teacher_scores.py",
       "bytes": 7995,
       "sha256": "2fcf4715b6103508f710e03dedf996c59b6c23cc5eb01410760843cd14fbe4de",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/smoke_opd_vllm_student.py",
+      "bytes": 4956,
+      "sha256": "da9cefa81e9476d39533d53de9dc4405c1bb8ac15e3be828d6cc6f3f8b796b61",
       "role": "canonical_or_documentation"
     },
     {
