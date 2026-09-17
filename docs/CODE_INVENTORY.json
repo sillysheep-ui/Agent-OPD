@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "39aec4d1de66266dfb172496322529492cc30f8a",
+  "code_revision_at_generation": "fd21ef2c9d6a4c320e531441969f7325bb39fc0a",
   "canonical_code": {
     "tree_sha256": "8e2a7ac0e0e822784a6034ea6a4541851836af78901c9ba3b34cd1d652904368",
     "files": 95,
     "bytes": 826039
   },
   "files": 246,
-  "bytes": 1554960,
+  "bytes": 1555687,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -192,8 +192,8 @@
     },
     {
       "path": "docs/VERL_V080_MIGRATION.md",
-      "bytes": 10929,
-      "sha256": "fdd41554b1152dd9d1ddd2b58cbc99df7f26631055379ccfad00ba791e8fabbc",
+      "bytes": 11656,
+      "sha256": "444e9ad9f921da5e81fc201bfbe13c0dc59341bf38d5f64d29befa40ce774c9c",
       "role": "canonical_or_documentation"
     },
     {
