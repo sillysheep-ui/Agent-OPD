@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "9ef2e64c32a7a7caddbc871bcd0879bc9fed7159",
+  "code_revision_at_generation": "ef8bedb7ba3c20a9b3ebdcce1606426aa3d01537",
   "canonical_code": {
-    "tree_sha256": "f08fa8098bd25f83a661efc30dabba5be544f8e4d9cd41f2106d4aa4ff80b981",
-    "files": 88,
-    "bytes": 783986
+    "tree_sha256": "cc98b7098e69a8b94803f4ae8b57c1985844a54eeb6b82b0cdcc7bf648d70761",
+    "files": 89,
+    "bytes": 793130
   },
-  "files": 238,
-  "bytes": 1506177,
+  "files": 240,
+  "bytes": 1516924,
   "counts_by_root": {
     "configs": 10,
     "docker": 2,
@@ -17,9 +17,9 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 32,
+    "scripts": 33,
     "src": 41,
-    "tests": 34
+    "tests": 35
   },
   "entries": [
     {
@@ -186,8 +186,8 @@
     },
     {
       "path": "docs/VERL_V080_MIGRATION.md",
-      "bytes": 6660,
-      "sha256": "b308666c428eeff99abe062b159f2d7f4e36d15a3c1ca2c2d5196119216e9996",
+      "bytes": 7152,
+      "sha256": "23b9a264c4c984cdedb557aeed36ff088f33a2a76a7375f55693c8e084d8b03e",
       "role": "canonical_or_documentation"
     },
     {
@@ -989,6 +989,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/smoke_opd_teacher_scores.py",
+      "bytes": 9055,
+      "sha256": "70daf0278262ea285438bf4c64656ad2fb4185781eca60a064202c3bd9becd88",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/validate_experiment_pair.py",
       "bytes": 8234,
       "sha256": "122c5475cca80d8754e978e7b3d9385afcf2e4e53f008807eb7d3adcfa627ffc",
@@ -1152,8 +1158,8 @@
     },
     {
       "path": "src/omniopd/opd_adapter.py",
-      "bytes": 8591,
-      "sha256": "4d459383033001f6b490d9a512c6879bed1799590f818a6319fb554da3768085",
+      "bytes": 8680,
+      "sha256": "92f8b152ec0cf26eca8057e0b05cb6c5c4f079d68f4194eeaba98978180128bf",
       "role": "canonical_or_documentation"
     },
     {
@@ -1346,6 +1352,12 @@
       "path": "tests/test_opd_adapter.py",
       "bytes": 4840,
       "sha256": "df1e643c3d92ac17e70cfe52b7b1902d680fcacb35a68cd49d3a48313658ce3f",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "tests/test_opd_forward_smoke.py",
+      "bytes": 1111,
+      "sha256": "e3c1d26a18b067329303bf319bba1461f8f104ef6691e5bdffb26448fe9bcc79",
       "role": "canonical_or_documentation"
     },
     {
