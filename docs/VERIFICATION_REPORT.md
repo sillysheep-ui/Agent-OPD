@@ -1,4 +1,4 @@
-# Agent OmniOPD 最终核验报告
+# Agent OmniOPD 阶段性核验报告
 
 ## 1. 核验结论与边界
 
@@ -8,19 +8,27 @@
    token mask、加权 loss、训练—评测身份链、环境身份、机制分析 join 和统计
    边界已通过 synthetic/offline 测试与静态检查；
 2. **论文经验结论尚未重新验证**：已在目标服务器完成 ALFWorld 单游戏 reset/step、
-   CUDA 可见性和 veRL/OmniOPD 训练器导入检查，但没有执行真实 DeepSeek 调用、
-   ALFWorld 完整轨迹、4-GPU veRL 0.4.1 训练或 vLLM 在线评测，因此不得据此声称
+   CUDA 可见性、veRL/OmniOPD 训练器导入、单游戏两步 Student state-pool 与
+   单步合成输入 LoRA 保存—加载、4-GPU veRL/FSDP1 单步训练与 LoRA vLLM 请求检查，
+   但没有执行真实 DeepSeek 调用、ALFWorld 完整轨迹、正式102步训练或确认性评测，
+   因此不得据此声称
    成功率、breadth 优势、selection/state-source 排序或任何论文数值已复现。
 
 精确的 audited implementation revision、全部文件字节数和 SHA256 记录在
-`docs/CODE_INVENTORY.json`。canonical runtime 树为83个文件、756784字节，指纹为
-`7679b481da3fac3d543dc265bc3ab40a2f7beb29d06242b32f5447372e9b34c2`。该指纹
+`docs/CODE_INVENTORY.json`。canonical runtime 树为83个文件、756848字节，指纹为
+`831c0cbed2f48220aaa085961a9958d623b9c45a6fae1c109b2e0c368024b7fa`。该指纹
 不包含仅作说明的 `docs/` 与只读的 `legacy/`。
 
-2026-09-16 增补：三个 vLLM wrapper 已显式使用 `--host 127.0.0.1`，防止
-无鉴权模型接口意外监听非本机地址。新增回归检查在本机定向测试中通过（3 passed），
-Shell 语法、Ruff 与 diff 检查通过；下表的完整测试数仍是这一改动前的结果，
-须在目标容器同步新提交后重跑，不能把本次定向测试当成全量核验。
+2026-09-16—17 增补：三个 vLLM wrapper 已显式使用 `--host 127.0.0.1`，防止
+无鉴权模型接口意外监听非本机地址。目标容器完整回归测试已对该改动验证通过。
+单游戏试运行还发现 `/cfs` FUSE 挂载不支持 ledger 追加写入；改用本地 ext4 后，
+1 个 game、2 个 state、2 次 Student 请求均完成，Teacher 请求为 0，四个输出文件与
+服务证明的 SHA256 均匹配。该 smoke 产物使用较早的代码 revision，仅作预检证据，
+不能并入最终确认性实验。veRL 默认 `model.strategy=fsdp2`，而规范训练器只接受
+FSDP1；启动脚本已强制 `model.strategy=fsdp`，并将 Hydra 元数据写入运行输出目录。
+合成数据下的单卡与四卡各1步训练、验证、LoRA checkpoint 保存及结构校验已通过；
+四卡 checkpoint 又被 vLLM 0.8.5 加载并完成一次本机请求。冷启动首次超过200秒，
+三个 wrapper 的就绪上限因此改为600秒。上述 smoke 均非论文结果。
 
 旧 Word 代码生成的产物受 P0 级状态错位、Teacher prompt 未生效、mask 错位、
 loss 缩放和实验混杂影响。确认性结果必须从新 state pool 开始重跑，不能
@@ -41,11 +49,12 @@ loss 缩放和实验混杂影响。确认性结果必须从新 state pool 开始
 
 | 检查 | 实际结果 | 状态 |
 |---|---:|---|
-| Pytest回归测试 | 上一代码版本 143 passed；本次改动后待容器全量复验 | 待复验 |
-| 独立测试入口 `scripts/run_tests.py` | 上一代码版本 143 passed, 0 skipped；本次改动后待容器全量复验 | 待复验 |
-| 本次服务监听地址定向测试 | 3 passed | 通过 |
+| Pytest回归测试 | 147 passed | 通过 |
+| 独立测试入口 `scripts/run_tests.py` | 147 passed, 0 skipped | 通过 |
+| 服务监听与冷启动定向测试 | 已纳入完整回归 | 通过 |
+| FSDP1 与 Hydra 输出定向测试 | 已纳入完整回归 | 通过 |
 | Ruff（`src/scripts/tests/integrations`） | All checks passed | 通过 |
-| Python编译 | 99个规范 Python 文件无错误 | 通过 |
+| Python语法（无缓存写入） | 100个规范 Python 文件无错误 | 通过 |
 | Shell语法 | 4个规范 Shell 与42个 legacy Shell 无错误 | 通过 |
 | Shell内嵌 Python | 9个 heredoc block 均可编译 | 通过 |
 | 命令入口 | 24个 argparse 脚本与3个 package CLI 的 `--help` 均成功；另有1个独立测试入口 | 通过 |
@@ -56,9 +65,10 @@ loss 缩放和实验混杂影响。确认性结果必须从新 state pool 开始
 | diff格式 | `git diff --check` 无错误 | 通过 |
 
 测试中出现的 macOS `sysctlbyname` CPU-cache 警告来自受限容器中的第三方依赖，
-测试返回码为0。目标服务器上的候选 Qwen3-4B 模型和 Tokenizer 元数据已离线解析、
-两个权重分片存在；尚未做完整模型加载。A100 CUDA 可用，veRL 0.4.1 与 OmniOPD
-训练器联合导入通过；不等于训练已成功。
+测试返回码为0。目标服务器上的候选 Qwen3-4B 模型与 Tokenizer 已完整加载；
+两个权重分片在 GPU 上可供 vLLM 与训练烟测使用。A100 CUDA 可用，veRL 0.4.1 与 OmniOPD
+训练器联合导入、单步 LoRA 更新/保存/重新加载、四卡 FSDP1 单步训练及 LoRA 服务
+加载通过；不等于正式102步训练、Teacher 调用或评测已成功。
 
 ## 4. 公式与研究目的契合性
 
@@ -111,13 +121,17 @@ loss 缩放和实验混杂影响。确认性结果必须从新 state pool 开始
 - DeepSeek 真实 Teacher/SAGE judge 调用，包括 provider revision、response model、token
   usage 和 system fingerprint 的实际返回；
 - ALFWorld 真实 game list 已枚举（train 3553、ID 140、OOD 134），首局
-  reset/step 已通过；state pool、完整轨迹、replay fidelity 和成功率尚未运行；
-- veRL 0.4.1 目标 checkout 上的4-GPU FSDP/LoRA 训练与最终 `global_step_102`；
-- vLLM 加载base+LoRA、在线评测、四training-seed分层区间和论文表图；
+  reset/step 与单游戏两步 Student pool smoke 已通过；正式 state pool、完整轨迹、
+  replay fidelity 和成功率尚未运行；
+- veRL 0.4.1 目标 checkout 上的4-GPU FSDP1/LoRA 单步合成输入训练已通过；
+  正式数据训练与最终 `global_step_102` 尚未运行；
+- vLLM 加载四卡 smoke LoRA 并完成单次请求；正式 base+LoRA 在线评测、
+  四 training-seed 分层区间和论文表图尚未运行；
 - M1/M3 在目标大模型上的显存可行性与数值结果。
 
-LoRA 当前通过的是不执行pickle的文件结构与契约验证；尚未在目标集群实例化
-PEFT/vLLM完成真实加载，也未逐值扫描权重中的 NaN/Inf。entropy 消费端会从已记录的
+LoRA 已通过不执行 pickle 的文件结构与契约验证，以及目标集群的 PEFT 重新加载和
+vLLM 单次请求；尚未逐值扫描权重中的 NaN/Inf，也未对正式 checkpoint 做此类验收。
+entropy 消费端会从已记录的
 action log scores 重算 entropy，但不会再次运行模型复算这些 logits。这些均属于真实
 集成/复现实验阶段的边界，不应被描述为已经完成的模型级验证。
 

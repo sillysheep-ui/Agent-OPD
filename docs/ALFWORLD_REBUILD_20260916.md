@@ -85,5 +85,7 @@
 - 不复用旧 `/root/data/alfworld`、旧 `selected_turns.jsonl` 或旧训练 parquet；
 - 不把 `alfworld-prompts` Arrow 数据误当作可执行 TextWorld games；
 - smoke、失败和确认性输出必须使用彼此独立的新目录；
-- 正式实验前仍需完成 Student vLLM 服务证明、Teacher 身份/预算授权和 LoRA 单卡训练
-  保存—加载 smoke test。
+- 2026-09-16—17 后续验收已完成 Student vLLM 服务证明、单步 LoRA 保存—加载、
+  四卡 veRL/FSDP1 单步训练及 LoRA vLLM 请求；这些都是独立 smoke，不是确认性产物；
+- 正式实验前仍须冻结 Teacher 的模型/版本/Tokenizer/context 身份与预算，并通过
+  受保护的环境注入 API 密钥；不得把密钥写入代码库或日志。

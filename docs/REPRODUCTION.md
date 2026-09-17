@@ -21,6 +21,12 @@ python -m compileall -q src scripts tests integrations
 开始采集前先提交本仓库，确保 `git status --short` 为空；之后不得修改
 `src/`、`scripts/`、`integrations/`、`configs/`、`pyproject.toml` 或 `README.md`。
 各阶段会绑定同一 Git revision 和 canonical code-tree hash，中途修改会 fail closed。
+运行产物（尤其是逐请求追加写入的 ledger、训练日志与 checkpoint）必须位于支持
+POSIX 追加写入的本地磁盘，例如目标服务器的 `/data/yangchunyu/ld/omniopd_runs`；
+不要直接写入该服务器的 `/cfs` FUSE 挂载。静态模型与 ALFWorld 输入仍可只读挂载，
+完整运行结束并核验哈希后再归档产物。目标服务器可将 vLLM 编译缓存挂载到
+`/data/yangchunyu/ld/omniopd_cache/vllm`；veRL 单节点 `torchrun --standalone`
+预检使用未发布端口的 Docker bridge 网络，`--network none` 会令容器主机名解析失败。
 若使用不含 `.git` 的交付压缩包，解压后必须先在该目录初始化 Git、加入全部交付文件并
 创建一次冻结提交，再执行测试和实验；更推荐从对应提交克隆。压缩包内的
 `docs/CODE_INVENTORY.json` 用于核对发布时的实现提交与逐文件 SHA256，新建的本地冻结
@@ -29,7 +35,9 @@ python -m compileall -q src scripts tests integrations
 目标集群可用 `docker/Dockerfile.verl041` 构建锁定的 ALFWorld 0.4.2、TextWorld
 1.6.2 与 veRL 0.4.1 运行环境。官方 TextWorld 数据的来源、SHA256、目标集群验收结果
 和不可上传边界记录在 `docs/ALFWORLD_REBUILD_20260916.md`；规范环境配置为
-`configs/alfworld_textworld.yaml`。vLLM 和 CUDA 仍须在目标集群真实验收，训练另外要求
+`configs/alfworld_textworld.yaml`。本目标集群的 CUDA、Student vLLM、四卡 veRL
+单步训练和 LoRA vLLM 加载已完成 smoke 验收，证据见 `docs/VERIFICATION_REPORT.md`；
+迁移到其他主机仍须重新验收。训练另外要求
 一个干净的 **veRL 0.4.1** checkout；本仓库与 veRL checkout 都必须有不可变
 revision。先验收预注册配置：
 
