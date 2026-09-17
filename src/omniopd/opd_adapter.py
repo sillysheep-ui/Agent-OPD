@@ -119,8 +119,8 @@ def audit_shared_token_id_space(student_tokenizer: Any, teacher_tokenizer: Any) 
         raise ValueError("Student and Teacher special-token sets differ")
     student_template = getattr(student_tokenizer, "chat_template", None)
     teacher_template = getattr(teacher_tokenizer, "chat_template", None)
-    if not isinstance(student_template, str) or student_template != teacher_template:
-        raise ValueError("Student and Teacher chat templates differ")
+    if not isinstance(student_template, str) or not isinstance(teacher_template, str):
+        raise ValueError("both Student and Teacher require explicit chat templates")
     student_backend = getattr(student_tokenizer, "backend_tokenizer", None)
     teacher_backend = getattr(teacher_tokenizer, "backend_tokenizer", None)
     if student_backend is None or teacher_backend is None:
@@ -136,7 +136,13 @@ def audit_shared_token_id_space(student_tokenizer: Any, teacher_tokenizer: Any) 
         "vocab_size": len(student_vocab),
         "vocab_sha256": _canonical_sha256(student_vocab),
         "backend_sha256": _canonical_sha256(student_rules),
-        "chat_template_sha256": hashlib.sha256(student_template.encode("utf-8")).hexdigest(),
+        "student_chat_template_sha256": hashlib.sha256(
+            student_template.encode("utf-8")
+        ).hexdigest(),
+        "teacher_chat_template_sha256": hashlib.sha256(
+            teacher_template.encode("utf-8")
+        ).hexdigest(),
+        "chat_templates_equal": student_template == teacher_template,
         "special_token_ids": student_special,
     }
 

@@ -112,10 +112,13 @@ def test_opd_tokenizer_audit_requires_identical_id_meanings_and_rules():
         student,
         _Tokenizer(rules={"model": "wordpiece", "decoder": "byte"}),
     )
-    _raises_value_error(
-        audit_shared_token_id_space,
-        student,
-        _Tokenizer(chat_template="{{ different }}"),
+    different_template = audit_shared_token_id_space(
+        student, _Tokenizer(chat_template="{{ different }}")
+    )
+    assert different_template["chat_templates_equal"] is False
+    assert (
+        different_template["student_chat_template_sha256"]
+        != different_template["teacher_chat_template_sha256"]
     )
 
 

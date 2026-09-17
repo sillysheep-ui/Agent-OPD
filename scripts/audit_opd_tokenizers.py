@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from omniopd.opd_adapter import audit_shared_token_id_space
 from omniopd.prompts import STUDENT_SYSTEM_PROMPT, TEACHER_SYSTEM_PROMPT
-from omniopd.provenance import fingerprint_code_tree, git_revision, sha256_file
+from omniopd.provenance import fingerprint_code_tree, git_revision, sha256_file, sha256_text
 from omniopd.tokenization import apply_chat_template_ids
 
 TOKENIZER_FILES = (
@@ -94,6 +94,34 @@ def main() -> None:
     )
     if not student_prompt_ids or not teacher_prompt_ids:
         raise SystemExit("a canonical non-thinking prompt encoded to zero tokens")
+    student_rendered = student.apply_chat_template(
+        [{"role": "system", "content": STUDENT_SYSTEM_PROMPT}, user_message],
+        tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=False,
+    )
+    teacher_rendered = teacher.apply_chat_template(
+        [{"role": "system", "content": TEACHER_SYSTEM_PROMPT}, user_message],
+        tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=False,
+    )
+    assistant_header = "<|im_start|>assistant\n"
+    if not student_rendered.endswith(assistant_header):
+        raise SystemExit("Student prompt does not end at its expected action prefix")
+    if assistant_header not in teacher_rendered:
+        raise SystemExit("Teacher prompt has no assistant generation prefix")
+    teacher_tail = teacher_rendered.rsplit(assistant_header, 1)[1]
+    if not (
+        teacher_tail.startswith("<think>")
+        and "</think>" in teacher_tail
+        and not teacher_tail.split("</think>", 1)[1].strip()
+    ):
+        raise SystemExit("Teacher enable_thinking=False did not close its thinking block")
+    if student.encode(student_rendered, add_special_tokens=False) != student_prompt_ids:
+        raise SystemExit("Student rendered prompt and prompt IDs disagree")
+    if teacher.encode(teacher_rendered, add_special_tokens=False) != teacher_prompt_ids:
+        raise SystemExit("Teacher rendered prompt and prompt IDs disagree")
     sample_action = "Action: take book"
     student_action_ids = student.encode(sample_action, add_special_tokens=False)
     teacher_action_ids = teacher.encode(sample_action, add_special_tokens=False)
@@ -122,6 +150,12 @@ def main() -> None:
         "nonthinking_prompt_lengths": {
             "student": len(student_prompt_ids),
             "teacher": len(teacher_prompt_ids),
+        },
+        "nonthinking_prefix": {
+            "student_rendered_sha256": sha256_text(student_rendered),
+            "teacher_rendered_sha256": sha256_text(teacher_rendered),
+            "student_assistant_tail": "",
+            "teacher_assistant_tail": teacher_tail,
         },
         "sample_action_token_ids": student_action_ids,
         "teacher_uses_distinct_system_prompt": True,

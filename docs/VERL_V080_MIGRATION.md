@@ -78,6 +78,11 @@ Teacher 预算都不同，不应声称“各 150 次请求”等价于同等计�
 - `scripts/audit_opd_tokenizers.py` 在不加载模型权重的前提下，核对 Qwen3
   Student/Teacher 的 Token ID 空间、编码规则、特殊 Token 和非思考模式提示词；
   它只证明 Token ID 可比较，不证明 Teacher 权重、服务或打分接口正确。
+  本次服务器预检发现 SFT Student 的模板在 assistant 头后直接生成动作，而
+  Qwen3-14B Teacher 的模板在 `enable_thinking=False` 时先插入一个已闭合的
+  空 `<think>…</think>` 段。两模板不能要求文本完全相同：正确的条件是共同
+  Token ID 语义、两侧提示词各自正确编码、Teacher 在其独立前缀下给同一批
+  Student 动作 Token 评分。审计会记录两份模板哈希及实际生成前缀。
 - `align_teacher_sampled_token_logprobs` 为 Student 生成的 Token 对齐 Teacher
   的逐位置 logprob，并拒绝缺失、非有限值和序列错位。尚未与 veRL worker
   的实际返回结构连接，也未通过真实模型端到端测试。
