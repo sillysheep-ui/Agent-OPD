@@ -57,6 +57,7 @@ def main() -> None:
         raise SystemExit("HF smoke is not bound to this exact state and Teacher")
     from transformers import AutoTokenizer
     from vllm import LLM, SamplingParams
+    from verl.workers.rollout.vllm_rollout.utils import extract_prompt_logprobs
 
     tokenizer = AutoTokenizer.from_pretrained(
         str(teacher_path), use_fast=True, local_files_only=True, trust_remote_code=False
@@ -102,6 +103,17 @@ def main() -> None:
     hf_scores = [float(value) for value in hf_smoke["teacher_sampled_token_logprobs"]]
     if len(hf_scores) != len(vllm_scores):
         raise ValueError("HF/vLLM Student action token counts differ")
+    verl_fields: dict[str, list] = {}
+    extract_prompt_logprobs(outputs[0], 0, verl_fields)
+    shifted_ids = [row[0] for row in verl_fields["prompt_ids"]]
+    shifted_scores = [row[0] for row in verl_fields["prompt_logprobs"]]
+    if shifted_ids != sequence_ids[1:] + [0] or len(shifted_scores) != len(sequence_ids):
+        raise ValueError("real vLLM output does not satisfy veRL's shifted Teacher contract")
+    verl_response_scores = shifted_scores[
+        len(teacher_prompt_ids) - 1 : len(teacher_prompt_ids) - 1 + len(response_ids)
+    ]
+    if verl_response_scores != vllm_scores:
+        raise ValueError("veRL extracted different Student-token scores from real vLLM output")
     differences = [abs(a - b) for a, b in zip(hf_scores, vllm_scores)]
     payload = {
         "artifact": "nonconfirmatory_opd_vllm_vs_hf_teacher_scores",
@@ -115,6 +127,7 @@ def main() -> None:
         "student_action_token_ids": response_ids,
         "hf_teacher_logprobs": hf_scores,
         "vllm_teacher_logprobs": vllm_scores,
+        "verl_extractor_shifted_contract_verified": True,
         "absolute_differences": differences,
         "max_absolute_difference": max(differences),
         "vllm_model_load_and_score_seconds": time.monotonic() - started,
