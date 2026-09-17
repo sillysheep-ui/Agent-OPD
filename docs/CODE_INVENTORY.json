@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "7f7f367f361ab1e609d091924608ecc80eafafc9",
+  "code_revision_at_generation": "f9f4c36d83cf091912b44568105d86271a38e06b",
   "canonical_code": {
-    "tree_sha256": "b4a167188b499e03c0fd8a0d08649791c3ec870ac28c817c7789e13532c11269",
-    "files": 93,
-    "bytes": 811002
+    "tree_sha256": "e1717a52f22532baa9fc3611a4c26d45fff3c3c58c0705c0cc720706aa19583d",
+    "files": 94,
+    "bytes": 815917
   },
-  "files": 244,
-  "bytes": 1538120,
+  "files": 245,
+  "bytes": 1543035,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 35,
+    "scripts": 36,
     "src": 42,
     "tests": 35
   },
@@ -884,6 +884,12 @@
       "path": "scripts/check_verl_opd_alignment.py",
       "bytes": 2144,
       "sha256": "eac5bb217492f499a8e549f76b0a69f9a6708ed4a423ff6707dda64b43e6cce8",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_verl_opd_worker.py",
+      "bytes": 4915,
+      "sha256": "2c88aad303852bc5dfb7363fad30dd6f3031af290fa6da0535885e4ba26a8ec8",
       "role": "canonical_or_documentation"
     },
     {
