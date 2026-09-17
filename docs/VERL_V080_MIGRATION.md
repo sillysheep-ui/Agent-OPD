@@ -118,3 +118,8 @@ Teacher 打分把 Student 提示词和响应 Token 一起传入，不能满足�
 该接线尚未通过 vLLM Teacher API 对拍与梯度/保存烟测，不能投入确认性训练；
 目前它对非单行、不可执行或未以 EOS 结束的 Student 响应直接报错，必须先
 定义并测试无效 rollout 的预算及训练处理策略。
+
+`scripts/smoke_opd_vllm_teacher.py` 可在同一条旧状态/Student 动作 Token
+上调用 vLLM `prompt_logprobs=0`，与上述 Hugging Face 前向逐 Token 对拍。
+即使对拍通过，也只证明 Teacher 推理端的数值与 Token 定位，尚不证明 veRL
+批处理、梯度或 checkpoint 正确。
