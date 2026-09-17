@@ -49,6 +49,10 @@ class OmniOPDActionLoop(SingleTurnAgentLoop):
             self.tokenizer, output.response_ids, actions
         )
         output.response_mask = [1] * len(content_ids) + [0]
+        # veRL's rollout/reward pipeline requires rm_scores even when OPD
+        # deliberately disables task rewards. This zero is a plumbing value,
+        # not an ALFWorld success signal.
+        output.reward_score = 0.0
         output.extra_fields["opd_canonical_action"] = canonical_action
         output.extra_fields["opd_scored_action_tokens"] = len(content_ids)
         return output

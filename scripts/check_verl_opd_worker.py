@@ -192,6 +192,8 @@ def main() -> None:
             raise AssertionError("AgentLoop did not preserve the real vLLM Student tokens")
         if generated.response_mask != [1] * (len(generated_ids) - 1) + [0]:
             raise AssertionError("AgentLoop failed to mask only the real vLLM Student EOS")
+        if generated.reward_score != 0.0 or not torch.all(generated.as_dict()["rm_scores"] == 0):
+            raise AssertionError("pure OPD rollout must supply a zero plumbing reward")
         print("real vLLM Student tokens through OmniOPD AgentLoop: OK")
     print("real-state OPD worker and veRL sampled-token KL gradient contract: OK")
 
