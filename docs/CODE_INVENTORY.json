@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "85596c65015e80eb4375e09d367a037f4a51ca41",
+  "code_revision_at_generation": "9ef2e64c32a7a7caddbc871bcd0879bc9fed7159",
   "canonical_code": {
-    "tree_sha256": "517dbaf9e77f922901883a96e3c8277d490e0afd71805ee590c8a2c925111606",
+    "tree_sha256": "f08fa8098bd25f83a661efc30dabba5be544f8e4d9cd41f2106d4aa4ff80b981",
     "files": 88,
-    "bytes": 782033
+    "bytes": 783986
   },
   "files": 238,
-  "bytes": 1503566,
+  "bytes": 1506177,
   "counts_by_root": {
     "configs": 10,
     "docker": 2,
@@ -186,8 +186,8 @@
     },
     {
       "path": "docs/VERL_V080_MIGRATION.md",
-      "bytes": 6188,
-      "sha256": "f62e310abb65ed4cbef350eb2553b5aed116242e45565a5a5f21b67151b8d10b",
+      "bytes": 6660,
+      "sha256": "b308666c428eeff99abe062b159f2d7f4e36d15a3c1ca2c2d5196119216e9996",
       "role": "canonical_or_documentation"
     },
     {
@@ -858,8 +858,8 @@
     },
     {
       "path": "scripts/audit_opd_tokenizers.py",
-      "bytes": 5558,
-      "sha256": "aea108531712538c89ce50c5f6c7c1a243620f77b289581fdd658204c34aeab9",
+      "bytes": 7271,
+      "sha256": "ee003631f18621f51258172a095fba5835216e131a7b66ccaee5a571f162e208",
       "role": "canonical_or_documentation"
     },
     {
@@ -1152,8 +1152,8 @@
     },
     {
       "path": "src/omniopd/opd_adapter.py",
-      "bytes": 8351,
-      "sha256": "c904177255ae6e9e576a6c863fcd1f18c3e089de865b6f15e194c26b040b81a0",
+      "bytes": 8591,
+      "sha256": "4d459383033001f6b490d9a512c6879bed1799590f818a6319fb554da3768085",
       "role": "canonical_or_documentation"
     },
     {
@@ -1344,8 +1344,8 @@
     },
     {
       "path": "tests/test_opd_adapter.py",
-      "bytes": 4654,
-      "sha256": "4b346c2d1cc53bc7560f0df9f63a13e8ef19453ccf079b149d41b6376b9f6c96",
+      "bytes": 4840,
+      "sha256": "df1e643c3d92ac17e70cfe52b7b1902d680fcacb35a68cd49d3a48313658ce3f",
       "role": "canonical_or_documentation"
     },
     {
