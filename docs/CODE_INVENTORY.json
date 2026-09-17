@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "abe8f63c7f35f3178f860b950c0c0489e23c4ecc",
+  "code_revision_at_generation": "39aec4d1de66266dfb172496322529492cc30f8a",
   "canonical_code": {
-    "tree_sha256": "860951637187de1213666708ea48460857e37d91fa34ee9ec150492fef24b302",
+    "tree_sha256": "8e2a7ac0e0e822784a6034ea6a4541851836af78901c9ba3b34cd1d652904368",
     "files": 95,
-    "bytes": 825212
+    "bytes": 826039
   },
   "files": 246,
-  "bytes": 1554133,
+  "bytes": 1554960,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -1020,8 +1020,8 @@
     },
     {
       "path": "scripts/smoke_opd_vllm_teacher.py",
-      "bytes": 5623,
-      "sha256": "b952beaf8a915bf4e6103d4b49b65be2d353c6894b2ca366d7f24de2eb20eb23",
+      "bytes": 6450,
+      "sha256": "68efa683c7d40fba97b10f047e586b2d8f170c1b56ab59ce9f01a714f175e7f0",
       "role": "canonical_or_documentation"
     },
     {
