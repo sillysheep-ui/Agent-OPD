@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "afff0fb27afab1fbff52d65d37185e37a71251b9",
+  "code_revision_at_generation": "746254d2a246faf7a4d8d32048cb531c7926ab2d",
   "canonical_code": {
-    "tree_sha256": "5ea2684598c2ebbeab3d27804b0bac107bdad8fbbe723843b1a791dc5ac8e309",
-    "files": 91,
-    "bytes": 802832
+    "tree_sha256": "3c393f8d127e144e2b6c5875a50aed978cdbda5fcfd97715e1fbce9f6793e9e9",
+    "files": 92,
+    "bytes": 808455
   },
-  "files": 242,
-  "bytes": 1529067,
+  "files": 243,
+  "bytes": 1534999,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 33,
+    "scripts": 34,
     "src": 42,
     "tests": 35
   },
@@ -192,8 +192,8 @@
     },
     {
       "path": "docs/VERL_V080_MIGRATION.md",
-      "bytes": 8471,
-      "sha256": "bf725b837a0bef9fe63fe356a19a12c6d0560ffa12be498aed696dc59dfa5009",
+      "bytes": 8780,
+      "sha256": "181243f672a731653ac9ebbe74716ce360cdf7d611ab406eda4b7c7b8f71c956",
       "role": "canonical_or_documentation"
     },
     {
@@ -998,6 +998,12 @@
       "path": "scripts/smoke_opd_teacher_scores.py",
       "bytes": 7995,
       "sha256": "2fcf4715b6103508f710e03dedf996c59b6c23cc5eb01410760843cd14fbe4de",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/smoke_opd_vllm_teacher.py",
+      "bytes": 5623,
+      "sha256": "b952beaf8a915bf4e6103d4b49b65be2d353c6894b2ca366d7f24de2eb20eb23",
       "role": "canonical_or_documentation"
     },
     {
