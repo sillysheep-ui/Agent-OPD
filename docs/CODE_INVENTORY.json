@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "f9f4c36d83cf091912b44568105d86271a38e06b",
+  "code_revision_at_generation": "3b6d5788a571c86741335a241aea4544b94ac945",
   "canonical_code": {
-    "tree_sha256": "e1717a52f22532baa9fc3611a4c26d45fff3c3c58c0705c0cc720706aa19583d",
+    "tree_sha256": "0c8cc4824596b4481b7d8fb6778141a49c2fd331f85a4fa60ae5a7f894fef106",
     "files": 94,
-    "bytes": 815917
+    "bytes": 818223
   },
   "files": 245,
-  "bytes": 1543035,
+  "bytes": 1545341,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -888,8 +888,8 @@
     },
     {
       "path": "scripts/check_verl_opd_worker.py",
-      "bytes": 4915,
-      "sha256": "2c88aad303852bc5dfb7363fad30dd6f3031af290fa6da0535885e4ba26a8ec8",
+      "bytes": 7221,
+      "sha256": "bd89cfc675254f01a7349cdd3163c9451d3a6775d79319712bc25d8e59e1f91c",
       "role": "canonical_or_documentation"
     },
     {
