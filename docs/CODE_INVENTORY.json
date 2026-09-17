@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "83d3a7d337e21a68be454cfe5e37486efc1bb5cb",
+  "code_revision_at_generation": "4227de8d6683cb03f8c893e9e397d056068f6dba",
   "canonical_code": {
-    "tree_sha256": "7679b481da3fac3d543dc265bc3ab40a2f7beb29d06242b32f5447372e9b34c2",
+    "tree_sha256": "831c0cbed2f48220aaa085961a9958d623b9c45a6fae1c109b2e0c368024b7fa",
     "files": 83,
-    "bytes": 756784
+    "bytes": 756848
   },
-  "files": 230,
-  "bytes": 1459400,
+  "files": 231,
+  "bytes": 1462812,
   "counts_by_root": {
     "configs": 9,
     "docker": 1,
@@ -19,7 +19,7 @@
     "repository_root": 3,
     "scripts": 30,
     "src": 40,
-    "tests": 32
+    "tests": 33
   },
   "entries": [
     {
@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/ALFWORLD_REBUILD_20260916.md",
-      "bytes": 3913,
-      "sha256": "d16045900b29e0a5df02fe84f2fc0a4ecc2ffa097fef0ac877698f2c3ca709a2",
+      "bytes": 4164,
+      "sha256": "111c0c5f6f69bc098cb6897f72b6ceec51b66c256bfb9cb4459261fdd8e86e51",
       "role": "canonical_or_documentation"
     },
     {
@@ -144,8 +144,8 @@
     },
     {
       "path": "docs/REPRODUCTION.md",
-      "bytes": 24095,
-      "sha256": "70c0d94359efaca25607499c919f835ffee986355a9071e8f1ffc1524522cb77",
+      "bytes": 24846,
+      "sha256": "703b6962e883161c31b7479b5c20b3aa0ec95e0c1ff29169eeca929276ea8122",
       "role": "canonical_or_documentation"
     },
     {
@@ -162,8 +162,8 @@
     },
     {
       "path": "docs/VERIFICATION_REPORT.md",
-      "bytes": 10843,
-      "sha256": "e9e09050d176c488d7285175c81cec4c779e99a253430bb091fae3cae3fb0951",
+      "bytes": 11926,
+      "sha256": "b2aa4903cb4df6f80d802ea2575741a99b7e44795f33026eb4e52d2e979a6681",
       "role": "canonical_or_documentation"
     },
     {
@@ -918,26 +918,26 @@
     },
     {
       "path": "scripts/run_verl_train.sh",
-      "bytes": 32251,
-      "sha256": "04bdd64e5ea14fe1b26caa61d946bfc24fd211e4d9ffee1fd07c70a816581bfb",
+      "bytes": 32315,
+      "sha256": "3087584905455db0b789f88fe2cbcf4681b554e6a12cbdee9ab7e231a8cf35f7",
       "role": "canonical_or_documentation"
     },
     {
       "path": "scripts/run_vllm_eval.sh",
       "bytes": 9182,
-      "sha256": "bc06077ca223022227e8ead83faf571adfb02bd5eee94886f9438126273325c0",
+      "sha256": "777597b8f67c2143a9adc19b45c3493e3b5d3277fa590a632400c6b4f56ec335",
       "role": "canonical_or_documentation"
     },
     {
       "path": "scripts/run_vllm_position.sh",
       "bytes": 7140,
-      "sha256": "34483fdebd576dc5001a0ab6e126d78fd57e7e6d7a2f6cc306c0079981011ac4",
+      "sha256": "073041e37c63d8e4b365deb79505f9507248f743afc7cb31cddebda329359d39",
       "role": "canonical_or_documentation"
     },
     {
       "path": "scripts/run_vllm_state_pool.sh",
       "bytes": 6584,
-      "sha256": "1591cf51cee863531ef9cda3926e43a93274fbfef16f8ba52d093ba910d2f978",
+      "sha256": "586a1710cceef44efe3ea899c9c427cb721d8454b52decb03146393e529d8630",
       "role": "canonical_or_documentation"
     },
     {
@@ -1362,8 +1362,8 @@
     },
     {
       "path": "tests/test_service_attestation.py",
-      "bytes": 2669,
-      "sha256": "6d82376e3787d3cc27cd4d46fcc93779e74d7e644ed07a2376a2e6684c89b037",
+      "bytes": 3112,
+      "sha256": "f43ea22b7cf3c833d7aff8d61e32f39589f073de46ead2b68da14f57845b112f",
       "role": "canonical_or_documentation"
     },
     {
@@ -1388,6 +1388,12 @@
       "path": "tests/test_torch_dataset.py",
       "bytes": 4342,
       "sha256": "bfdddb1bfca430f2b2c26ae22c2b329302e0dbac4de8adc206b6f06722013925",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "tests/test_training_launcher.py",
+      "bytes": 820,
+      "sha256": "1ebf9cdf9af21f926be58647f4de2e02e8f40256c5b39a34a37b1ed7782bc6e2",
       "role": "canonical_or_documentation"
     },
     {
