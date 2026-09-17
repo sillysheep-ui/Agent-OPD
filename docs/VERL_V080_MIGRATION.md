@@ -65,3 +65,26 @@ Teacher 预算都不同，不应声称“各 150 次请求”等价于同等计�
 这些结果不包含 Qwen3-14B Teacher、Teacher Token 分布、ALFWorld 正式数据、
 正式 launch/completion manifest 或环境交互对照；它们不验证论文结论。
 第 3、4、5 项仍未完成，当前**不能启动传统 OPD 确认性实验**。
+
+## 逐 Token OPD 适配进度与未闭合接口
+
+- `src/omniopd/opd_adapter.py` 已能把固定状态池中的 Student 历史转换为
+  Student 提示词，并另存由 Teacher 系统提示词构造的评分上下文；不会把旧
+  Student 行为动作或 Teacher 新采样动作误当成 OPD 目标。
+- `scripts/build_opd_prompts.py` 只针对已登记的均匀嵌套选样生成提示词行，
+  逐项核对状态池、选样清单、实验配置、文件哈希和当前代码版本。输出清单明确
+  标记 `training_ready: false`。代码改动后须重新生成状态池与选样文件，不能
+  使用旧版确认性实验的清单。
+- `scripts/audit_opd_tokenizers.py` 在不加载模型权重的前提下，核对 Qwen3
+  Student/Teacher 的 Token ID 空间、编码规则、特殊 Token 和非思考模式提示词；
+  它只证明 Token ID 可比较，不证明 Teacher 权重、服务或打分接口正确。
+- `align_teacher_sampled_token_logprobs` 为 Student 生成的 Token 对齐 Teacher
+  的逐位置 logprob，并拒绝缺失、非有限值和序列错位。尚未与 veRL worker
+  的实际返回结构连接，也未通过真实模型端到端测试。
+
+下一道实现关口是：从 Student **实际采样**的动作构造 action-only 掩码，按
+`P_T(s)` 加同一组 Student Token ID 请求冻结 Teacher 的逐位置评分，再将
+对齐后的有效 Token logprob 接入 veRL 的 OPD 损失。官方 veRL 当前默认的
+Teacher 打分把 Student 提示词和响应 Token 一起传入，不能满足这里两个系统
+提示词不同的定义；必须使用本仓自有的评分适配。固定状态池只代表条件于
+所选状态的 Token-on-policy 更新，不代表训练中实时交互形成的新状态分布。

@@ -23,7 +23,7 @@ from omniopd.provenance import (
 from omniopd.schema import ActionSample, AgentState, RolloutTurn
 from omniopd.selection import admissible_entropy
 from omniopd.validation import state_pool_behavior_student_contract
-from scripts import annotate_states, select_states
+from scripts import annotate_states, build_opd_prompts, select_states
 from scripts.validate_experiment_pair import build_annotation_pair_manifest
 
 
@@ -273,6 +273,49 @@ def test_state_pool_selection_annotation_pair_preserves_behavior_student_identit
                     selection_manifest_path.read_text(encoding="utf-8")
                 )
                 assert selection_manifest["behavior_student"] == expected_behavior
+
+                opd_prompts_path = root / f"{experiment}.opd_prompts.jsonl"
+                opd_manifest_path = root / f"{experiment}.opd_prompts.manifest.json"
+                build_opd_prompts.build(
+                    state_pool_path=state_pool,
+                    state_pool_manifest_path=state_pool_manifest_path,
+                    selection_path=selection_path,
+                    selection_manifest_path=selection_manifest_path,
+                    experiment_path=config_path,
+                    output=opd_prompts_path,
+                    manifest_output=opd_manifest_path,
+                )
+                opd_rows = list(read_jsonl(opd_prompts_path))
+                assert len(opd_rows) == arm["distinct_states_M"]
+                assert all(row["data_source"] == "alfworld_fixed_state_token_opd" for row in opd_rows)
+                assert all(
+                    row["prompt"][0]["content"] == STUDENT_SYSTEM_PROMPT
+                    and row["extra_info"]["teacher_prompt"][0]["content"]
+                    != STUDENT_SYSTEM_PROMPT
+                    for row in opd_rows
+                )
+                opd_manifest = json.loads(opd_manifest_path.read_text(encoding="utf-8"))
+                assert opd_manifest["training_ready"] is False
+                assert opd_manifest["prompts_sha256"] == sha256_file(opd_prompts_path)
+                tampered_manifest_path = root / f"{experiment}.tampered_selection.json"
+                tampered_manifest_path.write_text(
+                    json.dumps({**selection_manifest, "selection_sha256": "0" * 64}),
+                    encoding="utf-8",
+                )
+                try:
+                    build_opd_prompts.build(
+                        state_pool_path=state_pool,
+                        state_pool_manifest_path=state_pool_manifest_path,
+                        selection_path=selection_path,
+                        selection_manifest_path=tampered_manifest_path,
+                        experiment_path=config_path,
+                        output=root / f"{experiment}.rejected_opd.jsonl",
+                        manifest_output=root / f"{experiment}.rejected_opd.manifest.json",
+                    )
+                except ValueError as error:
+                    assert "selection manifest" in str(error)
+                else:
+                    raise AssertionError("tampered OPD selection manifest must fail")
 
                 annotation_dir = root / f"{experiment}.annotations"
                 _run_main(
