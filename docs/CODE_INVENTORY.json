@@ -2,18 +2,18 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "4227de8d6683cb03f8c893e9e397d056068f6dba",
+  "code_revision_at_generation": "430c0987746f5a2dd67e776ef907183c58f0bf93",
   "canonical_code": {
-    "tree_sha256": "831c0cbed2f48220aaa085961a9958d623b9c45a6fae1c109b2e0c368024b7fa",
-    "files": 83,
-    "bytes": 756848
+    "tree_sha256": "aa7fa48ca8e4eda1cf1877d7771e653d965b4da1f55cc55893cb5a70bcf14c64",
+    "files": 85,
+    "bytes": 759483
   },
-  "files": 231,
-  "bytes": 1462812,
+  "files": 234,
+  "bytes": 1472170,
   "counts_by_root": {
-    "configs": 9,
-    "docker": 1,
-    "docs": 13,
+    "configs": 10,
+    "docker": 2,
+    "docs": 14,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
@@ -30,8 +30,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 7400,
-      "sha256": "92a1301855786ba542b51c576b3d819e4af4dcd05e94389b61365ec62dacd500",
+      "bytes": 7679,
+      "sha256": "8a134e3610d457e6e1f94bd87870ca36b5481e0e28aa42e9cca3c6fae62da26c",
       "role": "canonical_or_documentation"
     },
     {
@@ -89,15 +89,27 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "configs/verl_v080_omniopd_sft.yaml",
+      "bytes": 1160,
+      "sha256": "ed3fcc5d5f7ac9558a02f0db13404114ecee5d85266addedac3f06375a71ab62",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "docker/Dockerfile.verl041",
       "bytes": 737,
       "sha256": "52ea52ed2be151415d122a836652f2b6f42f61f7361ebc51b4a5bd4793b5ee26",
       "role": "canonical_or_documentation"
     },
     {
+      "path": "docker/Dockerfile.verl080",
+      "bytes": 409,
+      "sha256": "54476a246569e73211fa3744fce550c08273d2b7dd3f7834d32ecd2cdbcd5703",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "docs/00_START_HERE.md",
-      "bytes": 5032,
-      "sha256": "7fa49ba1b3ab94647db303b82e6dc1ac94c5bb8e5aa51bba41100b22f62ce11c",
+      "bytes": 5483,
+      "sha256": "ad2f02d1b3bea41140bccd29fa66526f3b511419d9bb3d7c69aa24ed4bbe190c",
       "role": "canonical_or_documentation"
     },
     {
@@ -144,8 +156,8 @@
     },
     {
       "path": "docs/REPRODUCTION.md",
-      "bytes": 24846,
-      "sha256": "703b6962e883161c31b7479b5c20b3aa0ec95e0c1ff29169eeca929276ea8122",
+      "bytes": 25119,
+      "sha256": "516332b5b32e9c5c2a1c906d09118f3231c3d781f10556141e1e84152d7520a3",
       "role": "canonical_or_documentation"
     },
     {
@@ -162,14 +174,20 @@
     },
     {
       "path": "docs/VERIFICATION_REPORT.md",
-      "bytes": 11926,
-      "sha256": "b2aa4903cb4df6f80d802ea2575741a99b7e44795f33026eb4e52d2e979a6681",
+      "bytes": 12161,
+      "sha256": "2cd87f00ea4a5ce2903d4d583ef1d8cf528dd57f368c6b8d0b31bbd8fa754ba9",
       "role": "canonical_or_documentation"
     },
     {
       "path": "docs/VERL_INTEGRATION.md",
-      "bytes": 4572,
-      "sha256": "e26246119c0bc879e41e1d8aa0766c8fa68703842603300b80a222c2499b9ec1",
+      "bytes": 4851,
+      "sha256": "0319e6bc3f31c0dfb298bfe62ce61a232c0ecd94e6237fb33f62274cc5c97aac",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/VERL_V080_MIGRATION.md",
+      "bytes": 4426,
+      "sha256": "709bd9c8d6838e25b71610c43e89320039bd5516094ba910abfe353692d481fe",
       "role": "canonical_or_documentation"
     },
     {
@@ -918,8 +936,8 @@
     },
     {
       "path": "scripts/run_verl_train.sh",
-      "bytes": 32315,
-      "sha256": "3087584905455db0b789f88fe2cbcf4681b554e6a12cbdee9ab7e231a8cf35f7",
+      "bytes": 33102,
+      "sha256": "e4073757b663d54d0854dc516c303c7e48d147ca1a2170e78735c5aae77e18de",
       "role": "canonical_or_documentation"
     },
     {
@@ -1392,8 +1410,8 @@
     },
     {
       "path": "tests/test_training_launcher.py",
-      "bytes": 820,
-      "sha256": "1ebf9cdf9af21f926be58647f4de2e02e8f40256c5b39a34a37b1ed7782bc6e2",
+      "bytes": 1879,
+      "sha256": "51f084be80a45bb93841fbd10df469f6dafc3e89930ed5e672f5374c2aace58e",
       "role": "canonical_or_documentation"
     },
     {
