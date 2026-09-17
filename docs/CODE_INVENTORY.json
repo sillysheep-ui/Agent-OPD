@@ -2,18 +2,18 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "fd21ef2c9d6a4c320e531441969f7325bb39fc0a",
+  "code_revision_at_generation": "c9ec0ab255f7a0054b072bed40e3235cde0272fe",
   "canonical_code": {
     "tree_sha256": "8e2a7ac0e0e822784a6034ea6a4541851836af78901c9ba3b34cd1d652904368",
     "files": 95,
     "bytes": 826039
   },
-  "files": 246,
-  "bytes": 1555687,
+  "files": 247,
+  "bytes": 1568191,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
-    "docs": 14,
+    "docs": 15,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
@@ -114,8 +114,8 @@
     },
     {
       "path": "docs/00_START_HERE.md",
-      "bytes": 5483,
-      "sha256": "ad2f02d1b3bea41140bccd29fa66526f3b511419d9bb3d7c69aa24ed4bbe190c",
+      "bytes": 5664,
+      "sha256": "c6579b7ccf56634d46d3ff40dca4720ad5341094d34fcc1a69cd0d0ad255511f",
       "role": "canonical_or_documentation"
     },
     {
@@ -140,6 +140,12 @@
       "path": "docs/EXECUTOR_PROMPT.md",
       "bytes": 2877,
       "sha256": "4aedc3bd25394995ef856a33933a36160d2ab8bcf15e8096a5f7d81220413f2c",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/EXPERIMENT_ISSUES_20260917.md",
+      "bytes": 12323,
+      "sha256": "dab201a5d96acec71008b7efe1c836d5dd791725941ff644ed589b63e3cbbfe2",
       "role": "canonical_or_documentation"
     },
     {
