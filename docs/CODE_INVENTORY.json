@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "3f07d6f6db6fa590d9c37f851f07a7d6f7dd11de",
+  "code_revision_at_generation": "2a200849da9948b483cf0ff0ec469a7380ce81ae",
   "canonical_code": {
     "tree_sha256": "8e2a7ac0e0e822784a6034ea6a4541851836af78901c9ba3b34cd1d652904368",
     "files": 95,
     "bytes": 826039
   },
   "files": 247,
-  "bytes": 1571968,
+  "bytes": 1573077,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -144,8 +144,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 16057,
-      "sha256": "5e4cbfb55aa3e0289b0fe79df2119264eef8921e74de466ae28aa47d49c95c3d",
+      "bytes": 17166,
+      "sha256": "e3ece896e484965837c39e6562909e5f2f0fb83d65d8d60995a3917e7b235f7f",
       "role": "canonical_or_documentation"
     },
     {
