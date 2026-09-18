@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "795a724fa6d39b17ac4e29313c95f17621b0081c",
+  "code_revision_at_generation": "ad2d35695bf36504163446ce3701b9153c2a9f25",
   "canonical_code": {
-    "tree_sha256": "c33bf32cc88a41bc250bdba0b1bd8011883cc26b8bbe60dc77ada6d418f213a0",
-    "files": 98,
-    "bytes": 835322
+    "tree_sha256": "9ca94b730a11d56887a0ff43050ed94793f6702489bbdca9c95eb7635604c12f",
+    "files": 99,
+    "bytes": 838167
   },
-  "files": 250,
-  "bytes": 1584477,
+  "files": 251,
+  "bytes": 1587322,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 40,
+    "scripts": 41,
     "src": 42,
     "tests": 35
   },
@@ -884,6 +884,12 @@
       "path": "scripts/build_opd_prompts.py",
       "bytes": 8641,
       "sha256": "2c986949c394a2b7124c4dc67068df08b6a8d1191b9a915e8b027e9d2d3b61cd",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_agent_r1_student_format.py",
+      "bytes": 2845,
+      "sha256": "c6dcf513762db2d26d1bba61bd5aafeca8476ae31156216e08a16941a040bc30",
       "role": "canonical_or_documentation"
     },
     {
