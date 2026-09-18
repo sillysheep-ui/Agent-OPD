@@ -73,6 +73,11 @@
 | O13 | “同一模型在不同 ALFWorld 框架的准确率不同”不能直接归因为模型变化。AgentBoard 的任务代码默认 `max_num_steps=30`，本仓协议为 50；它还使用自己的示例提示词、动作解析与成功/进度/grounding 记录路径。游戏集合、`done`/`won` 语义、Token 模板及解码参数是否一致需要逐项核对。 | 跨框架报告先区分成功率、进度率和动作 grounding，不按指标名称猜测同义；冻结同一游戏文件及 split、逐 game 种子、最大步数、prompt/历史截断、动作解析/无效动作、模型与 Tokenizer 身份、推理后端和采样设置，再做逐游戏配对对拍。**已确认存在协议设置差异；它们对具体分数差的贡献仍待实测**。来源：AgentBoard `agentboard/tasks/alfworld.py`、`assets/agent_customization.md`，本仓 `configs/alfworld_textworld.yaml`、`src/omniopd/adapters.py` 与 `src/omniopd/protocol.py`。 |
 | O14 | Agent-R1 现有 ALFWorld 的多步环境流转和另一个 `opd` 分支的通用蒸馏入口，可能减少本仓自建在线轨迹调度代码；但 `main` 的 ALFWorld recipe 与 `opd` 分支的 GSM8K OPD 示例并不是一个已验证的“ALFWorld+OPD”组合。`opd` 分支固定依赖 `fishsure/verl@5779c7c6782733f77ef640f557bea572dfeacc12`，不能直接假设与当前官方 veRL v0.8.0 接线兼容。 | **待架构评估**：在独立 checkout/镜像中固定 Agent-R1 的提交，核对 ALFWorld `reset/step`、状态提示词、动作解析、轨迹掩码和奖励；核对 OPD Teacher 是在本研究独立 `P_T(s)` 下对 Student 实际动作 Token 评分，及无效尝试、状态加权、预算与 checkpoint。当前 veRL v0.8.0 单状态接线保留作对拍基线，不把两个分支或版本混装。来源：Agent-R1 官方 `README.md`、`recipes/alfworld/README.md`、`examples/gsm8k/run_opd.sh`、`requirements-opd.txt`（2026-09-17 查阅）。 |
 | O15 | Agent-R1 的公开训练说明主要是多步 RL 和 `opd` 分支的通用 Token 蒸馏；未找到可直接替代本研究冷启动 SFT/有效 Teacher 动作加权 CE 的 Agent-R1 官方 SFT recipe。把“Agent-R1 可收集轨迹”推断成“已原生支持本论文两类 SFT”会误设实施范围。 | **待接口验收**：优先复用已单步验证的本仓 veRL SFT 路径训练共同冷启动 Student，再将其 checkpoint 接入 Agent-R1；所提方法的 Teacher 动作监督、有效性过滤和逐 game 权重须作为独立的加权 SFT 数据/损失链实现。若改为 Agent-R1 内部 SFT，先证明与现有训练器的 token mask、权重、优化及 checkpoint 可比。veRL 官方提供 SFT trainer；Agent-R1 原生 SFT 支持范围仍需在固定源码提交下复核，不能声称已证明不存在。**待决策/验收**。 |
+| O16 | 固定的 Agent-R1 `opd@7044f15` 对应 `fishsure/verl@5779c7c`，其 `AgentFlowManager` 默认发送完整 Student `input_ids` 给 Teacher，fork 又硬性要求返回的 Token ID 与请求逐位相同；直接替换为独立 `P_T(s)` 不符合代码合同。 | 在隔离路径 `/data/yangchunyu/ld/agent_r1_opd` 与 `agent_r1_verl_opd` 完成源码核查和容器 CPU 导入；原版 Agent-R1 配官方 veRL 0.8.0 的导入已失败。**待修改/验收**：在固定 fork 中接入可配置 manager/Teacher prompt，给同一 Student 动作在 `P_T(s)` 下评分，并明确两侧 Token ID 语义及逐位置对齐；不得把单纯换提示词当成完成。 |
+| O17 | Agent-R1 ALFWorld 默认输出 Hermes `env_step` 工具调用，而现有 SFT Student 的真实烟测输出为 `Action: go to countertop 2`；默认 parser 和文本后备都提取不到动作。其 recipe 默认每局 20 步，而本论文协议为 50 步。 | 真实 Student 输出与固定 fork parser 的 CPU 比对为 `directly_compatible=false`；只读一局真实游戏的 50 步环境包装器运行结束，但未获胜，也没有使用模型。**待修改/验收**：自定义 Agent Flow 保留原有 `P_S`、`Action:` 输出、50 步上限、游戏/环境种子、状态历史和无效动作政策；再做真实 Student 闭环逐游戏对拍。 |
+| O18 | Agent-R1 ALFWorld Flow 在命令不在 admissible 集合时仍调用 `executor.step(command)`；`done` 后又追加一次相同 prompt/response 的 `final_step` 以挂终局奖励。若 OPD 训练消费所有步骤，最后一段动作的 token 更新可能重复；后者仍需在训练批次确认。 | 源码直接证实执行/追加行为；待通过 Worker 的批次产物确认重复更新范围。**待修改/验收**：无效命令先按冻结政策计费/记录并禁止意外环境推进；终局奖励应挂到原动作步骤或用明确零训练 mask 的奖励事件，按 state/turn/token ID 查重。 |
+| O19 | Agent-R1 Teacher 布局按 `response_mask.sum()` 推断右侧 padding；保留在 `input_ids` 内但不给 EOS 训练权重，会生成比 Student 序列更宽的 Teacher 张量。fork 的 NestedTensor 路径还按 mask 有效数量从整段序列尾部取分数，因此存在将 EOS 评分替代首个动作评分的错位风险。 | CPU 假 Teacher 合同测试：6 Token Student、完整 response mask 时 Teacher 宽 6，动作-only mask `[1,1,0]` 时宽 7；另以 `check_agent_r1_loss_alignment.py` 做损失切片复核。**待修改/验收**：布局/切片必须使用实际 attention 与原始 response 长度定位评分，用训练 mask 仅做加权；新增含 EOS/左右 padding/多样本的梯度与张量对拍。 |
+| O20 | `agent_r1/workers/utils/losses.py` 定义了 `sft_loss`，但 Agent-R1 现有 recipe/engine 没有找到可直接运行本论文冷启动或加权有效动作 SFT 的入口；“有函数”不等于“有训练管线”。 | 固定源码的调用搜索只有定义/导出，engine 选择 PPO/蒸馏损失；继续沿用本仓已验证的独立 veRL SFT trainer，先核对相同模型、action mask、样本权重和产物身份，再进行共同初始化。**待验收**，不得宣称 SFT 已完成。 |
 
 ## 证据索引与下一步顺序
 
@@ -89,6 +94,14 @@
 - 下一步按顺序：先冻结 O07/O09 的实验口径；再做 O10 的完整服务＋真实单步
   梯度/保存/加载烟测；随后按同一冻结 revision 重建 D01/D03/D04 的正式
   state pool 和所有下游输入；最后才启动匹配的确认性训练与评测。
+- Agent-R1 分支专项（2026-09-18）：先修 O17/O18 的 Student 动作与环境事件协议，
+  再修 O16/O19 的独立 Teacher 打分、EOS 与逐 Token 对齐；用合成序列证明梯度只落在
+  动作 Token 后，再启动真实 Student 轨迹＋单步训练/保存/加载。它与上文当前 veRL
+  v0.8.0 路径是**隔离的候选实现**，不是已经通过的替代品。
+- Agent-R1 原版固定 checkout：`AgentR1/Agent-R1` 的 `opd@7044f15fa19d2505581d0ecd207de8dcf3f2bd6b`
+  与 `fishsure/verl@5779c7c6782733f77ef640f557bea572dfeacc12`；2026-09-18 的
+  只读检查产物位于 `/data/yangchunyu/ld/omniopd_runs/agentr1_audit_20260918/`。
+  路径是证据索引，不能替代归档文件与 checksum。
 
 本记录更新不等于服务器同步或 GitHub 推送；任何执行者仍须现场核对 Git 提交、
 镜像 ID、模型/Tokenizer 身份、GPU 占用、数据哈希与实际输出。
@@ -108,6 +121,9 @@
 跨实验复用检查。2026-09-17 追加 O13（跨框架 ALFWorld 评测可比性；来源为 AgentBoard
 官方代码及本仓协议，具体分数归因尚未验证）、O14（Agent-R1 候选路线及版本兼容风险）
 与 O15（Agent-R1/veRL 的 SFT 职责边界）。
+2026-09-18 追加 O16–O20（Agent-R1 固定版本的独立 Teacher prompt、动作协议、
+终局重复步、EOS mask 和 SFT 入口边界）；实际游戏脚本只证明环境可运行，尚未证明
+真实 Student 闭环或参数训练。此日期的 CPU 诊断不能升级为论文实验结果。
 同日完成当前 veRL v0.8.0 单状态非确认性输入生成、156 项离线测试和 Hydra 配置解析；
 **尚未**启动 Ray/vLLM 完整单步反向训练。后续更新应在此处追加日期、涉及 ID 和证据，
 不覆盖旧条目。
