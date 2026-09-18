@@ -76,8 +76,9 @@
 | O16 | 固定的 Agent-R1 `opd@7044f15` 对应 `fishsure/verl@5779c7c`，其 `AgentFlowManager` 默认发送完整 Student `input_ids` 给 Teacher，fork 又硬性要求返回的 Token ID 与请求逐位相同；直接替换为独立 `P_T(s)` 不符合代码合同。 | 在隔离路径 `/data/yangchunyu/ld/agent_r1_opd` 与 `agent_r1_verl_opd` 完成源码核查和容器 CPU 导入；原版 Agent-R1 配官方 veRL 0.8.0 的导入已失败。**待修改/验收**：在固定 fork 中接入可配置 manager/Teacher prompt，给同一 Student 动作在 `P_T(s)` 下评分，并明确两侧 Token ID 语义及逐位置对齐；不得把单纯换提示词当成完成。 |
 | O17 | Agent-R1 ALFWorld 默认输出 Hermes `env_step` 工具调用，而现有 SFT Student 的真实烟测输出为 `Action: go to countertop 2`；默认 parser 和文本后备都提取不到动作。其 recipe 默认每局 20 步，而本论文协议为 50 步。 | 真实 Student 输出与固定 fork parser 的 CPU 比对为 `directly_compatible=false`；只读一局真实游戏的 50 步环境包装器运行结束，但未获胜，也没有使用模型。**待修改/验收**：自定义 Agent Flow 保留原有 `P_S`、`Action:` 输出、50 步上限、游戏/环境种子、状态历史和无效动作政策；再做真实 Student 闭环逐游戏对拍。 |
 | O18 | Agent-R1 ALFWorld Flow 在命令不在 admissible 集合时仍调用 `executor.step(command)`；`done` 后又追加一次相同 prompt/response 的 `final_step` 以挂终局奖励。若 OPD 训练消费所有步骤，最后一段动作的 token 更新可能重复；后者仍需在训练批次确认。 | 源码直接证实执行/追加行为；待通过 Worker 的批次产物确认重复更新范围。**待修改/验收**：无效命令先按冻结政策计费/记录并禁止意外环境推进；终局奖励应挂到原动作步骤或用明确零训练 mask 的奖励事件，按 state/turn/token ID 查重。 |
-| O19 | Agent-R1 Teacher 布局按 `response_mask.sum()` 推断右侧 padding；保留在 `input_ids` 内但不给 EOS 训练权重，会生成比 Student 序列更宽的 Teacher 张量。fork 的 NestedTensor 路径还按 mask 有效数量从整段序列尾部取分数，因此存在将 EOS 评分替代首个动作评分的错位风险。 | CPU 假 Teacher 合同测试：6 Token Student、完整 response mask 时 Teacher 宽 6，动作-only mask `[1,1,0]` 时宽 7；另以 `check_agent_r1_loss_alignment.py` 做损失切片复核。**待修改/验收**：布局/切片必须使用实际 attention 与原始 response 长度定位评分，用训练 mask 仅做加权；新增含 EOS/左右 padding/多样本的梯度与张量对拍。 |
+| O19 | Agent-R1 Teacher 布局按 `response_mask.sum()` 推断右侧 padding；保留在 `input_ids` 内但不给 EOS 训练权重，会生成比 Student 序列更宽的 Teacher 张量。fork 的 NestedTensor 路径还按 mask 有效数量从整段序列尾部取分数，**已证实**将 EOS 评分替代首个动作评分。 | CPU 假 Teacher 合同测试：6 Token Student、完整 response mask 时 Teacher 宽 6，动作-only mask `[1,1,0]` 时宽 7；固定 fork 的真实损失切片诊断中目标动作分数 `[11,12]`，却读为 `[12,99]`（99 为 EOS），证据 `loss_alignment_eos_mask.json`。**待修改/验收**：布局/切片必须使用实际 attention 与原始 response 长度定位评分，用训练 mask 仅做加权；新增含 EOS/左右 padding/多样本的梯度与张量对拍。 |
 | O20 | `agent_r1/workers/utils/losses.py` 定义了 `sft_loss`，但 Agent-R1 现有 recipe/engine 没有找到可直接运行本论文冷启动或加权有效动作 SFT 的入口；“有函数”不等于“有训练管线”。 | 固定源码的调用搜索只有定义/导出，engine 选择 PPO/蒸馏损失；继续沿用本仓已验证的独立 veRL SFT trainer，先核对相同模型、action mask、样本权重和产物身份，再进行共同初始化。**待验收**，不得宣称 SFT 已完成。 |
+| O21 | 固定 fork 的 `_extract_prompt_logprobs` 在目标 Token ID 缺失于 vLLM 返回字典时，取字典首项的其他 Token 分数；若该位置是 `None` 还写入 `0.0`。Teacher token ID 列表即使逐位相同，也不能单独证明对应 logprob 是该 Token 的真实评分。 | 源码核对：`verl/workers/rollout/vllm_rollout/vllm_async_server.py` 的提取器，与 `teacher_manager.py` 仅比较 `teacher_ids` 的断言。**待修改/验收**：对所有纳入损失的 Student 动作 Token，字典必须包含目标 ID 且分数有限；否则 fail closed 并记入错误/成本 ledger。仅允许第一个无条件 Token 等预先定义且完全不入损失的位置缺分。 |
 
 ## 证据索引与下一步顺序
 
@@ -121,8 +122,8 @@
 跨实验复用检查。2026-09-17 追加 O13（跨框架 ALFWorld 评测可比性；来源为 AgentBoard
 官方代码及本仓协议，具体分数归因尚未验证）、O14（Agent-R1 候选路线及版本兼容风险）
 与 O15（Agent-R1/veRL 的 SFT 职责边界）。
-2026-09-18 追加 O16–O20（Agent-R1 固定版本的独立 Teacher prompt、动作协议、
-终局重复步、EOS mask 和 SFT 入口边界）；实际游戏脚本只证明环境可运行，尚未证明
+2026-09-18 追加 O16–O21（Agent-R1 固定版本的独立 Teacher prompt、动作协议、
+终局重复步、EOS mask、SFT 入口边界和评分 fail-open）；实际游戏脚本只证明环境可运行，尚未证明
 真实 Student 闭环或参数训练。此日期的 CPU 诊断不能升级为论文实验结果。
 同日完成当前 veRL v0.8.0 单状态非确认性输入生成、156 项离线测试和 Hydra 配置解析；
 **尚未**启动 Ray/vLLM 完整单步反向训练。后续更新应在此处追加日期、涉及 ID 和证据，
