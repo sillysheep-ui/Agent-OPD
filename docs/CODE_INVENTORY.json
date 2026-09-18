@@ -2,18 +2,18 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "a95a4e8d265d7bc5bca60b5bf3bf67f29d9f5e20",
+  "code_revision_at_generation": "cc683dbec739a0f236ca49c638079ccd1ea69d2b",
   "canonical_code": {
     "tree_sha256": "899daa502b420fb744d0f9a4e3fa7694d5496e42fd8107412fe2ce547c3cf7bf",
     "files": 101,
     "bytes": 843879
   },
-  "files": 253,
-  "bytes": 1597295,
+  "files": 254,
+  "bytes": 1603507,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
-    "docs": 15,
+    "docs": 16,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
@@ -119,6 +119,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "docs/AGENT_R1_ADAPTATION_20260918.md",
+      "bytes": 5419,
+      "sha256": "75657a0292ab2cf0f8d877f294f1264ba694f07d3b8fb91c0a27f1298b365bf4",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "docs/ALFWORLD_REBUILD_20260916.md",
       "bytes": 4164,
       "sha256": "111c0c5f6f69bc098cb6897f72b6ceec51b66c256bfb9cb4459261fdd8e86e51",
@@ -144,8 +150,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 23544,
-      "sha256": "04fa0806bfadd64fa8ecdc3edf1da84fe62c259db9fbf0705ebe0d500db95398",
+      "bytes": 24337,
+      "sha256": "8f9a573709819e6efa244615f97a9a6d0b4782ac479009d9e14ac26db058fd83",
       "role": "canonical_or_documentation"
     },
     {
