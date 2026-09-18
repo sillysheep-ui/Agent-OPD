@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "b49b323e9d93693de150d9fdbb3ce311559871a6",
+  "code_revision_at_generation": "a95a4e8d265d7bc5bca60b5bf3bf67f29d9f5e20",
   "canonical_code": {
-    "tree_sha256": "d2b51f380c0aa04ee04ced681de6e413dd7da451ad980b1873ac32787c3c9cd9",
-    "files": 100,
-    "bytes": 841702
+    "tree_sha256": "899daa502b420fb744d0f9a4e3fa7694d5496e42fd8107412fe2ce547c3cf7bf",
+    "files": 101,
+    "bytes": 843879
   },
-  "files": 252,
-  "bytes": 1590857,
+  "files": 253,
+  "bytes": 1597295,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 42,
+    "scripts": 43,
     "src": 42,
     "tests": 35
   },
@@ -144,8 +144,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 19283,
-      "sha256": "1a6e659eb77b856da19b5ad14a37803dc38fa116af4b771c84eae42200b7b527",
+      "bytes": 23544,
+      "sha256": "04fa0806bfadd64fa8ecdc3edf1da84fe62c259db9fbf0705ebe0d500db95398",
       "role": "canonical_or_documentation"
     },
     {
@@ -884,6 +884,12 @@
       "path": "scripts/build_opd_prompts.py",
       "bytes": 8641,
       "sha256": "2c986949c394a2b7124c4dc67068df08b6a8d1191b9a915e8b027e9d2d3b61cd",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_agent_r1_loss_alignment.py",
+      "bytes": 2177,
+      "sha256": "f9204af4e0b87f22ffdf3dae2e4ba2e0a8033e14ba8c66dd5ae39bd48bf82938",
       "role": "canonical_or_documentation"
     },
     {
