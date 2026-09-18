@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "ad2d35695bf36504163446ce3701b9153c2a9f25",
+  "code_revision_at_generation": "b49b323e9d93693de150d9fdbb3ce311559871a6",
   "canonical_code": {
-    "tree_sha256": "9ca94b730a11d56887a0ff43050ed94793f6702489bbdca9c95eb7635604c12f",
-    "files": 99,
-    "bytes": 838167
+    "tree_sha256": "d2b51f380c0aa04ee04ced681de6e413dd7da451ad980b1873ac32787c3c9cd9",
+    "files": 100,
+    "bytes": 841702
   },
-  "files": 251,
-  "bytes": 1587322,
+  "files": 252,
+  "bytes": 1590857,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 41,
+    "scripts": 42,
     "src": 42,
     "tests": 35
   },
@@ -890,6 +890,12 @@
       "path": "scripts/check_agent_r1_student_format.py",
       "bytes": 2845,
       "sha256": "c6dcf513762db2d26d1bba61bd5aafeca8476ae31156216e08a16941a040bc30",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_agent_r1_teacher_layout.py",
+      "bytes": 3535,
+      "sha256": "88b6e43abe205ee90dfd34901ac2e18bc2c2c6fc0bb303bbcf0d748313d80686",
       "role": "canonical_or_documentation"
     },
     {
