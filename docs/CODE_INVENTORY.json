@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "91b0c730538a629ed0172172c998f3647d6d1588",
+  "code_revision_at_generation": "795a724fa6d39b17ac4e29313c95f17621b0081c",
   "canonical_code": {
-    "tree_sha256": "e75cc65d5e800f780cc8c1bc2416cfcf91b7871b69a0b6b46d8a21fd5cf92b89",
-    "files": 97,
-    "bytes": 831881
+    "tree_sha256": "c33bf32cc88a41bc250bdba0b1bd8011883cc26b8bbe60dc77ada6d418f213a0",
+    "files": 98,
+    "bytes": 835322
   },
-  "files": 249,
-  "bytes": 1581036,
+  "files": 250,
+  "bytes": 1584477,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 39,
+    "scripts": 40,
     "src": 42,
     "tests": 35
   },
@@ -1022,6 +1022,12 @@
       "path": "scripts/select_states.py",
       "bytes": 12909,
       "sha256": "07140cca20b6d78b148b9f5eaaaf2c31c9f3a0eaa1cae4fae478900d7996236e",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/smoke_agent_r1_alfworld_env.py",
+      "bytes": 3441,
+      "sha256": "7659481d6c6bb621c423676d583368b69ebff099a32a9779100b38930fec4cb3",
       "role": "canonical_or_documentation"
     },
     {
