@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "ec3ad608a5ee05a05e3ad2fa35a3d9bd556d61b3",
+  "code_revision_at_generation": "3f11811aafdd4bcf0b9692a1c212ce9e87c93bd2",
   "canonical_code": {
-    "tree_sha256": "5b022c54bd22f1c24a82242123dca2eb26d9e8461e40561852dea3f250e8b857",
+    "tree_sha256": "41460f0969df542b3f873f6f44519824a93749e780a0eaaef5d3898ae51c5999",
     "files": 112,
-    "bytes": 937814
+    "bytes": 937826
   },
   "files": 266,
-  "bytes": 1719490,
+  "bytes": 1719502,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -1050,8 +1050,8 @@
     },
     {
       "path": "scripts/run_sft_coldstart.sh",
-      "bytes": 11220,
-      "sha256": "f30c447abaf052d1fd346065b267f003b84f5df633f174d2c99d6fb579f5b13d",
+      "bytes": 11232,
+      "sha256": "428b3f2eb9a99e891338b3938596b24259ee715dbf9e94fbf068fcf79f21eafa",
       "role": "canonical_or_documentation"
     },
     {
