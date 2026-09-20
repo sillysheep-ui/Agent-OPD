@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "2d30b1c9678defffa3862bf719f02cdcc7e36737",
+  "code_revision_at_generation": "b2842ad1dadf2176c86770260b862d824bb0beb5",
   "canonical_code": {
-    "tree_sha256": "588198a5d13b5eb6e76000d5da272cc428c76b7ec2684911cd9e7175efc60269",
-    "files": 110,
-    "bytes": 915803
+    "tree_sha256": "9825aedf886490d2728a608110193a65d93b0a9be31ebc0fb7d3defa3d87b02b",
+    "files": 111,
+    "bytes": 926594
   },
-  "files": 264,
-  "bytes": 1694229,
+  "files": 265,
+  "bytes": 1708270,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 52,
+    "scripts": 53,
     "src": 42,
     "tests": 36
   },
@@ -893,6 +893,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/build_expert_sft_data.py",
+      "bytes": 10345,
+      "sha256": "3318994a3891f6f5ac0ac8893c2f37e861258894e8d3801cf9b48d648d201676",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/build_opd_prompts.py",
       "bytes": 8641,
       "sha256": "2c986949c394a2b7124c4dc67068df08b6a8d1191b9a915e8b027e9d2d3b61cd",
@@ -1230,8 +1236,8 @@
     },
     {
       "path": "src/omniopd/dataset.py",
-      "bytes": 7294,
-      "sha256": "d4bb05639ebb2b007da2b0e7c91e7bc7864a7ee510da988c3bd9da241167e21f",
+      "bytes": 7740,
+      "sha256": "8ae43887f1e75252cbd6bffe312ccf707b93db2f19d15ab641db42c2f10d97af",
       "role": "canonical_or_documentation"
     },
     {
@@ -1428,8 +1434,8 @@
     },
     {
       "path": "tests/test_expert_collection.py",
-      "bytes": 1948,
-      "sha256": "a66f59e25b0eca7be79fda359caeead0893dba02ab9e7c08d9bf91c5a3c48dc2",
+      "bytes": 5198,
+      "sha256": "13097b839ae6952f4a86632c6148762328e62a890ec46cf8897026cf87485333",
       "role": "canonical_or_documentation"
     },
     {
