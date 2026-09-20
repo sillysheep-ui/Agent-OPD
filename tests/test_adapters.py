@@ -81,7 +81,16 @@ def _install_fake_alfworld_modules(environment):
     ]
     previous = {name: sys.modules.get(name) for name in names}
     textworld = types.ModuleType("textworld")
-    textworld.EnvInfos = lambda **kwargs: kwargs
+
+    def fake_env_infos(**kwargs):
+        # The real textworld.EnvInfos exposes mutable extras/facts attributes and
+        # the adapter appends the expert plan request to extras.
+        infos = types.SimpleNamespace(**kwargs)
+        infos.extras = list(kwargs.get("extras") or [])
+        infos.facts = kwargs.get("facts", False)
+        return infos
+
+    textworld.EnvInfos = fake_env_infos
     gym = types.ModuleType("textworld.gym")
     gym.register_games = lambda *args, **kwargs: "fake-env"
     gym.make = lambda env_id: environment
