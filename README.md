@@ -1,8 +1,12 @@
 # Agent OmniOPD
 
-> 当前正在将行动模仿训练入口迁到 veRL v0.8.0；传统逐 Token OPD 对照尚未
-> 接入 ALFWorld，也尚未完成新版多卡验收。不要将迁移分支或历史 0.4.1
-> 烟测视为可直接启动确认性新实验。详见 `docs/VERL_V080_MIGRATION.md`。
+> 最近一次落地（2026-09-20）：传统逐 Token OPD 的 veRL v0.8.0 训练内核已在
+> Qwen3-4B Student / Qwen3-14B Teacher 上跑通真实单步——非零梯度、优化器一阶与
+> 二阶动量非零、checkpoint 保存与显式恢复续训均通过。但这仍是非确认性单状态烟测：
+> invalid 与预算口径、`state_weight` 消费、正式估计器和多游戏数据都未冻结，
+> 不要据此启动确认性实验。共同冷启动 SFT 正在同一分支上建设。
+> 详见 `docs/EXPERIMENT_ISSUES_20260917.md`（E10、O23–O25）与
+> `docs/VERL_V080_MIGRATION.md`。
 
 这是依据论文定义重新整理的、协议优先的 Black-box Agent On-Policy Distillation
 代码库。它不把历史实验产物自动视为可信输入，而是显式记录状态 schema、
@@ -40,6 +44,19 @@ Teacher draws 在给定 \(s\) 后独立同分布，则
 - `docs/REPRODUCTION.md`：从state pool到统计推断的完整重跑顺序；
 - `docs/VERIFICATION_REPORT.md`：代码正确性与公式契合性的最终核验；
 - `docs/CODE_INVENTORY.json`：交付文件、字节数与SHA256清单。
+
+## 版本管理与持续迭代
+
+- `main` 是主干，只接收通过验证的改动；每个任务在独立分支上推进
+  （本任务为 `feat/expert-sft-coldstart`），完成后经 PR 或多个提交合并回 `main`；
+- 每次提交只承担一种清晰变更；回归数字、镜像标签与提交哈希三者必须能相互对上；
+- `.github/workflows/ci.yml` 在 push 与 PR 上运行离线 CI（编译、离线测试、Ruff），
+  覆盖 Python 3.10/3.11/3.12；GPU、vLLM、ALFWorld 与 Teacher API 集成测试留在
+  自托管 runner 或人工 smoke gate；
+- 服务器同步只走经 `git bundle verify` 校验的已提交引用，随后用 `merge --ff-only`
+  快进，并在容器内重跑离线回归后记录通过数；
+- 里程碑用 tag 标记（例如 `omniopd-v1.0.0`）；正式实验只能从带 tag 的干净工作区
+  启动，运行期间不得修改代码，需要修复时新建提交、新 tag 与新输出目录。
 
 旧数据由存在上下文错位、Teacher prompt 未使用、loss mask 错位等问题的代码
 生成，因此不能通过“只换训练器”修复。确认性结果必须从新的 state pool 开始重跑。

@@ -152,9 +152,11 @@ GitHub 仓库根目录必须是 `agent_omniopd/`。不得把其外层目录中�
 ### 5.2 分支与提交
 
 - `main`：只保留已验收、可复现的代码；
-- 功能分支：`feature/<name>`；
+- 功能分支：`feat/<name>`（仓库既有分支即用此前缀，例如 `feat/verl-v080-opd`）；
 - 修复分支：`fix/<name>`；
 - 实验协议变更：`protocol/<name>`；
+- 一个任务只占一个专用分支；同一任务的主题拆分用同一分支内的多个提交表达，
+  确需独立分支时从该任务分支派生，不平行创建多个同源分支；
 - 每个提交只承担一种清晰变更；
 - 合并前必须通过测试、静态检查、配置验证和敏感信息扫描；
 - 正式实验从带签名或受保护的 Git tag 启动，例如 `omniopd-v1.0.0`；
@@ -185,6 +187,10 @@ GitHub 仓库根目录必须是 `agent_omniopd/`。不得把其外层目录中�
 - 检查文档中的内部链接；
 - 运行 secret scan；
 - 检查代码清单或 canonical hash 是否需要更新。
+
+当前已实现：`.github/workflows/ci.yml` 在 push 与 PR 上运行 `compileall`、
+`scripts/run_tests.py` 与 Ruff，矩阵覆盖 Python 3.10/3.11/3.12。secret scan、配置
+一致性检查和 canonical hash 新鲜度检查仍未接入 CI，需继续补齐。
 
 GPU、vLLM、ALFWorld 和 Teacher API 集成测试默认不在公共 CI 中运行，可在自托管 runner
 或人工 smoke gate 中执行。
