@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "921bdc7469b3ae8bd28d584063b61fa919a92331",
+  "code_revision_at_generation": "7e64b142cca0c853368f3252dd9ac5d5c44de2af",
   "canonical_code": {
-    "tree_sha256": "e452bd23b23f78b6827b5f94da2581a31d46fc6ca512d981af8dd49d33caa880",
+    "tree_sha256": "ec37bec6e486e25d04486ae742ad9936f622d99fc46d2077f04403d72e7cadeb",
     "files": 108,
-    "bytes": 895555
+    "bytes": 896836
   },
   "files": 261,
-  "bytes": 1666988,
+  "bytes": 1668799,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -30,8 +30,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 7679,
-      "sha256": "8a134e3610d457e6e1f94bd87870ca36b5481e0e28aa42e9cca3c6fae62da26c",
+      "bytes": 8960,
+      "sha256": "1935647d0421550afc58baac20aa74234dfb8f91d66cdb6d6cae02189da90f9b",
       "role": "canonical_or_documentation"
     },
     {
@@ -162,8 +162,8 @@
     },
     {
       "path": "docs/LOCAL_EXECUTION_AND_GITHUB_REQUIREMENTS_ZH.md",
-      "bytes": 14618,
-      "sha256": "138990f60677239e2400f7bb4286d4ad438572be0db6917eadf1773f689c21f3",
+      "bytes": 15148,
+      "sha256": "b4519e2b7072edf56ce39538ce9665d10fcbf4cbf51472268e0ce4f1d2701735",
       "role": "canonical_or_documentation"
     },
     {
