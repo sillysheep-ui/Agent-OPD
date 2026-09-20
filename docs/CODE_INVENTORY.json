@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "1af3169fe0a9e0f8709ab8734b181a01f547cf15",
+  "code_revision_at_generation": "12486744178266911161470ab10e321bc506aa83",
   "canonical_code": {
     "tree_sha256": "e452bd23b23f78b6827b5f94da2581a31d46fc6ca512d981af8dd49d33caa880",
     "files": 108,
     "bytes": 895555
   },
   "files": 261,
-  "bytes": 1665032,
+  "bytes": 1665380,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -1380,8 +1380,8 @@
     },
     {
       "path": "tests/test_adapters.py",
-      "bytes": 12045,
-      "sha256": "9e724b5d385ba6dd22946db9f259ef410fca9d631bfa968dc1b5d03afc643f74",
+      "bytes": 12393,
+      "sha256": "fa2232c98b2d76ce39cb42273d7010556f05b56bbd2c79e02ba12683a80092c3",
       "role": "canonical_or_documentation"
     },
     {
