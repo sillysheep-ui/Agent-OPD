@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "7e64b142cca0c853368f3252dd9ac5d5c44de2af",
+  "code_revision_at_generation": "43f6d3b614e0e681919859329dba5fc027d4e68c",
   "canonical_code": {
-    "tree_sha256": "ec37bec6e486e25d04486ae742ad9936f622d99fc46d2077f04403d72e7cadeb",
-    "files": 108,
-    "bytes": 896836
+    "tree_sha256": "2fc80b392ca25065324638450cf0da60350a4b7d47d594e7ce3f22c2e2a92c24",
+    "files": 109,
+    "bytes": 904855
   },
-  "files": 261,
-  "bytes": 1668799,
+  "files": 262,
+  "bytes": 1678759,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 50,
+    "scripts": 51,
     "src": 42,
     "tests": 35
   },
@@ -1097,6 +1097,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/smoke_expert_rollout.py",
+      "bytes": 6027,
+      "sha256": "7b83013bd21ff500734c3bd89cca651a97e628643affdc3bfe113e847d3632cc",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/smoke_opd_teacher_scores.py",
       "bytes": 7995,
       "sha256": "2fcf4715b6103508f710e03dedf996c59b6c23cc5eb01410760843cd14fbe4de",
@@ -1134,8 +1140,8 @@
     },
     {
       "path": "src/omniopd/adapters.py",
-      "bytes": 16348,
-      "sha256": "580d0a9318cfc5b82224cd1a29fa5bea5a15137ed241930bb33cd1bcbfe54cf6",
+      "bytes": 18340,
+      "sha256": "9dd6784374a8bf21cb53cd144d76049a523c1e72758117c764d7692cfe3d5967",
       "role": "canonical_or_documentation"
     },
     {
@@ -1380,8 +1386,8 @@
     },
     {
       "path": "tests/test_adapters.py",
-      "bytes": 12393,
-      "sha256": "fa2232c98b2d76ce39cb42273d7010556f05b56bbd2c79e02ba12683a80092c3",
+      "bytes": 14334,
+      "sha256": "8893448deaf40c26cacb4c860f111b7aa821cd2bcd6ed17f84be194d7ae105fc",
       "role": "canonical_or_documentation"
     },
     {
