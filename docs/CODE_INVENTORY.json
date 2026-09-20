@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "cc683dbec739a0f236ca49c638079ccd1ea69d2b",
+  "code_revision_at_generation": "a0f994ef1d22570d28d7d33c810670ba854cdb86",
   "canonical_code": {
-    "tree_sha256": "899daa502b420fb744d0f9a4e3fa7694d5496e42fd8107412fe2ce547c3cf7bf",
-    "files": 101,
-    "bytes": 843879
+    "tree_sha256": "3900e7eb7cb64d254a4381a4b0f768a870a8be35d9a5908afc83fb32fb00dfea",
+    "files": 103,
+    "bytes": 860015
   },
-  "files": 254,
-  "bytes": 1603507,
+  "files": 256,
+  "bytes": 1629492,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 43,
+    "scripts": 45,
     "src": 42,
     "tests": 35
   },
@@ -108,8 +108,8 @@
     },
     {
       "path": "docker/Dockerfile.verl080",
-      "bytes": 409,
-      "sha256": "54476a246569e73211fa3744fce550c08273d2b7dd3f7834d32ecd2cdbcd5703",
+      "bytes": 685,
+      "sha256": "3d16d1471f539621f40ba4816ce33cdfe3e673e727c84f06806700cbf180a72c",
       "role": "canonical_or_documentation"
     },
     {
@@ -150,8 +150,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 24337,
-      "sha256": "8f9a573709819e6efa244615f97a9a6d0b4782ac479009d9e14ac26db058fd83",
+      "bytes": 31753,
+      "sha256": "82b774f03bb67961a9ebf9193d6140c971953e16bdfe6aa48e01d0c75d9affac",
       "role": "canonical_or_documentation"
     },
     {
@@ -857,6 +857,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/analyze_paired_model_baseline.py",
+      "bytes": 1810,
+      "sha256": "10dc2f63bc91d3fc2af10e52c984f644155ffa2237e135773fad5f7da97b57b5",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/analyze_sage.py",
       "bytes": 24310,
       "sha256": "a68ffc4ab9b25cbcf5c276e1041d82f5da1decd96c36f3a7fc343a28f43a9b46",
@@ -977,6 +983,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/pilot_paired_model_baseline.py",
+      "bytes": 11185,
+      "sha256": "451f00a6580452ba7a1720ed177c6832543e6cca374980a7c9552375bc26701f",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/prepare_m3_panel.py",
       "bytes": 18227,
       "sha256": "9ac6220ae6827bfdd99421359d72757b22b654038d1939df3c86a3f51f24e45f",
@@ -1002,8 +1014,8 @@
     },
     {
       "path": "scripts/run_verl_opd_smoke.sh",
-      "bytes": 3616,
-      "sha256": "a000e3e96c9ce4cd7103f556efd78bbf40ac68f0dac7bfbaa3b3346a410e770f",
+      "bytes": 4027,
+      "sha256": "5053401f0d38043b85e8bf939be589f832318e342517095a5cf9c9469645379e",
       "role": "canonical_or_documentation"
     },
     {
@@ -1092,8 +1104,8 @@
     },
     {
       "path": "src/omniopd/adapters.py",
-      "bytes": 14562,
-      "sha256": "05c002757e0a8d0f0dc447b40b617f913235a9ba131ea3bae7c88dea533cdcfc",
+      "bytes": 16348,
+      "sha256": "580d0a9318cfc5b82224cd1a29fa5bea5a15137ed241930bb33cd1bcbfe54cf6",
       "role": "canonical_or_documentation"
     },
     {
@@ -1314,8 +1326,8 @@
     },
     {
       "path": "src/omniopd/torch_dataset.py",
-      "bytes": 8257,
-      "sha256": "7439618000e55815f3f7e41930ba7604af9e6f1a1d561f2f8c3d735aaa220ac6",
+      "bytes": 8925,
+      "sha256": "3d8eba8f074b901f003b1a93da9e4cd888469e592174d0ef83e6eaf89df07467",
       "role": "canonical_or_documentation"
     },
     {
@@ -1338,8 +1350,8 @@
     },
     {
       "path": "tests/test_adapters.py",
-      "bytes": 10885,
-      "sha256": "94cea015214b0d66ee6a1ae2a25fca8a70ae9bf9b4cc9d45e139bbc09566eeb8",
+      "bytes": 12045,
+      "sha256": "9e724b5d385ba6dd22946db9f259ef410fca9d631bfa968dc1b5d03afc643f74",
       "role": "canonical_or_documentation"
     },
     {
@@ -1524,8 +1536,8 @@
     },
     {
       "path": "tests/test_torch_dataset.py",
-      "bytes": 4342,
-      "sha256": "bfdddb1bfca430f2b2c26ae22c2b329302e0dbac4de8adc206b6f06722013925",
+      "bytes": 5615,
+      "sha256": "4dd71a3aded8a88b03526ae3abf03077dcaf41983e0d4d427e08577430745bdb",
       "role": "canonical_or_documentation"
     },
     {
