@@ -58,3 +58,95 @@ def test_selection_refuses_an_underfilled_task_type():
         assert "look_at_obj_in_light" in str(error)
     else:
         raise AssertionError("an underfilled task type must stop the collection")
+
+
+def _expert_turn(game_id: str, turn_index: int, action: str, *, valid: bool = True) -> dict:
+    from omniopd.prompts import STUDENT_SYSTEM_PROMPT
+    from omniopd.schema import ActionSample, AgentState
+
+    state = AgentState(
+        task="put a hot apple in countertop",
+        observation=f"observation {turn_index}",
+        admissible_actions=(action, "look"),
+        messages=(
+            {"role": "system", "content": STUDENT_SYSTEM_PROMPT},
+            {"role": "user", "content": f"observation {turn_index}"},
+        ),
+        game_id=game_id,
+        task_type="pick_heat_then_place_in_recep",
+        turn_index=turn_index,
+    )
+    sample = ActionSample(
+        raw=f"Action: {action}",
+        executed_action=action,
+        valid=valid,
+        had_action_marker=True,
+        failure_reason=None if valid else "not_admissible",
+    )
+    return {"state": state.to_dict(), "student": sample.to_dict()}
+
+
+def _expert_episode(game_id: str, actions: list[str], *, won: bool = True) -> dict:
+    return {
+        "game_id": game_id,
+        "task_type": "pick_heat_then_place_in_recep",
+        "environment_seed": 1,
+        "won": won,
+        "steps": len(actions),
+        "invalid_turns": 0,
+        "turns": [
+            _expert_turn(game_id, index, action) for index, action in enumerate(actions)
+        ],
+    }
+
+
+def test_expert_rows_weight_each_game_equally_and_drop_unsolved_episodes():
+    import math
+
+    from scripts.build_expert_sft_data import build_rows
+
+    episodes = [
+        _expert_episode("game-a", ["look", "go to countertop 1"]),
+        _expert_episode("game-b", ["look"], won=False),
+    ]
+    rows, counts = build_rows(episodes)
+
+    assert counts["episodes_kept"] == 1
+    assert counts["episodes_dropped_unsolved"] == 1
+    assert counts["turns_dropped_unsolved"] == 1
+    assert len(rows) == 2
+    assert {row["game_id"] for row in rows} == {"game-a"}
+    assert math.isclose(sum(row["state_weight"] for row in rows), 1.0)
+    assert rows[0]["messages"][-1] == {"role": "assistant", "content": "Action: look"}
+    assert rows[0]["target_action"] == "look"
+    assert rows[0]["target_source"] == "alfworld_handcoded_expert"
+    assert rows[0]["weighting_mode"] == "game_state_mean"
+    assert rows[0]["enable_thinking"] is False
+
+
+def test_expert_rows_refuse_an_invalid_action_inside_a_solved_episode():
+    from scripts.build_expert_sft_data import build_rows
+
+    episode = _expert_episode("game-a", ["look"])
+    episode["turns"][0] = _expert_turn("game-a", 0, "look", valid=False)
+    try:
+        build_rows([episode])
+    except ValueError as error:
+        assert "invalid action" in str(error)
+    else:
+        raise AssertionError("an invalid expert action must not become a target")
+
+
+def test_game_split_accepts_dict_rows_through_a_game_key():
+    from omniopd.dataset import split_rows_by_game
+
+    rows = [{"game_id": f"game-{index}"} for index in range(4)]
+    train, validation, metadata = split_rows_by_game(
+        rows,
+        val_fraction=0.25,
+        rng_seed=7,
+        game_key=lambda row: row["game_id"],
+    )
+    assert len(train) + len(validation) == 4
+    assert metadata["split_unit"] == "game"
+    assert metadata["validation_games"] and metadata["train_games"]

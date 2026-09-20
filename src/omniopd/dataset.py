@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import asdict, dataclass
-from typing import Iterable
+from typing import Any, Callable, Iterable
 import random
 
 from .schema import CorrectionRecord, Message, WeightingMode
@@ -152,16 +152,26 @@ def audit_acceptance(records: Iterable[CorrectionRecord]) -> dict:
 
 
 def split_rows_by_game(
-    rows: Iterable[TrainingRow], *, val_fraction: float, rng_seed: int
-) -> tuple[list[TrainingRow], list[TrainingRow], dict]:
-    """Leakage-safe split: all states/actions from one game stay together."""
+    rows: Iterable[Any],
+    *,
+    val_fraction: float,
+    rng_seed: int,
+    game_key: Callable[[Any], str] | None = None,
+) -> tuple[list[Any], list[Any], dict]:
+    """Leakage-safe split: all states/actions from one game stay together.
+
+    ``game_key`` lets a caller supply otherwise-shaped rows (for example the
+    generic-target expert rows) without duplicating this split rule.  The
+    default keeps the historical ``TrainingRow.game_id`` behaviour.
+    """
 
     if not 0.0 < val_fraction < 1.0:
         raise ValueError("val_fraction must be between zero and one")
+    get_game = game_key or (lambda row: row.game_id)
     rows = list(rows)
-    by_game: dict[str, list[TrainingRow]] = defaultdict(list)
+    by_game: dict[str, list[Any]] = defaultdict(list)
     for row in rows:
-        by_game[row.game_id].append(row)
+        by_game[str(get_game(row))].append(row)
     games = sorted(by_game)
     if len(games) < 2:
         raise ValueError("at least two games are required for a train/validation split")
@@ -170,6 +180,8 @@ def split_rows_by_game(
     validation_games = set(games[:count])
     train = [row for game in games if game not in validation_games for row in by_game[game]]
     validation = [row for game in games if game in validation_games for row in by_game[game]]
+    if len(train) + len(validation) != len(rows):
+        raise RuntimeError("game split lost or duplicated rows")
     metadata = {
         "split_unit": "game",
         "rng_seed": rng_seed,
