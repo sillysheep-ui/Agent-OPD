@@ -381,3 +381,51 @@ def test_provider_response_model_identity_requires_a_success_by_default():
         assert "no successful" in str(error)
     else:
         raise AssertionError("an all-error run cannot attest its serving model")
+
+
+def test_expert_policy_adapts_a_deterministic_environment_expert():
+    from omniopd.adapters import ExpertPolicy
+
+    actions = iter(["go to countertop 1", "take soapbottle 3 from countertop 2"])
+    policy = ExpertPolicy(lambda: next(actions))
+
+    assert policy.generate([], temperature=0.0, max_tokens=64, request_id="turn-0") == (
+        "Action: go to countertop 1"
+    )
+    assert policy.generate([], temperature=None, max_tokens=64, request_id="turn-1") == (
+        "Action: take soapbottle 3 from countertop 2"
+    )
+    assert policy.request_ids == ["turn-0", "turn-1"]
+
+
+def test_expert_policy_rejects_sampling_and_replayed_request_ids():
+    from omniopd.adapters import ExpertPolicy
+
+    policy = ExpertPolicy(lambda: "look")
+
+    def expect_value_error(expected: str, **kwargs) -> None:
+        try:
+            policy.generate([], max_tokens=64, **kwargs)
+        except ValueError as error:
+            assert expected in str(error), str(error)
+        else:
+            raise AssertionError(f"expert policy accepted invalid options: {kwargs}")
+
+    expect_value_error("deterministic", temperature=0.7, request_id="turn-0")
+    expect_value_error("request_id", temperature=0.0, request_id="")
+
+    policy.generate([], temperature=0.0, max_tokens=64, request_id="turn-0")
+    expect_value_error("duplicate request_id", temperature=0.0, request_id="turn-0")
+    assert policy.request_ids == ["turn-0"]
+
+
+def test_expert_policy_rejects_a_multi_line_expert_answer():
+    from omniopd.adapters import ExpertPolicy
+
+    policy = ExpertPolicy(lambda: "look\nObservation: nothing")
+    try:
+        policy.generate([], temperature=0.0, max_tokens=64, request_id="turn-0")
+    except ValueError as error:
+        assert "single-line" in str(error)
+    else:
+        raise AssertionError("a multi-line expert answer must fail closed")
