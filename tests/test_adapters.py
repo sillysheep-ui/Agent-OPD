@@ -402,24 +402,21 @@ def test_expert_policy_rejects_sampling_and_replayed_request_ids():
     from omniopd.adapters import ExpertPolicy
 
     policy = ExpertPolicy(lambda: "look")
-    for kwargs, expected in (
-        ({"temperature": 0.7}, "deterministic"),
-        ({"temperature": 0.0, "request_id": ""}, "request_id"),
-    ):
+
+    def expect_value_error(expected: str, **kwargs) -> None:
         try:
-            policy.generate([], max_tokens=64, request_id="turn-0", **kwargs)
+            policy.generate([], max_tokens=64, **kwargs)
         except ValueError as error:
-            assert expected in str(error)
+            assert expected in str(error), str(error)
         else:
-            raise AssertionError(f"expert policy accepted invalid generation options: {kwargs}")
+            raise AssertionError(f"expert policy accepted invalid options: {kwargs}")
+
+    expect_value_error("deterministic", temperature=0.7, request_id="turn-0")
+    expect_value_error("request_id", temperature=0.0, request_id="")
 
     policy.generate([], temperature=0.0, max_tokens=64, request_id="turn-0")
-    try:
-        policy.generate([], temperature=0.0, max_tokens=64, request_id="turn-0")
-    except ValueError as error:
-        assert "duplicate request_id" in str(error)
-    else:
-        raise AssertionError("a replayed request id must not be counted twice")
+    expect_value_error("duplicate request_id", temperature=0.0, request_id="turn-0")
+    assert policy.request_ids == ["turn-0"]
 
 
 def test_expert_policy_rejects_a_multi_line_expert_answer():
