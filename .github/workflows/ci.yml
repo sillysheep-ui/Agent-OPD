@@ -1,0 +1,46 @@
+name: offline-ci
+
+# GPU, vLLM, ALFWorld and Teacher-API integration runs stay out of this
+# workflow on purpose: they need a self-hosted runner and real credentials.
+# This job only enforces the offline contract every commit must keep.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package with test extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[test]'
+      - name: Compile every tracked Python tree
+        run: python -m compileall -q src scripts tests integrations
+      - name: Run the repository test harness
+        run: python scripts/run_tests.py
+      - name: Lint
+        run: python -m ruff check src scripts tests integrations
+      - name: Report the runtime that produced this result
+        run: |
+          python -c "import platform, sys; print(sys.version); print(platform.platform())"
+          python -m pip freeze | sort

@@ -110,8 +110,8 @@ if [[ -e "${OUTPUT_DIR}" ]]; then
 fi
 
 trainer_path="${repo_root}/integrations/verl/fsdp_sft_trainer.py"
-verl_config_dir="${VERL_ROOT}/verl/trainer/config"
-verl_config_file="${verl_config_dir}/sft_trainer.yaml"
+verl_config_dir="${repo_root}/configs"
+verl_config_file="${verl_config_dir}/verl_v080_omniopd_sft.yaml"
 
 if [[ ! -e "${MODEL_PATH}" ]]; then
   echo "MODEL_PATH must be a local fingerprintable model file or directory" >&2
@@ -144,6 +144,7 @@ export EXPERIMENT_CONFIG TRAIN_AUDIT ANNOTATION_PAIR_MANIFEST
 export OMNIOPD_REPO_ROOT="${repo_root}"
 export OMNIOPD_TRAINER_PATH="${trainer_path}"
 export OMNIOPD_LAUNCHER_PATH="${repo_root}/scripts/run_verl_train.sh"
+export OMNIOPD_VERL_CONFIG_PATH="${verl_config_file}"
 
 "${python_bin}" - "$@" <<'PY'
 from __future__ import annotations
@@ -292,19 +293,35 @@ def resolve_verl_versions(path: Path) -> list[str]:
 
 root = Path(os.environ["OMNIOPD_REPO_ROOT"]).resolve()
 verl_root = Path(os.environ["VERL_ROOT"]).resolve()
-required_verl_version = "0.4.1"
+required_verl_version = "0.8.0.dev"
 resolved_verl_versions = resolve_verl_versions(verl_root)
 if resolved_verl_versions != [required_verl_version]:
     raise SystemExit(
-        "the audited integration is locked to veRL 0.4.1; "
+        "the migrated integration requires veRL v0.8.0 (package version 0.8.0.dev); "
         f"resolved declarations={resolved_verl_versions or ['missing']}"
     )
 root_revision = git_revision(root)
 verl_revision = git_revision(verl_root)
 if not root_revision or not verl_revision:
     raise SystemExit("both OmniOPD and veRL must be immutable Git revisions")
+expected_verl_revision = "7aed6b230776f963fa09509c10d9c3a767d1102c"
+if verl_revision != expected_verl_revision:
+    raise SystemExit(
+        f"veRL v0.8.0 checkout must be {expected_verl_revision}, got {verl_revision}"
+    )
 require_clean_git_tree(root, "OmniOPD")
 require_clean_git_tree(verl_root, "veRL")
+try:
+    release_tag = subprocess.run(
+        ["git", "-C", str(verl_root), "describe", "--tags", "--exact-match", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+except (OSError, subprocess.CalledProcessError) as error:
+    raise SystemExit("veRL checkout must be exactly on the v0.8.0 release tag") from error
+if release_tag != "v0.8.0":
+    raise SystemExit(f"expected veRL tag v0.8.0, got {release_tag!r}")
 try:
     import torch
 except ImportError as error:
@@ -610,8 +627,7 @@ files = {
     "loss": root / "src/omniopd/loss.py",
     "sampler": root / "src/omniopd/sampler.py",
     "dataset": root / "src/omniopd/torch_dataset.py",
-    "verl_config": Path(os.environ["VERL_ROOT"]).resolve()
-    / "verl/trainer/config/sft_trainer.yaml",
+    "verl_config": Path(os.environ["OMNIOPD_VERL_CONFIG_PATH"]).resolve(),
 }
 payload = {
     "protocol_version": "omniopd-v1",
@@ -625,6 +641,7 @@ payload = {
     "user_hydra_overrides": sys.argv[1:],
     "verl_root": str(verl_root),
     "verl_version": required_verl_version,
+    "verl_release_tag": release_tag,
     "verl_version_declarations": resolved_verl_versions,
     "verl_git_revision": verl_revision,
     "git_worktrees_clean": {"omniopd": True, "verl": True},
@@ -690,7 +707,7 @@ cd "${repo_root}"
   --nproc_per_node="${NUM_GPUS}" \
   "${trainer_path}" \
   --config-dir "${verl_config_dir}" \
-  --config-name sft_trainer \
+  --config-name verl_v080_omniopd_sft \
   "$@" \
   data.train_files="${TRAIN_FILES}" \
   data.val_files="${VAL_FILES}" \

@@ -6,6 +6,10 @@ state pool 上的 fixed-budget breadth `150×1` 与 depth `50×3` 对照。尖�
 覆盖产物。失败时保留 partial API ledger 供预算审计，换新输出目录重跑；
 不允许删除 invalid/error attempt 后“补打”免费请求。
 
+> **迁移状态：** 本手册中的历史服务器 smoke 证据属于 veRL 0.4.1。
+> 当前分支的行动模仿启动器已转向 veRL v0.8.0，须重新完成多卡烟测；
+> 传统逐 Token OPD 尚未接入 ALFWorld。见 `docs/VERL_V080_MIGRATION.md`。
+
 ## 0. 冻结代码、环境与协议
 
 ```bash
@@ -32,13 +36,13 @@ POSIX 追加写入的本地磁盘，例如目标服务器的 `/data/yangchunyu/l
 `docs/CODE_INVENTORY.json` 用于核对发布时的实现提交与逐文件 SHA256，新建的本地冻结
 提交则作为本次实验 manifest 的 revision。
 
-目标集群可用 `docker/Dockerfile.verl041` 构建锁定的 ALFWorld 0.4.2、TextWorld
-1.6.2 与 veRL 0.4.1 运行环境。官方 TextWorld 数据的来源、SHA256、目标集群验收结果
+目标集群可用 `docker/Dockerfile.verl080` 构建新版候选运行环境；
+`docker/Dockerfile.verl041` 只用于历史复现。官方 TextWorld 数据的来源、SHA256、目标集群验收结果
 和不可上传边界记录在 `docs/ALFWORLD_REBUILD_20260916.md`；规范环境配置为
 `configs/alfworld_textworld.yaml`。本目标集群的 CUDA、Student vLLM、四卡 veRL
 单步训练和 LoRA vLLM 加载已完成 smoke 验收，证据见 `docs/VERIFICATION_REPORT.md`；
 迁移到其他主机仍须重新验收。训练另外要求
-一个干净的 **veRL 0.4.1** checkout；本仓库与 veRL checkout 都必须有不可变
+一个干净的 **veRL v0.8.0** checkout；本仓库与 veRL checkout 都必须有不可变
 revision。先验收预注册配置：
 
 ```bash
@@ -181,7 +185,7 @@ Teacher-valid draw 的保留 state 等权，对每个保留 game 等权；每 st
 breadth/seed 7 为例：
 
 ```bash
-VERL_ROOT=<clean_verl_0.4.1_checkout> \
+VERL_ROOT=<clean_verl_v0.8.0_checkout> \
 MODEL_PATH=<same_complete_behavior_student_dir> \
 TRAIN_FILES=<run/breadth/train.parquet> \
 VAL_FILES=<run/breadth/validation.parquet> \
@@ -197,7 +201,7 @@ bash scripts/run_verl_train.sh
 
 `MODEL_PATH` 必须精确等于 state-pool manifest 的完整 behavior Student，训练
 Tokenizer 也从该同一目录加载。wrapper 在启动前校验数据/audit/config/pair、两个
-干净工作树、veRL 0.4.1、dtype、batch/microbatch 和 fixed step 契约。只有训练正常
+干净工作树、veRL v0.8.0、dtype、batch/microbatch 和 fixed step 契约。只有训练正常
 退出，且 final step 是带唯一 `adapter_model.safetensors`、不含完整模型权重、带Tokenizer配置、rank/alpha/
 `all-linear`匹配 launch、A/B tensors成对且shape/dtype/offset和target覆盖有效的 PEFT
 LoRA 目录，同时 resolved config 和 `train.log` 完整时，才会生成：

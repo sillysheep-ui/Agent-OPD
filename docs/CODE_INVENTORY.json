@@ -2,24 +2,24 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "4227de8d6683cb03f8c893e9e397d056068f6dba",
+  "code_revision_at_generation": "7e64b142cca0c853368f3252dd9ac5d5c44de2af",
   "canonical_code": {
-    "tree_sha256": "831c0cbed2f48220aaa085961a9958d623b9c45a6fae1c109b2e0c368024b7fa",
-    "files": 83,
-    "bytes": 756848
+    "tree_sha256": "ec37bec6e486e25d04486ae742ad9936f622d99fc46d2077f04403d72e7cadeb",
+    "files": 108,
+    "bytes": 896836
   },
-  "files": 231,
-  "bytes": 1462812,
+  "files": 261,
+  "bytes": 1668799,
   "counts_by_root": {
-    "configs": 9,
-    "docker": 1,
-    "docs": 13,
+    "configs": 11,
+    "docker": 2,
+    "docs": 16,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 30,
-    "src": 40,
-    "tests": 33
+    "scripts": 50,
+    "src": 42,
+    "tests": 35
   },
   "entries": [
     {
@@ -30,8 +30,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 7400,
-      "sha256": "92a1301855786ba542b51c576b3d819e4af4dcd05e94389b61365ec62dacd500",
+      "bytes": 8960,
+      "sha256": "1935647d0421550afc58baac20aa74234dfb8f91d66cdb6d6cae02189da90f9b",
       "role": "canonical_or_documentation"
     },
     {
@@ -89,15 +89,39 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "configs/verl_v080_omniopd_sft.yaml",
+      "bytes": 1160,
+      "sha256": "ed3fcc5d5f7ac9558a02f0db13404114ecee5d85266addedac3f06375a71ab62",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "configs/verl_v080_opd_agent_loops.yaml",
+      "bytes": 80,
+      "sha256": "b1a9dd1c5856349b053597836ddc784867fc372e3bc7b545ca03701d2da01993",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "docker/Dockerfile.verl041",
       "bytes": 737,
       "sha256": "52ea52ed2be151415d122a836652f2b6f42f61f7361ebc51b4a5bd4793b5ee26",
       "role": "canonical_or_documentation"
     },
     {
+      "path": "docker/Dockerfile.verl080",
+      "bytes": 685,
+      "sha256": "3d16d1471f539621f40ba4816ce33cdfe3e673e727c84f06806700cbf180a72c",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "docs/00_START_HERE.md",
-      "bytes": 5032,
-      "sha256": "7fa49ba1b3ab94647db303b82e6dc1ac94c5bb8e5aa51bba41100b22f62ce11c",
+      "bytes": 5707,
+      "sha256": "8b306b6925be4f15e48c1e913ffc293617394d373e6573ddcd7917216d397d09",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/AGENT_R1_ADAPTATION_20260918.md",
+      "bytes": 5419,
+      "sha256": "75657a0292ab2cf0f8d877f294f1264ba694f07d3b8fb91c0a27f1298b365bf4",
       "role": "canonical_or_documentation"
     },
     {
@@ -125,6 +149,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "docs/EXPERIMENT_ISSUES_20260917.md",
+      "bytes": 33361,
+      "sha256": "a0175769a9d473d9f0d7648f219c6e2ff22a386d3a4081e048ccb2f24a63f0e4",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "docs/FILE_AUDIT.md",
       "bytes": 15934,
       "sha256": "8f184969316f7a9146f6cda80d0f989c2fb25658f58e12d110aa7ad7056113eb",
@@ -132,8 +162,8 @@
     },
     {
       "path": "docs/LOCAL_EXECUTION_AND_GITHUB_REQUIREMENTS_ZH.md",
-      "bytes": 14618,
-      "sha256": "138990f60677239e2400f7bb4286d4ad438572be0db6917eadf1773f689c21f3",
+      "bytes": 15148,
+      "sha256": "b4519e2b7072edf56ce39538ce9665d10fcbf4cbf51472268e0ce4f1d2701735",
       "role": "canonical_or_documentation"
     },
     {
@@ -144,8 +174,8 @@
     },
     {
       "path": "docs/REPRODUCTION.md",
-      "bytes": 24846,
-      "sha256": "703b6962e883161c31b7479b5c20b3aa0ec95e0c1ff29169eeca929276ea8122",
+      "bytes": 25119,
+      "sha256": "516332b5b32e9c5c2a1c906d09118f3231c3d781f10556141e1e84152d7520a3",
       "role": "canonical_or_documentation"
     },
     {
@@ -162,14 +192,20 @@
     },
     {
       "path": "docs/VERIFICATION_REPORT.md",
-      "bytes": 11926,
-      "sha256": "b2aa4903cb4df6f80d802ea2575741a99b7e44795f33026eb4e52d2e979a6681",
+      "bytes": 12161,
+      "sha256": "2cd87f00ea4a5ce2903d4d583ef1d8cf528dd57f368c6b8d0b31bbd8fa754ba9",
       "role": "canonical_or_documentation"
     },
     {
       "path": "docs/VERL_INTEGRATION.md",
-      "bytes": 4572,
-      "sha256": "e26246119c0bc879e41e1d8aa0766c8fa68703842603300b80a222c2499b9ec1",
+      "bytes": 4851,
+      "sha256": "0319e6bc3f31c0dfb298bfe62ce61a232c0ecd94e6237fb33f62274cc5c97aac",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/VERL_V080_MIGRATION.md",
+      "bytes": 11656,
+      "sha256": "444e9ad9f921da5e81fc201bfbe13c0dc59341bf38d5f64d29befa40ce774c9c",
       "role": "canonical_or_documentation"
     },
     {
@@ -821,6 +857,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/analyze_paired_model_baseline.py",
+      "bytes": 1810,
+      "sha256": "10dc2f63bc91d3fc2af10e52c984f644155ffa2237e135773fad5f7da97b57b5",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/analyze_sage.py",
       "bytes": 24310,
       "sha256": "a68ffc4ab9b25cbcf5c276e1041d82f5da1decd96c36f3a7fc343a28f43a9b46",
@@ -839,9 +881,51 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/audit_opd_tokenizers.py",
+      "bytes": 7271,
+      "sha256": "ee003631f18621f51258172a095fba5835216e131a7b66ccaee5a571f162e208",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/build_code_inventory.py",
       "bytes": 4393,
       "sha256": "7eb1d602700b48bc2d335eb3061261385ab80a1671f13b75174559de7dee9371",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/build_opd_prompts.py",
+      "bytes": 8641,
+      "sha256": "2c986949c394a2b7124c4dc67068df08b6a8d1191b9a915e8b027e9d2d3b61cd",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_agent_r1_loss_alignment.py",
+      "bytes": 2177,
+      "sha256": "f9204af4e0b87f22ffdf3dae2e4ba2e0a8033e14ba8c66dd5ae39bd48bf82938",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_agent_r1_student_format.py",
+      "bytes": 2845,
+      "sha256": "c6dcf513762db2d26d1bba61bd5aafeca8476ae31156216e08a16941a040bc30",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_agent_r1_teacher_layout.py",
+      "bytes": 3535,
+      "sha256": "88b6e43abe205ee90dfd34901ac2e18bc2c2c6fc0bb303bbcf0d748313d80686",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_verl_opd_alignment.py",
+      "bytes": 2144,
+      "sha256": "eac5bb217492f499a8e549f76b0a69f9a6708ed4a423ff6707dda64b43e6cce8",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/check_verl_opd_worker.py",
+      "bytes": 9440,
+      "sha256": "7f9f98dc3fdbb77db3c15cebd0ffbd9ead19cd2a4fa8096d6ab3df8bcd997fcd",
       "role": "canonical_or_documentation"
     },
     {
@@ -899,9 +983,51 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/pilot_paired_model_baseline.py",
+      "bytes": 11185,
+      "sha256": "451f00a6580452ba7a1720ed177c6832543e6cca374980a7c9552375bc26701f",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts.py",
+      "bytes": 5923,
+      "sha256": "8d4faff49e39e5b9349f3a46a12ee608654e134d2ce69250b5c05ff7db7b78fd",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts_choice.py",
+      "bytes": 7864,
+      "sha256": "a5ad6cb553095c7191551c246d108086b7c5ee8c8fb53fa71de2b5bae3920e7a",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts_choice_promptv2.py",
+      "bytes": 8882,
+      "sha256": "767730735aeb9e6ec049d23018e4d53452095106a1787dfba7ef719edaf88c6f",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts_ctx8192.py",
+      "bytes": 5931,
+      "sha256": "b4e5c06bb26478c41da76f0fb9b54b5296163e9ee21c56172a721bc9ee99e130",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts_promptv2.py",
+      "bytes": 6940,
+      "sha256": "e904d4117303cb51f2500f9a0a38150abf7a5c3407cf275c2e4eddab9a00ad98",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/prepare_m3_panel.py",
       "bytes": 18227,
       "sha256": "9ac6220ae6827bfdd99421359d72757b22b654038d1939df3c86a3f51f24e45f",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/prepare_opd_training_smoke.py",
+      "bytes": 1813,
+      "sha256": "570db653404c30caef50fefb3ab0596f359e6915603c89748f3d54b8c20f1c7d",
       "role": "canonical_or_documentation"
     },
     {
@@ -917,9 +1043,15 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/run_verl_opd_smoke.sh",
+      "bytes": 4027,
+      "sha256": "5053401f0d38043b85e8bf939be589f832318e342517095a5cf9c9469645379e",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/run_verl_train.sh",
-      "bytes": 32315,
-      "sha256": "3087584905455db0b789f88fe2cbcf4681b554e6a12cbdee9ab7e231a8cf35f7",
+      "bytes": 33102,
+      "sha256": "e4073757b663d54d0854dc516c303c7e48d147ca1a2170e78735c5aae77e18de",
       "role": "canonical_or_documentation"
     },
     {
@@ -959,6 +1091,30 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/smoke_agent_r1_alfworld_env.py",
+      "bytes": 3441,
+      "sha256": "7659481d6c6bb621c423676d583368b69ebff099a32a9779100b38930fec4cb3",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/smoke_opd_teacher_scores.py",
+      "bytes": 7995,
+      "sha256": "2fcf4715b6103508f710e03dedf996c59b6c23cc5eb01410760843cd14fbe4de",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/smoke_opd_vllm_student.py",
+      "bytes": 4956,
+      "sha256": "da9cefa81e9476d39533d53de9dc4405c1bb8ac15e3be828d6cc6f3f8b796b61",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/smoke_opd_vllm_teacher.py",
+      "bytes": 6450,
+      "sha256": "68efa683c7d40fba97b10f047e586b2d8f170c1b56ab59ce9f01a714f175e7f0",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/validate_experiment_pair.py",
       "bytes": 8234,
       "sha256": "122c5475cca80d8754e978e7b3d9385afcf2e4e53f008807eb7d3adcfa627ffc",
@@ -978,8 +1134,8 @@
     },
     {
       "path": "src/omniopd/adapters.py",
-      "bytes": 14562,
-      "sha256": "05c002757e0a8d0f0dc447b40b617f913235a9ba131ea3bae7c88dea533cdcfc",
+      "bytes": 16348,
+      "sha256": "580d0a9318cfc5b82224cd1a29fa5bea5a15137ed241930bb33cd1bcbfe54cf6",
       "role": "canonical_or_documentation"
     },
     {
@@ -1121,6 +1277,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "src/omniopd/opd_adapter.py",
+      "bytes": 12803,
+      "sha256": "b647991b456ea86f287f05f852f483070a74fdcefa60f06ebed498e96e48f2e4",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "src/omniopd/parser.py",
       "bytes": 2371,
       "sha256": "a87a642d72244349139c797358edf6f159798397aad2637f21668d06047f0ae5",
@@ -1194,8 +1356,8 @@
     },
     {
       "path": "src/omniopd/torch_dataset.py",
-      "bytes": 8257,
-      "sha256": "7439618000e55815f3f7e41930ba7604af9e6f1a1d561f2f8c3d735aaa220ac6",
+      "bytes": 8925,
+      "sha256": "3d8eba8f074b901f003b1a93da9e4cd888469e592174d0ef83e6eaf89df07467",
       "role": "canonical_or_documentation"
     },
     {
@@ -1211,9 +1373,15 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "src/omniopd/verl_opd.py",
+      "bytes": 7189,
+      "sha256": "bb1a4412e33a4f966bc8b51fc55593e1900a2b2d9864ad486d4be950b6aa91da",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "tests/test_adapters.py",
-      "bytes": 10885,
-      "sha256": "94cea015214b0d66ee6a1ae2a25fca8a70ae9bf9b4cc9d45e139bbc09566eeb8",
+      "bytes": 12393,
+      "sha256": "fa2232c98b2d76ce39cb42273d7010556f05b56bbd2c79e02ba12683a80092c3",
       "role": "canonical_or_documentation"
     },
     {
@@ -1307,6 +1475,18 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "tests/test_opd_adapter.py",
+      "bytes": 6203,
+      "sha256": "1e9c7808cf1c939670070b1632cb1b90ec89e12116b993f30945acf7478f83f3",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "tests/test_opd_forward_smoke.py",
+      "bytes": 1098,
+      "sha256": "535d551e0966c1a73414060beb8784f70eec98250518951b2d54adb8acd5ab3b",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "tests/test_parser.py",
       "bytes": 718,
       "sha256": "5557149e8d9f1ddef0341805077fbb1bbb2dffd4700015e9b9ea8e7e53703237",
@@ -1368,8 +1548,8 @@
     },
     {
       "path": "tests/test_stage_manifest_chain.py",
-      "bytes": 17959,
-      "sha256": "9383c8b997e4655152f2566f27240d607d1cfbef301a3e75a1716a96d3cb6fd3",
+      "bytes": 20389,
+      "sha256": "3e43406d551bf455a276d03a2c3b897a2ee6ea4017dc21728a04a047c707b33c",
       "role": "canonical_or_documentation"
     },
     {
@@ -1386,14 +1566,14 @@
     },
     {
       "path": "tests/test_torch_dataset.py",
-      "bytes": 4342,
-      "sha256": "bfdddb1bfca430f2b2c26ae22c2b329302e0dbac4de8adc206b6f06722013925",
+      "bytes": 5615,
+      "sha256": "4dd71a3aded8a88b03526ae3abf03077dcaf41983e0d4d427e08577430745bdb",
       "role": "canonical_or_documentation"
     },
     {
       "path": "tests/test_training_launcher.py",
-      "bytes": 820,
-      "sha256": "1ebf9cdf9af21f926be58647f4de2e02e8f40256c5b39a34a37b1ed7782bc6e2",
+      "bytes": 1879,
+      "sha256": "51f084be80a45bb93841fbd10df469f6dafc3e89930ed5e672f5374c2aace58e",
       "role": "canonical_or_documentation"
     },
     {

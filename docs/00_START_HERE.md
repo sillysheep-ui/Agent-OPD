@@ -3,6 +3,13 @@
 本文件是人类实验者或具备终端能力的执行模型进入本代码库时的第一入口。先阅读本文件，
 再阅读 `README.md`、`docs/REPRODUCTION.md` 和 `docs/VERIFICATION_REPORT.md`。
 
+> **版本迁移提示：** 当前工作分支正在从 veRL 0.4.1 迁到 v0.8.0。
+> 下文所述“可执行”是旧版已验收的行动模仿主链，不代表新版多卡验收
+> 或传统逐 Token OPD 对照已经完成。新版门槛见 `docs/VERL_V080_MIGRATION.md`。
+
+本地/服务器落地过程中已观察到的问题、处理状态、跨实验复用检查及后续追加规则见
+持续维护的 `docs/EXPERIMENT_ISSUES_20260917.md`；不要把单状态技术烟测当作正式结果。
+
 ## 1. 当前可以执行的实验
 
 当前规范生产链完整覆盖同一 Student state pool 上的 fixed-budget 对照：
@@ -22,7 +29,8 @@ state-source control 配置是不可运行的设计约束模板。M3/SAGE 分析
 - `scripts/`：state pool、选择、Teacher标注、数据、训练、评测和分析入口；
 - `configs/`：预注册协议和固定预算配置；
 - `docker/Dockerfile.verl041`：锁定 veRL/ALFWorld/TextWorld 运行依赖的目标集群镜像；
-- `integrations/verl/`：锁定 veRL 0.4.1 的训练器；
+- `docker/Dockerfile.verl080`：隔离的新版候选镜像定义；
+- `integrations/verl/`：本仓库自有的行动模仿训练器，不是传统 OPD 训练器；
 - `tests/`：离线协议与对抗式回归测试；
 - `docs/REPRODUCTION.md`：完整命令顺序；
 - `docs/EXECUTION_INPUTS.template.yaml`：外部资源填写模板；
@@ -35,7 +43,7 @@ state-source control 配置是不可运行的设计约束模板。M3/SAGE 分析
 
 - 可完整加载的 behavior Student 模型与同一 Tokenizer；
 - ALFWorld 数据、TextWorld games 和环境配置；
-- 干净且有不可变提交的 veRL 0.4.1 checkout；
+- 旧版复现用 veRL 0.4.1；新版迁移用单独的 v0.8.0 checkout；
 - CUDA/GPU、可用的本机回环端口和输出存储目录；
 - Teacher 模型名、provider revision、Tokenizer与context window；
 - 通过环境变量 `DEEPSEEK_API_KEY` 注入的密钥。
@@ -80,7 +88,7 @@ git status --short
 - 所有 `REQUIRED_*` 外部输入已解析为存在的明确路径或稳定标识；
 - behavior Student/Tokenizer 内容身份一致；
 - ALFWorld/TextWorld 运行时与逐 game seed 能被记录；
-- veRL 确为 0.4.1，checkout 干净且 revision 非空；
+- 按所选代码版本核验 veRL 的标签、提交与干净工作树；当前启动器要求 v0.8.0；
 - 预算为 \(B=MN=150\)，两臂共享 Teacher 协议和 annotation pair；
 - 预计 API 调用量、GPU 数量、运行时长与输出位置已经得到授权。
 

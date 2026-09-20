@@ -267,6 +267,7 @@ class AlfworldEnvironment:
         game_file: str,
         *,
         rollout_seed: int | None = None,
+        expert_type: Literal["handcoded", "planner"] | None = None,
     ) -> None:
         import textworld
         import textworld.gym
@@ -275,6 +276,14 @@ class AlfworldEnvironment:
         request_infos = textworld.EnvInfos(
             won=True, admissible_commands=True, extras=["gamefile"]
         )
+        wrappers = [AlfredDemangler(shuffle=False), AlfredInfos]
+        if expert_type is not None:
+            from alfworld.agents.environment.alfred_tw_env import AlfredExpert
+
+            if expert_type not in {"handcoded", "planner"}:
+                raise ValueError(f"unsupported expert_type={expert_type!r}")
+            request_infos.extras.append("expert_plan")
+            wrappers.append(AlfredExpert(expert_type=expert_type))
         method = env_config["general"]["training_method"]
         if method == "dagger":
             max_steps = env_config["dagger"]["training"]["max_nb_steps_per_episode"]
@@ -289,11 +298,13 @@ class AlfworldEnvironment:
             auto_reset=False,
             asynchronous=False,
             max_episode_steps=max_steps,
-            wrappers=[AlfredDemangler(shuffle=False), AlfredInfos],
+            wrappers=wrappers,
         )
         self._env = textworld.gym.make(env_id)
         self.game_file = str(game_file)
         self.rollout_seed = rollout_seed
+        self.expert_type = expert_type
+        self._expert_action: str | None = None
         self.seed_attestation: dict[str, Any] | None = None
         if rollout_seed is not None:
             if rollout_seed < 0 or rollout_seed >= 2**32:
@@ -323,6 +334,7 @@ class AlfworldEnvironment:
     def reset(self) -> ResetResult:
         observations, info = self._env.reset()
         unpacked = unwrap_batched_info(info)
+        self._update_expert_action(unpacked)
         initial = str(observations[0])
         game_id = str(unpacked.get("extra.gamefile") or self.game_file)
         return ResetResult(
@@ -336,12 +348,36 @@ class AlfworldEnvironment:
     def step(self, action: str) -> StepResult:
         observations, _, dones, infos = self._env.step([action])
         unpacked = unwrap_batched_info(infos)
+        self._update_expert_action(unpacked, done=bool(dones[0]))
         return StepResult(
             observation=str(observations[0]),
             admissible_actions=tuple(unpacked.get("admissible_commands") or ()),
             done=bool(dones[0]),
             won=bool(unpacked.get("won", False)),
         )
+
+    def _update_expert_action(self, info: dict[str, Any], *, done: bool = False) -> None:
+        if self.expert_type is None or done:
+            self._expert_action = None
+            return
+        plan = info.get("extra.expert_plan")
+        if not isinstance(plan, (list, tuple)) or len(plan) != 1:
+            raise RuntimeError(f"ALFWorld expert returned an invalid plan: {plan!r}")
+        action = str(plan[0]).strip()
+        admissible = tuple(str(item) for item in info.get("admissible_commands") or ())
+        if not action or action not in admissible:
+            raise RuntimeError(
+                "ALFWorld expert action is missing from the current admissible actions: "
+                f"action={action!r}"
+            )
+        self._expert_action = action
+
+    def expert_action(self) -> str:
+        if self.expert_type is None:
+            raise RuntimeError("this ALFWorld environment was not configured with an expert")
+        if self._expert_action is None:
+            raise RuntimeError("no expert action is available in the current environment state")
+        return self._expert_action
 
     def close(self) -> None:
         self._env.close()

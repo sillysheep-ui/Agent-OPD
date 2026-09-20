@@ -127,3 +127,38 @@ def test_verl_dataset_accepts_the_builder_jsonl_format():
             max_length=10,
         )
         assert len(dataset) == 1
+
+
+def test_verl_dataset_accepts_generic_expert_targets_without_teacher_aliases():
+    try:
+        import torch  # noqa: F401
+    except ModuleNotFoundError:
+        from unittest import SkipTest
+
+        raise SkipTest("optional training dependencies are not installed")
+
+    from omniopd.torch_dataset import FinalTurnActionDataset
+
+    row = {
+        "messages": [
+            {"role": "system", "content": STUDENT_SYSTEM_PROMPT},
+            {"role": "user", "content": "u"},
+            {"role": "assistant", "content": "Action: look"},
+        ],
+        "state_weight": 1.0,
+        "state_hash": "expert-hash",
+        "game_id": "expert-game",
+        "turn_index": 0,
+        "target_sample_index": 0,
+        "target_action": "look",
+        "target_source": "alfworld_handcoded_expert",
+        "weighting_mode": "game_state_mean",
+        "protocol_version": "omniopd-v1",
+        "enable_thinking": False,
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "expert.jsonl"
+        path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+        dataset = FinalTurnActionDataset(files=path, tokenizer=FakeTokenizer(), max_length=10)
+        assert len(dataset) == 1
+        assert dataset.objective_weight_sum == 1.0

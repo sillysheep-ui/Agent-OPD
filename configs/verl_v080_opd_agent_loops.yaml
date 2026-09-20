@@ -1,0 +1,2 @@
+- name: omniopd_action_token_opd
+  _target_: omniopd.verl_opd.OmniOPDActionLoop

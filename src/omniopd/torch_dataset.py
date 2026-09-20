@@ -74,8 +74,6 @@ class FinalTurnActionDataset:
             "state_hash",
             "game_id",
             "turn_index",
-            "teacher_sample_index",
-            "teacher_action",
             "weighting_mode",
             "protocol_version",
             "enable_thinking",
@@ -83,12 +81,30 @@ class FinalTurnActionDataset:
         missing = required - set(self.frame.columns)
         if missing:
             raise ValueError(f"dataset is missing columns: {sorted(missing)}")
+        has_expert_targets = {
+            "target_sample_index",
+            "target_action",
+            "target_source",
+        }.issubset(self.frame.columns)
+        has_teacher_targets = {
+            "teacher_sample_index",
+            "teacher_action",
+        }.issubset(self.frame.columns)
+        if has_expert_targets == has_teacher_targets:
+            raise ValueError(
+                "dataset must contain exactly one target schema: generic target fields "
+                "or legacy Teacher fields"
+            )
+        sample_index_column = (
+            "target_sample_index" if has_expert_targets else "teacher_sample_index"
+        )
+        action_column = "target_action" if has_expert_targets else "teacher_action"
         if self.frame.empty:
             raise ValueError("training dataset is empty")
         identities = list(
             zip(
                 self.frame["state_hash"].astype(str),
-                self.frame["teacher_sample_index"].astype(int),
+                self.frame[sample_index_column].astype(int),
             )
         )
         if len(identities) != len(set(identities)):
@@ -122,7 +138,7 @@ class FinalTurnActionDataset:
                 "system" if index == 0 else "user" if index % 2 else "assistant"
                 for index in range(len(messages))
             ]
-            expected_target = f"Action: {row['teacher_action']}"
+            expected_target = f"Action: {row[action_column]}"
             if (
                 len(messages) < 3
                 or roles != expected_roles
