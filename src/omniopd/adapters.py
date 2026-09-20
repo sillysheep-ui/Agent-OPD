@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import re
 from datetime import datetime, timezone
-from typing import Any, Literal, Sequence
+from typing import Any, Callable, Literal, Sequence
 
 from .protocol import ResetResult, StepResult
 from .provenance import sha256_json
@@ -393,3 +393,48 @@ def list_alfworld_games(env_config: dict[str, Any], split: str) -> list[str]:
     if not games:
         raise RuntimeError(f"ALFWorld returned no games for split {split!r}")
     return games
+
+
+class ExpertPolicy:
+    """Expose an environment expert through the shared ChatPolicy contract.
+
+    The ALFWorld handcoded expert is not a served model: it reads the current
+    TextWorld state and returns one admissible command.  Adapting it to the
+    same ``generate`` interface the other policies implement lets
+    ``rollout_episode`` drive it, so the history state machine, task-preserving
+    truncation, state hashing and provenance stay on one code path instead of
+    being reimplemented for expert collection.
+
+    The provider is called once per turn and must return an action that the
+    environment already accepted as admissible.
+    """
+
+    def __init__(self, action_provider: Callable[[], str]) -> None:
+        if not callable(action_provider):
+            raise ValueError("action_provider must be callable")
+        self._action_provider = action_provider
+        self.request_ids: list[str] = []
+
+    def generate(
+        self,
+        messages: Sequence[dict[str, str]],
+        *,
+        temperature: float | None,
+        max_tokens: int,
+        request_id: str,
+    ) -> str:
+        if max_tokens <= 0:
+            raise ValueError("max_tokens must be positive")
+        if temperature not in (None, 0.0):
+            raise ValueError(
+                "the environment expert is deterministic; temperature must be 0 or None"
+            )
+        if not request_id or any(character in request_id for character in "\r\n"):
+            raise ValueError("request_id must be a non-empty single-line identifier")
+        if request_id in self.request_ids:
+            raise ValueError(f"duplicate request_id would corrupt turn accounting: {request_id}")
+        action = str(self._action_provider()).strip()
+        if not action or any(character in action for character in "\r\n"):
+            raise ValueError(f"expert returned an invalid single-line action: {action!r}")
+        self.request_ids.append(request_id)
+        return f"Action: {action}"
