@@ -276,12 +276,31 @@ from omniopd.provenance import fingerprint_path, sha256_file
 
 output_dir = Path(os.environ["SFT_OUTPUT_DIR"]).resolve()
 checkpoint = output_dir / "checkpoints" / f"global_step_{int(os.environ['TOTAL_TRAINING_STEPS'])}"
-if not (checkpoint / "actor").is_dir():
-    raise SystemExit(f"training finished without the expected checkpoint: {checkpoint}")
+required = ("adapter_config.json", "adapter_model.safetensors", "tokenizer_config.json")
+missing = [name for name in required if not (checkpoint / name).is_file()]
+if missing:
+    raise SystemExit(
+        f"training finished without a complete LoRA checkpoint at {checkpoint}; "
+        f"missing={missing}"
+    )
+adapters = sorted(checkpoint.glob("*.safetensors"))
+if [item.name for item in adapters] != ["adapter_model.safetensors"]:
+    raise SystemExit(f"expected exactly one adapter_model.safetensors in {checkpoint}")
+adapter_config = json.loads((checkpoint / "adapter_config.json").read_text(encoding="utf-8"))
+if int(adapter_config.get("r", -1)) != int(os.environ["LORA_RANK"]):
+    raise SystemExit("checkpoint LoRA rank does not match the launch contract")
+if int(adapter_config.get("lora_alpha", -1)) != int(os.environ["LORA_ALPHA"]):
+    raise SystemExit("checkpoint LoRA alpha does not match the launch contract")
 payload = {
     "artifact": "sft_coldstart_completion_manifest",
     "total_optimizer_steps": int(os.environ["TOTAL_TRAINING_STEPS"]),
     "checkpoint": fingerprint_path(checkpoint),
+    "adapter": {
+        "r": adapter_config.get("r"),
+        "lora_alpha": adapter_config.get("lora_alpha"),
+        "target_modules": adapter_config.get("target_modules"),
+        "base_model_name_or_path": adapter_config.get("base_model_name_or_path"),
+    },
     "training_log": {
         "path": str(output_dir / "train.log"),
         "sha256": sha256_file(output_dir / "train.log"),
