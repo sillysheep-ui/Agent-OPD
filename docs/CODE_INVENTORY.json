@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "00ab00d74fc22616d1d585dee092d0dbe4366912",
+  "code_revision_at_generation": "2d30b1c9678defffa3862bf719f02cdcc7e36737",
   "canonical_code": {
-    "tree_sha256": "2fc80b392ca25065324638450cf0da60350a4b7d47d594e7ce3f22c2e2a92c24",
-    "files": 109,
-    "bytes": 904855
+    "tree_sha256": "588198a5d13b5eb6e76000d5da272cc428c76b7ec2684911cd9e7175efc60269",
+    "files": 110,
+    "bytes": 915803
   },
-  "files": 262,
-  "bytes": 1681333,
+  "files": 264,
+  "bytes": 1694229,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,9 +17,9 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 51,
+    "scripts": 52,
     "src": 42,
-    "tests": 35
+    "tests": 36
   },
   "entries": [
     {
@@ -929,6 +929,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/collect_expert_sft.py",
+      "bytes": 10948,
+      "sha256": "2a0426688c55739081bb1fd5966cc14973e8852b95ced094d7670c49ee020a38",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/collect_opd.py",
       "bytes": 18859,
       "sha256": "5c305da70988e15112d5dda72d21fe5d80d90da6aabd516f14b000372a2dac24",
@@ -1418,6 +1424,12 @@
       "path": "tests/test_evaluation.py",
       "bytes": 38363,
       "sha256": "653b14a028248d417aefe972aa3e3245029f145d797e24203f77ed6c6bed388f",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "tests/test_expert_collection.py",
+      "bytes": 1948,
+      "sha256": "a66f59e25b0eca7be79fda359caeead0893dba02ab9e7c08d9bf91c5a3c48dc2",
       "role": "canonical_or_documentation"
     },
     {
