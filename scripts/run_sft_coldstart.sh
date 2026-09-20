@@ -250,7 +250,7 @@ cd "${repo_root}"
   optim.lr="${LR}" \
   trainer.total_epochs="${EPOCHS}" \
   trainer.total_training_steps="${TOTAL_TRAINING_STEPS}" \
-  trainer.default_local_dir="${SFT_OUTPUT_DIR}" \
+  trainer.default_local_dir="${SFT_OUTPUT_DIR}/checkpoints" \
   trainer.seed="${SEED}" \
   trainer.save_freq="${SAVE_FREQ}" \
   trainer.test_freq="${TEST_FREQ}" \
