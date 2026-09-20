@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "a0f994ef1d22570d28d7d33c810670ba854cdb86",
+  "code_revision_at_generation": "1af3169fe0a9e0f8709ab8734b181a01f547cf15",
   "canonical_code": {
-    "tree_sha256": "3900e7eb7cb64d254a4381a4b0f768a870a8be35d9a5908afc83fb32fb00dfea",
-    "files": 103,
-    "bytes": 860015
+    "tree_sha256": "e452bd23b23f78b6827b5f94da2581a31d46fc6ca512d981af8dd49d33caa880",
+    "files": 108,
+    "bytes": 895555
   },
-  "files": 256,
-  "bytes": 1629492,
+  "files": 261,
+  "bytes": 1665032,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 45,
+    "scripts": 50,
     "src": 42,
     "tests": 35
   },
@@ -986,6 +986,36 @@
       "path": "scripts/pilot_paired_model_baseline.py",
       "bytes": 11185,
       "sha256": "451f00a6580452ba7a1720ed177c6832543e6cca374980a7c9552375bc26701f",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts.py",
+      "bytes": 5923,
+      "sha256": "8d4faff49e39e5b9349f3a46a12ee608654e134d2ce69250b5c05ff7db7b78fd",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts_choice.py",
+      "bytes": 7864,
+      "sha256": "a5ad6cb553095c7191551c246d108086b7c5ee8c8fb53fa71de2b5bae3920e7a",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts_choice_promptv2.py",
+      "bytes": 8882,
+      "sha256": "767730735aeb9e6ec049d23018e4d53452095106a1787dfba7ef719edaf88c6f",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts_ctx8192.py",
+      "bytes": 5931,
+      "sha256": "b4e5c06bb26478c41da76f0fb9b54b5296163e9ee21c56172a721bc9ee99e130",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/pilot_sft_teacher_rollouts_promptv2.py",
+      "bytes": 6940,
+      "sha256": "e904d4117303cb51f2500f9a0a38150abf7a5c3407cf275c2e4eddab9a00ad98",
       "role": "canonical_or_documentation"
     },
     {
