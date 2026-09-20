@@ -17,6 +17,10 @@ if [[ -e "$OPD_SMOKE_OUTPUT" ]]; then
 fi
 mkdir -p "$OPD_SMOKE_OUTPUT"
 
+# This technical smoke uses k2 because veRL v0.8.0's k3 implementation hard
+# clamps large per-token estimates to 10, which can yield a nonzero reported
+# loss but exactly zero gradient.  The confirmatory estimator must be frozen in
+# the experiment protocol separately.
 python -m verl.trainer.main_ppo \
   algorithm.adv_estimator=grpo \
   algorithm.use_kl_in_reward=false \
@@ -46,8 +50,9 @@ python -m verl.trainer.main_ppo \
   actor_rollout_ref.rollout.gpu_memory_utilization=0.3 \
   actor_rollout_ref.rollout.enforce_eager=true \
   actor_rollout_ref.rollout.n=1 \
-  actor_rollout_ref.rollout.temperature=0 \
+  actor_rollout_ref.rollout.temperature=1.0 \
   actor_rollout_ref.rollout.max_model_len=1152 \
+  actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 \
   actor_rollout_ref.rollout.agent.num_workers=1 \
   actor_rollout_ref.rollout.agent.agent_loop_config_path=/opt/agent/configs/verl_v080_opd_agent_loops.yaml \
   actor_rollout_ref.rollout.agent.default_agent_loop=omniopd_action_token_opd \
@@ -72,11 +77,12 @@ python -m verl.trainer.main_ppo \
   distillation.teacher_models.teacher_model.model_path="$OPD_TEACHER_MODEL" \
   distillation.teacher_models.teacher_model.inference.tensor_model_parallel_size=1 \
   distillation.teacher_models.teacher_model.inference.name=vllm \
-  distillation.teacher_models.teacher_model.inference.gpu_memory_utilization=0.45 \
+  distillation.teacher_models.teacher_model.inference.gpu_memory_utilization=0.60 \
   distillation.teacher_models.teacher_model.inference.max_model_len=1152 \
-  distillation.distillation_loss.loss_mode=k3 \
+  distillation.teacher_models.teacher_model.inference.temperature=1.0 \
+  distillation.distillation_loss.loss_mode=k2 \
   distillation.distillation_loss.use_task_rewards=false \
   distillation.distillation_loss.use_policy_gradient=false \
-  distillation.distillation_loss.loss_max_clamp=10.0 \
+  distillation.distillation_loss.loss_max_clamp=null \
   distillation.distillation_loss.log_prob_min_clamp=-10.0 \
   "$@"

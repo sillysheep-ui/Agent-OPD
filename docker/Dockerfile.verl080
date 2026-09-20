@@ -1,10 +1,13 @@
-FROM omniopd-verl041:alfworld
+ARG BASE_IMAGE=docker.1ms.run/hiyouga/verl:ngc-th2.7.1-cu12.6-vllm0.10.0
+FROM ${BASE_IMAGE}
 
-# Reuse the validated CUDA/PyTorch/vLLM/ALFWorld environment. The veRL source
-# checkout is mounted read-only at run time. Record both image IDs before a
-# confirmatory run; this Dockerfile changes only the declared TensorDict range.
-RUN python -m pip install --no-cache-dir "tensordict==0.8.3" \
-    && python -m pip check
+# veRL v0.8.0 declares TensorDict <=0.10.0 but DataProto.to_tensordict()
+# actually asserts >=0.10 at runtime.  The upstream image contains 0.9.1,
+# therefore pin the only version satisfying both constraints.  --no-deps keeps
+# the image's validated CUDA/PyTorch/vLLM stack unchanged.
+RUN python -m pip install --no-cache-dir --no-deps "tensordict==0.10.0" \
+    && python -c "import tensordict, torch, vllm; assert tensordict.__version__ == '0.10.0'; print(torch.__version__, vllm.__version__, tensordict.__version__)"
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV VLLM_USE_V1=1
