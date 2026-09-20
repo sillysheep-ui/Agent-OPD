@@ -89,6 +89,7 @@ def _install_fake_alfworld_modules(environment):
     alfred = types.ModuleType(names[-1])
     alfred.AlfredDemangler = lambda shuffle: ("demangler", shuffle)
     alfred.AlfredInfos = object
+    alfred.AlfredExpert = lambda expert_type: ("expert", expert_type)
     for name in names[2:-1]:
         sys.modules[name] = types.ModuleType(name)
     sys.modules["textworld"] = textworld
@@ -162,6 +163,42 @@ def test_alfworld_adapter_fails_closed_when_textworld_cannot_be_seeded():
                 "/game.tw-pddl",
                 rollout_seed=2026,
             )
+    finally:
+        _restore_modules(previous)
+
+
+def test_alfworld_adapter_exposes_only_an_admissible_expert_action():
+    from omniopd.adapters import AlfworldEnvironment
+
+    class FakeEnvironment:
+        def seed(self, value):
+            pass
+
+        def reset(self):
+            return ["initial"], {
+                "extra.gamefile": [
+                    "/train/pick_and_place_simple-a/trial_1/game.tw-pddl"
+                ],
+                "admissible_commands": [["look", "go"]],
+                "extra.expert_plan": [["go"]],
+            }
+
+        def close(self):
+            pass
+
+    previous = _install_fake_alfworld_modules(FakeEnvironment())
+    try:
+        adapter = AlfworldEnvironment(
+            {
+                "general": {"training_method": "dagger"},
+                "dagger": {"training": {"max_nb_steps_per_episode": 50}},
+            },
+            "/train/pick_and_place_simple-a/trial_1/game.tw-pddl",
+            rollout_seed=2026,
+            expert_type="handcoded",
+        )
+        adapter.reset()
+        assert adapter.expert_action() == "go"
     finally:
         _restore_modules(previous)
 
