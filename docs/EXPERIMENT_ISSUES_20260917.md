@@ -232,3 +232,34 @@
 零梯度、Student 温度 0 导致 softmax 饱和，以及真实 step 1 更新、优化器非零和
 step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收，不解除正式
 数据、估计器、invalid、预算、权重和 provenance 阻断项。
+
+## 2026-09-20（续）：共同冷启动 SFT 的复用边界与 expert 冒烟
+
+- **O26｜冷启动 SFT 不需要第二套采集、数据构造和启动链，但此前的缺口清单把它估大了。**
+  现状是：`protocol.rollout_episode()` 接收任意 `ChatPolicy`，因此新增的
+  `ExpertPolicy`（`src/omniopd/adapters.py`）只需把环境 expert 适配成 `generate()`
+  契约，history 状态机、task-preserving 截断、state hash 与 provenance 全部留在同一条
+  代码路径上；监督行构造复用 `dataset.build_training_rows()` 与 `omniopd-build-data`
+  CLI，数据集复用 `torch_dataset.FinalTurnActionDataset`，训练器复用
+  `integrations/verl/fsdp_sft_trainer.py`。**待改造**：`run_verl_train.sh` 目前强制
+  要求 breadth/depth 的 annotation-pair，冷启动需要加互斥模式；pool manifest 的
+  validation 假设 behavior policy 是 API 服务，expert 需要一个独立的身份分支。
+- **D06｜论文原始 SFT 实现已在仓库内，但只能作为规则来源与对照。**
+  `legacy/supplement_document/build_sft_v6.py`（轨迹→SFT 转换，含 7 条硬规则）、
+  `legacy/main_document/sft_teacher_collect.py`、`collect_teacher_rollout.py`、
+  `multiturn_sft_dataset.py`、`final_turn_dataset.py`、`run_verl_sft_v6.sh` 都是原始
+  实现；其已知缺陷（history 错位、`[:, :-1]` mask 偏移、backward 后再除 microbatch、
+  valid 过滤改变 Teacher 分布等）已逐条记录在 [FILE_AUDIT.md](FILE_AUDIT.md)。因此新
+  冷启动数据链**不重写**这些功能，而是复用上条所列的现代实现；`legacy/` 仅用于核对
+  规则与解释历史结果。**待验收**：handcoded expert 语料仍需按新协议重建并出具 manifest。
+- **D07｜expert 采集路径已在真实 ALFWorld 上跑通（非确认性）。** 单局
+  `pick_heat_then_place_in_recep`（train split）经 `rollout_episode` + `ExpertPolicy`
+  完成 7 步并获胜，`invalid_turns=0`，全程无模型推理、无 API 调用、无训练（`model_used=false`、
+  `api_calls=0`、`training_performed=false`）。产物
+  `/data/yangchunyu/ld/omniopd_runs/expert_smoke_20260920_1/expert_rollout.json`
+  逐轮记录了 state hash、admissible 数量、截断信息、执行动作与有效性，并绑定了
+  game 文件与 trial 目录指纹、`derive_environment_seed` 派生的 per-game 环境种子及其
+  TextWorld seed attestation、tokenizer 配置哈希。同一提交的容器离线回归为
+  **161 passed、0 skipped**，Ruff 通过。**当前状态**：路径可用；多游戏、按 game 划分、
+  manifest 与偏好核验尚未执行，仍为非确认性。
+
