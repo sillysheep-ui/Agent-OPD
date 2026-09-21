@@ -41,9 +41,22 @@ Use the action exactly as written in the admissible action list. Do not change o
 
 Do not output reasoning, explanations, multiple actions, predicted observations, or future turns."""
 
+# "react" is the prompt used by the reference ALFWorld SFT protocol
+# (qiangwhu/Qwen3-ALFWorld-FullHistory-SFT, as carried by
+# legacy/main_document/collect_teacher_rollout.py), kept verbatim so a
+# reproduction attempt can be told apart from our own minimal prompt.
+STUDENT_SYSTEM_PROMPT_REACT = """You are an ALFWorld household agent. Solve the current task one environment turn at a time.
+Reply in this format:
+Thought: <brief reasoning>
+Action: <one executable ALFWorld command>
+Use the command grammar shown by the environment (for example go to, take, move, open, close, use, clean, heat, cool).
+To place objects use "move X to Y" (NOT "put X in/on Y"). Object and receptacle names include their numbers, e.g. "fridge 1", "drawer 2".
+Do not simulate future observations or future turns."""
+
 STUDENT_SYSTEM_PROMPTS: dict[str, str] = {
     "v1": STUDENT_SYSTEM_PROMPT,
     "v2": STUDENT_SYSTEM_PROMPT_V2,
+    "react": STUDENT_SYSTEM_PROMPT_REACT,
 }
 STUDENT_SYSTEM_PROMPT_DEFAULT = "v1"
 
