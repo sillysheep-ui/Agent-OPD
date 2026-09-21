@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "cf41ce7e8f52e76fb21071e5145031f1788e30ed",
+  "code_revision_at_generation": "60059fe430bccf9d67ebcb412e4507b4cb41f427",
   "canonical_code": {
-    "tree_sha256": "6a7e7496ae6a7768a25533a4767d1693fe3ad1707321dc22351ce111df54fa30",
+    "tree_sha256": "db33fc2431f2bdbc78d4bd3d8ba59e4d4ce3b55b03db940d115e04fc597a8c1f",
     "files": 113,
-    "bytes": 965135
+    "bytes": 966318
   },
   "files": 267,
-  "bytes": 1756490,
+  "bytes": 1757673,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -966,8 +966,8 @@
     },
     {
       "path": "scripts/evaluate_coldstart_sft.py",
-      "bytes": 9674,
-      "sha256": "4da68086689ca724a0771c4ac37fde28bd147c20f8933055fe540b26be3d5c06",
+      "bytes": 10857,
+      "sha256": "7bda4dbb7eb2a3488f0497a7172fc4a6b9121b8954bc16129e371653324f0a6a",
       "role": "canonical_or_documentation"
     },
     {
