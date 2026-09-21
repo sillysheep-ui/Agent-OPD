@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "cf6198176b46445aa2435f4021a0850902b6f67f",
+  "code_revision_at_generation": "0eef5262a874d56d460bf015d786e55c15a3b1be",
   "canonical_code": {
-    "tree_sha256": "c356b0b188ce9bd74cbc7c26862de8478a0a9fa4a918f24d5cb85829520eb753",
-    "files": 115,
-    "bytes": 996367
+    "tree_sha256": "a7438e206dcbb8ffeb369a2d3df3603e9750dd1a9cc73c87e8d176ccfcd1eddb",
+    "files": 116,
+    "bytes": 1002465
   },
-  "files": 269,
-  "bytes": 1798688,
+  "files": 270,
+  "bytes": 1804786,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 57,
+    "scripts": 58,
     "src": 42,
     "tests": 36
   },
@@ -960,8 +960,8 @@
     },
     {
       "path": "scripts/collect_teacher_sft.py",
-      "bytes": 12646,
-      "sha256": "9409669c74a96e0b2f9c21836424fdd0e750c4f8ca74a6d91e80bbe686366f91",
+      "bytes": 13191,
+      "sha256": "fdec26cd9d0e43cc011d4d57667c31b32ebe7d87942c21bc0a71ad69df9a747a",
       "role": "canonical_or_documentation"
     },
     {
@@ -1052,6 +1052,12 @@
       "path": "scripts/prepare_m3_panel.py",
       "bytes": 18227,
       "sha256": "9ac6220ae6827bfdd99421359d72757b22b654038d1939df3c86a3f51f24e45f",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/prepare_opd_training_data.py",
+      "bytes": 4757,
+      "sha256": "1401cb92b3b312aa56fec953ffe8cbdae2099841ea94d8e5272739bf61c52bfa",
       "role": "canonical_or_documentation"
     },
     {
@@ -1320,8 +1326,8 @@
     },
     {
       "path": "src/omniopd/opd_adapter.py",
-      "bytes": 12803,
-      "sha256": "b647991b456ea86f287f05f852f483070a74fdcefa60f06ebed498e96e48f2e4",
+      "bytes": 13599,
+      "sha256": "54e5eccfddcedfb5e4492f350095b2d269124a1284263237700fadd059f5eacb",
       "role": "canonical_or_documentation"
     },
     {
