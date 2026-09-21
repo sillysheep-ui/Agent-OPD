@@ -433,3 +433,77 @@ def test_dataset_checks_the_configured_prompt_version():
             assert "Student-context" in str(error)
         else:
             raise AssertionError("a v2 row must not pass the default v1 dataset check")
+
+
+def test_sage_opd_turn_rendering_matches_the_reference_table():
+    from omniopd.prompts import (
+        SAGE_OPD_ALFWORLD_SYSTEM_PROMPT,
+        resolve_student_prompt,
+        sage_admissible_line,
+        sage_initial_user_message,
+        sage_turn_user_message,
+    )
+
+    name, prompt = resolve_student_prompt("sage_opd")
+    assert name == "sage_opd"
+    assert prompt == SAGE_OPD_ALFWORLD_SYSTEM_PROMPT
+    assert "exactly two lines" in prompt
+    assert "Only the line beginning with 'Action:'" in prompt
+
+    actions = [f"go to cabinet {index}" for index in range(1, 36)]
+    line = sage_admissible_line(actions)
+    assert line.count(";") == 30  # 30 commands plus the (+5 more) marker
+    assert line.endswith("(+5 more)")
+
+    first = sage_initial_user_message("put a mug away", "you see a mug", actions[:3])
+    assert first.startswith("Task: put a mug away\nObservation: you see a mug\nAdmissible: ")
+    assert sage_turn_user_message("you see a sink", actions[:2]).startswith(
+        "Observation: you see a sink\nAdmissible: go to cabinet 1; go to cabinet 2"
+    )
+
+
+def test_rollout_keeps_raw_assistant_turns_when_asked():
+    from omniopd.context import TaskPreservingTruncator
+    from omniopd.protocol import GenerationSettings, rollout_episode
+
+    class Env:
+        def reset(self):
+            from omniopd.protocol import ResetResult
+
+            return ResetResult(
+                observation="start",
+                admissible_actions=("look",),
+                game_id="/train/pick_and_place_simple-a/trial_1/game.tw-pddl",
+                task_type="pick_and_place_simple",
+                task="do it",
+            )
+
+        def step(self, action):
+            from omniopd.protocol import StepResult
+
+            return StepResult("done", (), True, True)
+
+        def close(self):
+            pass
+
+    class Policy:
+        def generate(self, messages, *, temperature, max_tokens, request_id):
+            return "Thought: I should look.\nAction: look"
+
+    class Tokenizer:
+        pad_token_id = 0
+
+        def apply_chat_template(self, messages, *, tokenize, add_generation_prompt, enable_thinking=False):
+            return [1] * (len(messages) + 1)
+
+    turns, won = rollout_episode(
+        Env(),
+        Policy(),
+        TaskPreservingTruncator(Tokenizer()),
+        settings=GenerationSettings(temperature=0.0, max_tokens=16),
+        max_steps=1,
+        user_turn_style="sage_opd",
+        assistant_history="raw",
+    )
+    assert won is True and len(turns) == 1
+    assert turns[0].student.executed_action == "look"

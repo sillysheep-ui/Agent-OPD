@@ -57,6 +57,7 @@ STUDENT_SYSTEM_PROMPTS: dict[str, str] = {
     "v1": STUDENT_SYSTEM_PROMPT,
     "v2": STUDENT_SYSTEM_PROMPT_V2,
     "react": STUDENT_SYSTEM_PROMPT_REACT,
+    "sage_opd": SAGE_OPD_ALFWORLD_SYSTEM_PROMPT,
 }
 STUDENT_SYSTEM_PROMPT_DEFAULT = "v1"
 
@@ -85,6 +86,50 @@ Return exactly:
 Action: <command>
 
 Do not output reasoning, explanations, multiple actions, predicted observations, or future turns."""
+
+
+# SAGE-OPD (arXiv 2606.19659, Table 6) renders the ALFWorld turn as
+# "Task/Observation/Admissible" with semicolon-separated commands, and keeps the
+# model's own Thought+Action turns in the history.
+SAGE_OPD_ALFWORLD_SYSTEM_PROMPT = (
+    "You are an embodied agent solving a household task in a text-based "
+    "simulator (AlfWorld). You receive an Observation describing what you can "
+    "see and a list of Admissible commands you may execute. On every turn you "
+    "must reply with exactly two lines: Thought: <one short sentence of "
+    "reasoning> Action: <one command, copied verbatim from the Admissible list "
+    "when possible> Plan briefly, then issue the next action. Only the line "
+    "beginning with 'Action:' is used to step the environment. Do not add any "
+    "other text after the Action line."
+)
+
+SAGE_OPD_ADMISSIBLE_LIMIT = 30
+
+
+def sage_admissible_line(actions: Sequence[str], *, limit: int = SAGE_OPD_ADMISSIBLE_LIMIT) -> str:
+    """Render the reference admissible list: semicolon separated, capped."""
+
+    items = [str(action) for action in actions]
+    shown = items[:limit]
+    if len(items) > limit:
+        shown = [*shown, f"(+{len(items) - limit} more)"]
+    return "; ".join(shown)
+
+
+def sage_initial_user_message(
+    task: str, observation: str, actions: Sequence[str]
+) -> str:
+    return (
+        f"Task: {task.strip()}\n"
+        f"Observation: {observation.strip()}\n"
+        f"Admissible: {sage_admissible_line(actions)}"
+    )
+
+
+def sage_turn_user_message(observation: str, actions: Sequence[str]) -> str:
+    return (
+        f"Observation: {observation.strip()}\n"
+        f"Admissible: {sage_admissible_line(actions)}"
+    )
 
 
 def build_reference_prompt(instruction: str, examples: object) -> str:

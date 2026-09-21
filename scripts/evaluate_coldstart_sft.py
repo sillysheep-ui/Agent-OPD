@@ -62,6 +62,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-tokens", type=int, default=64)
     parser.add_argument("--student-prompt", default="v1")
     parser.add_argument(
+        "--user-turn-style",
+        default="default",
+        choices=["default", "sage_opd"],
+        help="how each observation/admissible turn is rendered",
+    )
+    parser.add_argument(
+        "--assistant-history",
+        default="action_only",
+        choices=["action_only", "raw"],
+        help="keep only the executed action or the model's own raw turn",
+    )
+    parser.add_argument(
         "--prompt-json",
         type=Path,
         default=None,
@@ -175,6 +187,8 @@ def main() -> None:
                 max_steps=args.max_steps,
                 system_prompt=prompt_text,
                 state_source="student",
+                user_turn_style=args.user_turn_style,
+                assistant_history=args.assistant_history,
             )
         finally:
             env.close()
@@ -217,6 +231,8 @@ def main() -> None:
             if args.prompt_json is None
             else {"path": str(args.prompt_json.resolve()), "sha256": sha256_file(args.prompt_json)}
         ),
+        "user_turn_style": args.user_turn_style,
+        "assistant_history": args.assistant_history,
         "constraint_mode": (
             "admissible_choice" if args.constrain_admissible else "free_generation"
         ),
