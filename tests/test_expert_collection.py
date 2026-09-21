@@ -361,6 +361,27 @@ def test_expert_rows_follow_the_requested_prompt_version():
     assert rows[0]["messages"][0] == {"role": "system", "content": prompt_text}
 
 
+class _PromptStubTokenizer:
+    """Minimal chat-template stub so the dataset can be built without a model."""
+
+    pad_token_id = 0
+
+    def apply_chat_template(
+        self, messages, *, tokenize, add_generation_prompt, enable_thinking=False
+    ):
+        ids = [1]
+        for message in messages:
+            if message["role"] == "system":
+                ids += [10]
+            elif message["role"] == "user":
+                ids += [20]
+            else:
+                ids += [30] + ([31] if message["content"] else []) + [32]
+        if add_generation_prompt:
+            ids += [30]
+        return ids
+
+
 def test_dataset_checks_the_configured_prompt_version():
     try:
         import torch  # noqa: F401
@@ -399,14 +420,14 @@ def test_dataset_checks_the_configured_prompt_version():
         path.write_text(json.dumps(row) + "\n", encoding="utf-8")
         dataset = FinalTurnActionDataset(
             files=path,
-            tokenizer=FakeTokenizer(),
+            tokenizer=_PromptStubTokenizer(),
             max_length=10,
             config={"student_prompt": "v2"},
         )
         assert dataset.student_prompt_name == "v2"
         try:
             FinalTurnActionDataset(
-                files=path, tokenizer=FakeTokenizer(), max_length=10
+                files=path, tokenizer=_PromptStubTokenizer(), max_length=10
             )
         except ValueError as error:
             assert "Student-context" in str(error)
