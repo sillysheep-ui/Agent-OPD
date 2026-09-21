@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "e36cc43313ac517bd55d0d73bca4ad353b2f6542",
+  "code_revision_at_generation": "df197b5b341cf98492f437a4b3e15ef39f267562",
   "canonical_code": {
-    "tree_sha256": "3ae2fea1237f9933dcb385b86363735e9119706ed9fb44e3b4e2314ea7bffadf",
-    "files": 112,
-    "bytes": 944363
+    "tree_sha256": "c3347bf3f239983bc462cfa301de8a4a8e7df202c5686c712d1b9ab40bbec062",
+    "files": 113,
+    "bytes": 955189
   },
-  "files": 266,
-  "bytes": 1728410,
+  "files": 267,
+  "bytes": 1741777,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 54,
+    "scripts": 55,
     "src": 42,
     "tests": 36
   },
@@ -936,8 +936,8 @@
     },
     {
       "path": "scripts/collect_expert_sft.py",
-      "bytes": 13077,
-      "sha256": "ecfe8d217c3854d8cc4baad5fe2699c0d409c3bff3b431df439c71492985bdef",
+      "bytes": 15126,
+      "sha256": "02dfc6cae4f3b2474d9a84d5d91699e9f81274f8abb5a8a6dc8cf823bd92aaa2",
       "role": "canonical_or_documentation"
     },
     {
@@ -962,6 +962,12 @@
       "path": "scripts/evaluate.py",
       "bytes": 19385,
       "sha256": "462ca9cde82bd0c630bcfe90be04a2f1ed4ad1b768232aa90841b7eef2de6ca7",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/evaluate_coldstart_sft.py",
+      "bytes": 8777,
+      "sha256": "2fa5629a865b0cbd3a086851cfa52bb2f4ed20cf06d1db4f8e8e8c3e5fffb4cb",
       "role": "canonical_or_documentation"
     },
     {
@@ -1440,8 +1446,8 @@
     },
     {
       "path": "tests/test_expert_collection.py",
-      "bytes": 7569,
-      "sha256": "9177a8dd17034cb7d3d60ef7c7ed9260600c8b1229b0f6499fabaed03275ab96",
+      "bytes": 10110,
+      "sha256": "09ed923b1f4eee343fbee603f5214d7b6153d788ac315615d7a56ddc04be7a01",
       "role": "canonical_or_documentation"
     },
     {
