@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "71eb006c609053f06a2577e85fc416ac23edea56",
+  "code_revision_at_generation": "604c64f2874aeaafdd003004616ca12f6913fecb",
   "canonical_code": {
-    "tree_sha256": "48292a361f3e90c8c2c90bee7c81c29a10ec3825f6267be140b47de969fc13f0",
+    "tree_sha256": "0eafb581ed759c245663eee9d6da6c9ce29f94d79e820b3f7a437656f6613bef",
     "files": 113,
-    "bytes": 961926
+    "bytes": 965309
   },
   "files": 267,
-  "bytes": 1753281,
+  "bytes": 1756664,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -90,8 +90,8 @@
     },
     {
       "path": "configs/verl_v080_omniopd_sft.yaml",
-      "bytes": 1160,
-      "sha256": "ed3fcc5d5f7ac9558a02f0db13404114ecee5d85266addedac3f06375a71ab62",
+      "bytes": 1329,
+      "sha256": "918853e0b6100f9f16f15ebf1354104429aa785e8d0b28aa3bb1bfe2d2e384c6",
       "role": "canonical_or_documentation"
     },
     {
@@ -1164,8 +1164,8 @@
     },
     {
       "path": "src/omniopd/adapters.py",
-      "bytes": 18340,
-      "sha256": "9dd6784374a8bf21cb53cd144d76049a523c1e72758117c764d7692cfe3d5967",
+      "bytes": 20715,
+      "sha256": "bb44804a83d7e4db22cb4fff75b1960ca64abeb2b8397e2f06e0c24df4e361b0",
       "role": "canonical_or_documentation"
     },
     {
@@ -1320,8 +1320,8 @@
     },
     {
       "path": "src/omniopd/prompts.py",
-      "bytes": 4510,
-      "sha256": "5d4ef8a48ed8e6d65101d78ee4654e2edc6bbc3df29484f670d27fbe9b9450fd",
+      "bytes": 5349,
+      "sha256": "98512353978d1d36fa721da9b85286644a754fab0d4a8a69faa3212ce4ecaf33",
       "role": "canonical_or_documentation"
     },
     {
