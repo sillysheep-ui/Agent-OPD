@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "60059fe430bccf9d67ebcb412e4507b4cb41f427",
+  "code_revision_at_generation": "164b97eb9a6d0ca5236d39b3afa8d83359eed3d5",
   "canonical_code": {
-    "tree_sha256": "db33fc2431f2bdbc78d4bd3d8ba59e4d4ce3b55b03db940d115e04fc597a8c1f",
+    "tree_sha256": "9696b86840fdf99e7f03376804bf46b2e59aaae66a73d708b883f9c398068c3f",
     "files": 113,
-    "bytes": 966318
+    "bytes": 966914
   },
   "files": 267,
-  "bytes": 1757673,
+  "bytes": 1759152,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -966,8 +966,8 @@
     },
     {
       "path": "scripts/evaluate_coldstart_sft.py",
-      "bytes": 10857,
-      "sha256": "7bda4dbb7eb2a3488f0497a7172fc4a6b9121b8954bc16129e371653324f0a6a",
+      "bytes": 11130,
+      "sha256": "21530c7984be0f9ccbb91ee219154a792284b4f448fdd23e7092903819dd605b",
       "role": "canonical_or_documentation"
     },
     {
@@ -1314,8 +1314,8 @@
     },
     {
       "path": "src/omniopd/parser.py",
-      "bytes": 2371,
-      "sha256": "a87a642d72244349139c797358edf6f159798397aad2637f21668d06047f0ae5",
+      "bytes": 2694,
+      "sha256": "23a1635d9f7edb504c0cdf0761029f0d1e9d4f55a10aa0bdb3f21341ed3ed54c",
       "role": "canonical_or_documentation"
     },
     {
@@ -1524,8 +1524,8 @@
     },
     {
       "path": "tests/test_parser.py",
-      "bytes": 718,
-      "sha256": "5557149e8d9f1ddef0341805077fbb1bbb2dffd4700015e9b9ea8e7e53703237",
+      "bytes": 1601,
+      "sha256": "19beb79dfe57ddabf135cc2cb9304a17dbddeb61f3e606421cd282aa097935c4",
       "role": "canonical_or_documentation"
     },
     {
