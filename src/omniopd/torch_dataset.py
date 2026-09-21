@@ -6,11 +6,15 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from omniopd.tokenization import encode_final_assistant_content
-from omniopd.prompts import STUDENT_SYSTEM_PROMPT
+from omniopd.prompts import resolve_student_prompt
 
 
 class FinalTurnActionDataset:
     """Canonical final-turn dataset for PyTorch/veRL-style trainers.
+
+    The Student system prompt version is read from the data config, so a
+    prompt ablation cannot silently train against a different context than the
+    one its audit recorded.
 
     Historical assistant actions remain context and always receive mask 0.
     `state_weight` remains a scalar so the trainer can normalize over the full
@@ -34,10 +38,13 @@ class FinalTurnActionDataset:
         source = parquet_files if parquet_files is not None else files
         if source is None:
             raise ValueError("files/parquet_files is required")
+        prompt_name = None
         if config is not None:
             getter = config.get if hasattr(config, "get") else lambda key, default: getattr(config, key, default)
             max_length = int(getter("max_length", max_length))
             truncation = str(getter("truncation", truncation))
+            prompt_name = getter("student_prompt", None)
+        self.student_prompt_name, self.student_prompt = resolve_student_prompt(prompt_name)
         self.tokenizer = tokenizer
         self.max_length = int(max_length)
         self.truncation = truncation
@@ -142,7 +149,7 @@ class FinalTurnActionDataset:
             if (
                 len(messages) < 3
                 or roles != expected_roles
-                or messages[0].get("content") != STUDENT_SYSTEM_PROMPT
+                or messages[0].get("content") != self.student_prompt
                 or messages[-1] != {"role": "assistant", "content": expected_target}
             ):
                 raise ValueError(

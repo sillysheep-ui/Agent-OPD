@@ -263,3 +263,58 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   **161 passed、0 skipped**，Ruff 通过。**当前状态**：路径可用；多游戏、按 game 划分、
   manifest 与偏好核验尚未执行，仍为非确认性。
 
+## 2026-09-21：参考协议复刻与提示词比选
+
+- **E11｜ALFWorld 数据目录在服务器上被移动。** 原先使用的
+  `/cfs/data/private/yangchunyu/ld/alfworld_data_0.4.2` 整个 `yangchunyu/ld`
+  前缀在 FUSE 挂载上消失，同一挂载的 `zhangsl/Model` 正常，`/data/yangchunyu/ld`
+  下的仓库与产物也正常。实际新位置是
+  `/cfs/data/private/yangchunyu/liud/ld/alfworld_data_0.4.2`（多了一层 `liud`）。
+  **处理**：所有容器挂载改指新路径；`json_2.1.1/{train,valid_seen,valid_unseen}`
+  与 `logic/` 齐全，`valid_seen` 含 140 局、`train` 含 2435 个任务家族目录。
+  **教训**：不能把机器特定路径写进代码或脚本，挂载点必须现场确认。
+- **E12｜该 FUSE 挂载上的深递归遍历会卡死。** `AlfredTWEnv.collect_game_files`
+  先做 `list(os.walk(root))`，在容器内两次阻塞在 `fuse_readdir`（进程 D 状态，
+  6 分钟无 I/O 进展）；宿主机对同一棵树 `du -sh` 也超时。单层 `ls` 却很快
+  （407 个家族 0.83 s、单家族 0.026 s）。**处理**：新增单层枚举
+  `enumerate_split_games` 与游戏清单缓存（`--game-list-cache`），采集/评测共用；
+  失败的单局环境加载记为该次尝试的失败原因而不中断整批。
+- **E13｜本机 `~/.ssh/config` 损坏。** 报
+  `no argument after keyword "host"`，导致所有 ssh/scp 失败。
+  **处理**：本次全部命令改用 `ssh -F /dev/null` 绕过；该文件需要使用者自行修复。
+- **R01｜SAGE-OPD（arXiv 2606.19659）的实测配置（原文证据）。**
+  teacher **未经训练**：Table 1 直接列出 teacher 的 base 推理成绩
+  （Qwen3-8B 61.43/67.16、Qwen3-32B 57.14/69.40，seen/unseen SR）。
+  off-policy SFT 只作为基线且几乎无效（0.6B 1.43→2.86、1.7B 25.71→25.00），
+  而同一对 OPD 把 0.6B 提到 55.00/56.72、1.7B 提到 60.00/61.94。
+  主方法训练超参：verl 全异步、LR 1e-6、weight decay 0.1、response 4096、
+  rollout n=1、global batch 64、1 epoch；ALFWorld 最多 30 轮、每轮最多 4096 token；
+  temperature 0.4、top-p 1.0；评测用 ReAct 格式 + full chat history（无滑窗）+
+  thinking 关闭 + `</action>` 停止符，评 valid-seen/valid-unseen。
+  其 one-shot 示范**内容未公开**（表头只写 "An one-shot demonstration"）。
+- **R02｜按 Table 6 复原的协议未能复现论文的 base 数字。** 用 Qwen3-1.7B 在
+  完整 valid_seen（140 局）上，按 Table 6 的 system prompt、`Task/Observation/
+  Admissible:` 用户轮（分号分隔、前 30 条 + `(+N more)`）、模型自身 `Thought/Action`
+  历史、30 轮、贪心解码，得到 **11/140 = 7.86%**；论文同模型为 **25.71%**。
+  追加实验：自建 one-shot 示范（取自 train 的 cool 局，13 轮；因含连续三次
+  `examine fridge 1` 而已改选 4 轮无重复的 `pick_and_place_simple` 局）
+  + temperature 0.4，在"基线失败的 12 局"上仍是 **0/12**；同一批换 AgentBoard
+  形式为 1/12。**结论**：论文未公开的示范内容、observation/历史拼装与解析策略
+  使精确复刻不可达；已排除模型变体（所用 `Qwen3-1.7B` 为 instruct、带 chat
+  template）与采样温度两个原因。
+- **R03｜提示词比选（Qwen3-4B-Instruct-2507，固定 18 局，每类 3 局，30 步）。**
+  AgentBoard 形式（引导语 + 6 段任务家族示范）：**6/18 胜、406 步、无效 9.1%**；
+  自写 `correct` 提示词 3/18、492 步、9.8%；ReAct 示范（格式转换后）3/18、
+  470 步、6.0%；本项目原 `v1` 提示词 **0/18**、540 步、6.9%。
+  四版无效动作率都在 6–10%，差别不在动作合法性而在是否推进任务；
+  `pick_clean_then_place_in_recep` 在所有版本上都是 0/9。
+  **决定**：把 AgentBoard 形式冻结为学生提示词 P_S；因其仓库没有独立 LICENSE
+  文件（README 只标 Code Apache-2.0 / Data GPL-2.0），**不复制文本进本仓库**，
+  继续以路径 + 仓库提交 + 文件哈希引用。
+- **R04｜实现边界（必须随结果一起报告）。** 外部提示词均以 `--prompt-json`
+  引入；各家输出格式差异由解析器归一化（`put X in/on Y`→`move X to Y`、
+  `clean|heat|cool X using Y`→`... with Y`）。**尚未实现** ReAct 原生的
+  "单行输出、`think:` 行不消耗环境步" 语义，也未实现 Agent-R1 的
+  `<think>`+`env_step` 工具调用协议；因此本次比选是"提示词内容"的对比，
+  不是各框架完整协议的对拍。
+

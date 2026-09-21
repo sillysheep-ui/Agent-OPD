@@ -17,8 +17,8 @@ import yaml
 from transformers import AutoTokenizer
 
 from omniopd.adapters import (
+    AdmissibleChoicePolicy,
     AlfworldEnvironment,
-    OpenAIChatPolicy,
     extract_task_type,
     list_alfworld_games,
     validate_provider_response_model_identity,
@@ -26,7 +26,7 @@ from omniopd.adapters import (
 from omniopd.context import TaskPreservingTruncator
 from omniopd.environment_provenance import derive_environment_seed
 from omniopd.protocol import GenerationSettings, rollout_episode
-from omniopd.provenance import sha256_file, sha256_json
+from omniopd.provenance import sha256_file
 from omniopd.sampling import stable_shuffled
 
 
@@ -48,51 +48,6 @@ Do not output explanations, reasoning, multiple actions, or predicted future obs
 GAME_ORDER_SEED = 42
 ENVIRONMENT_MASTER_SEED = 314159
 GAME_INDEX = 1  # index 0 was repeatedly used for prompt development
-
-
-class AdmissibleChoicePolicy(OpenAIChatPolicy):
-    """Constrain each response to the *current* admissible action set."""
-
-    def generate(self, messages, *, temperature, max_tokens, request_id):
-        marker = "\n\nAdmissible actions:\n"
-        if not messages or messages[-1].get("role") != "user":
-            raise ValueError("query must end with the current user message")
-        parts = messages[-1]["content"].rsplit(marker, 1)
-        if len(parts) != 2:
-            raise ValueError("current admissible-action block is missing")
-        lines = [line for line in parts[1].splitlines() if line.strip()]
-        if not lines or any(not line.startswith("- ") for line in lines):
-            raise ValueError("malformed admissible-action block")
-        actions = [line[2:] for line in lines]
-        if len(actions) != len(set(actions)):
-            raise ValueError("duplicate admissible actions")
-        choices = ["Action: " + action for action in actions]
-        self._choice_metadata = {
-            "constraint_mode": "admissible_choice",
-            "choice_count": len(choices),
-            "choices_sha256": sha256_json(choices),
-        }
-        previous_extra_body = self.extra_body
-        self.extra_body = {
-            **previous_extra_body,
-            "structured_outputs": {"choice": choices},
-        }
-        try:
-            return super().generate(
-                messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                request_id=request_id,
-            )
-        finally:
-            self.extra_body = previous_extra_body
-            self._choice_metadata = None
-
-    def _record_request(self, entry):
-        metadata = getattr(self, "_choice_metadata", None)
-        if metadata is None:
-            raise RuntimeError("choice metadata missing for request ledger")
-        super()._record_request({**entry, **metadata})
 
 
 def _run_arm(*, config, selected, arm, output):

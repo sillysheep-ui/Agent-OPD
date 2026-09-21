@@ -3,7 +3,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from .prompts import initial_user_message, turn_user_message
+from .prompts import (
+    initial_user_message,
+    sage_initial_user_message,
+    sage_turn_user_message,
+    turn_user_message,
+)
 from .schema import AgentState, Message
 
 
@@ -19,6 +24,7 @@ class ConversationHistory:
     _admissible_actions: tuple[str, ...]
     _turn_index: int = 0
     _awaiting_observation: bool = False
+    _user_turn_style: str = "default"
 
     @classmethod
     def start(
@@ -30,16 +36,29 @@ class ConversationHistory:
         admissible_actions: Sequence[str],
         game_id: str,
         task_type: str,
+        user_turn_style: str = "default",
+        demonstration: Sequence[tuple[str, str]] | None = None,
     ) -> "ConversationHistory":
         actions = tuple(str(action) for action in admissible_actions)
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": initial_user_message(task, initial_observation, actions),
-            },
-        ]
-        return cls(task, game_id, task_type, messages, initial_observation, actions)
+        if user_turn_style == "default":
+            content = initial_user_message(task, initial_observation, actions)
+        elif user_turn_style == "sage_opd":
+            content = sage_initial_user_message(task, initial_observation, actions)
+        else:
+            raise ValueError(f"unsupported user_turn_style={user_turn_style!r}")
+        messages = [{"role": "system", "content": system_prompt}]
+        if demonstration is not None:
+            if not demonstration:
+                raise ValueError("demonstration must contain at least one turn")
+            for demo_user, demo_assistant in demonstration:
+                if not str(demo_user).strip() or not str(demo_assistant).strip():
+                    raise ValueError("demonstration turns must be non-empty")
+                messages.append({"role": "user", "content": str(demo_user)})
+                messages.append({"role": "assistant", "content": str(demo_assistant)})
+        messages.append({"role": "user", "content": content})
+        history = cls(task, game_id, task_type, messages, initial_observation, actions)
+        history._user_turn_style = user_turn_style
+        return history
 
     @property
     def messages(self) -> list[Message]:
@@ -70,10 +89,13 @@ class ConversationHistory:
             state_source=state_source,
         )
 
-    def record_action(self, executed_action: str) -> None:
+    def record_action(self, executed_action: str, *, raw: str | None = None) -> None:
         if self._awaiting_observation:
             raise RuntimeError("previous action has no recorded environment result")
-        self._messages.append({"role": "assistant", "content": f"Action: {executed_action}"})
+        content = f"Action: {executed_action}"
+        if raw is not None and str(raw).strip():
+            content = str(raw).strip()
+        self._messages.append({"role": "assistant", "content": content})
         self._awaiting_observation = True
 
     def record_observation(
@@ -90,12 +112,14 @@ class ConversationHistory:
         self._admissible_actions = tuple(str(action) for action in admissible_actions)
         self._awaiting_observation = False
         if not done:
-            self._messages.append(
-                {
-                    "role": "user",
-                    "content": turn_user_message(self._observation, self._admissible_actions),
-                }
-            )
+            style = getattr(self, "_user_turn_style", "default")
+            if style == "default":
+                content = turn_user_message(self._observation, self._admissible_actions)
+            elif style == "sage_opd":
+                content = sage_turn_user_message(self._observation, self._admissible_actions)
+            else:
+                raise ValueError(f"unsupported user_turn_style={style!r}")
+            self._messages.append({"role": "user", "content": content})
 
     def assert_query_ready(self) -> None:
         if self._awaiting_observation or self._messages[-1].get("role") != "user":

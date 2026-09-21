@@ -124,12 +124,17 @@ def rollout_episode(
     max_steps: int = 50,
     system_prompt: str = STUDENT_SYSTEM_PROMPT,
     state_source: str = "student",
+    user_turn_style: str = "default",
+    assistant_history: str = "action_only",
+    demonstration: Sequence[tuple[str, str]] | None = None,
 ) -> tuple[list[RolloutTurn], bool]:
     if max_steps <= 0:
         raise ValueError("max_steps must be positive")
     reset = env.reset()
     if not reset.admissible_actions:
         raise RuntimeError("environment reset returned an empty admissible-action set")
+    if assistant_history not in {"action_only", "raw"}:
+        raise ValueError(f"unsupported assistant_history={assistant_history!r}")
     history = ConversationHistory.start(
         system_prompt=system_prompt,
         task=reset.task,
@@ -137,6 +142,8 @@ def rollout_episode(
         admissible_actions=reset.admissible_actions,
         game_id=reset.game_id,
         task_type=reset.task_type,
+        user_turn_style=user_turn_style,
+        demonstration=demonstration,
     )
     turns: list[RolloutTurn] = []
     won = False
@@ -151,7 +158,10 @@ def rollout_episode(
             request_id=f"behavior:{state_source}:{state.state_hash}",
         )
         turns.append(RolloutTurn(state, sample))
-        history.record_action(sample.executed_action)
+        history.record_action(
+            sample.executed_action,
+            raw=sample.raw if assistant_history == "raw" else None,
+        )
         transition = env.step(sample.executed_action)
         won = transition.won
         if not transition.done and not transition.admissible_actions:

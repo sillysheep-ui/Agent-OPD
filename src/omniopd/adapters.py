@@ -438,3 +438,82 @@ class ExpertPolicy:
             raise ValueError(f"expert returned an invalid single-line action: {action!r}")
         self.request_ids.append(request_id)
         return f"Action: {action}"
+
+class AdmissibleChoicePolicy(OpenAIChatPolicy):
+    """Constrain every response to the current admissible action set.
+
+    This is the decoding contract the reference ALFWorld protocols use: the
+    model still chooses the action, but the sampler can only emit one of the
+    commands the environment currently accepts.  It lives here rather than in
+    a pilot script so the evaluation harness and the pilots share one
+    implementation.
+
+    ``constraint_field`` names the request field the served vLLM understands:
+    vLLM 0.8.x honours ``guided_choice`` while newer builds use
+    ``structured_outputs.choice``.  Sending the wrong one is silently ignored,
+    which would turn a constrained run into a free-generation run, so the
+    choice is explicit and recorded in the request ledger.
+    """
+
+    def __init__(
+        self,
+        *args: Any,
+        constraint_field: Literal["guided_choice", "structured_outputs"] = "guided_choice",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        if constraint_field not in {"guided_choice", "structured_outputs"}:
+            raise ValueError(f"unsupported constraint_field={constraint_field!r}")
+        self.constraint_field = constraint_field
+
+    def generate(
+        self,
+        messages: Sequence[dict[str, str]],
+        *,
+        temperature: float | None,
+        max_tokens: int,
+        request_id: str,
+    ) -> str:
+        if not messages or messages[-1].get("role") != "user":
+            raise ValueError("current query must end with a user message")
+
+        marker = "\n\nAdmissible actions:\n"
+        parts = messages[-1]["content"].rsplit(marker, 1)
+        if len(parts) != 2:
+            raise ValueError("current admissible-action block is missing")
+        lines = [line for line in parts[1].splitlines() if line.strip()]
+        if not lines or any(not line.startswith("- ") for line in lines):
+            raise ValueError("malformed admissible-action block")
+        actions = [line[2:] for line in lines]
+        if len(actions) != len(set(actions)):
+            raise ValueError("duplicate admissible actions")
+
+        choices = ["Action: " + action for action in actions]
+        self._choice_metadata = {
+            "constraint_mode": "admissible_choice",
+            "constraint_field": self.constraint_field,
+            "choice_count": len(choices),
+            "choices_sha256": sha256_json(choices),
+        }
+        previous_extra_body = self.extra_body
+        if self.constraint_field == "guided_choice":
+            constraint: dict[str, Any] = {"guided_choice": choices}
+        else:
+            constraint = {"structured_outputs": {"choice": choices}}
+        self.extra_body = {**previous_extra_body, **constraint}
+        try:
+            return super().generate(
+                messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                request_id=request_id,
+            )
+        finally:
+            self.extra_body = previous_extra_body
+            self._choice_metadata = None
+
+    def _record_request(self, entry: dict[str, Any]) -> None:
+        metadata = getattr(self, "_choice_metadata", None)
+        if metadata is None:
+            raise RuntimeError("choice metadata missing for request ledger")
+        super()._record_request({**entry, **metadata})
