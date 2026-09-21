@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -31,7 +32,6 @@ from omniopd.adapters import (  # noqa: E402
     AlfworldEnvironment,
     ExpertPolicy,
     extract_task_type,
-    list_alfworld_games,
 )
 from omniopd.context import TaskPreservingTruncator  # noqa: E402
 from omniopd.environment_provenance import (  # noqa: E402
@@ -66,6 +66,39 @@ def task_family_from_path(game: str) -> str:
     trial = Path(game).parent
     family_directory = trial.parent.name if trial.name.startswith("trial_") else trial.name
     return family_directory.split("-", 1)[0]
+
+
+def enumerate_split_games(
+    *, data_path: Path, task_types: tuple[str, ...]
+) -> list[str]:
+    """List the split's executable games with single-level directory reads.
+
+    ALFWorld's own ``AlfredTWEnv.collect_game_files`` builds
+    ``list(os.walk(root, topdown=False))`` first, which walks thousands of
+    directories and on the FUSE-backed shared filesystem has been observed to
+    block inside ``fuse_readdir`` for minutes.  Listing one family directory at
+    a time is cheap; the ``solvable`` metadata check is skipped here and the
+    environment itself rejects an unusable game when it is loaded.
+    """
+
+    games: list[str] = []
+    for family_directory in sorted(os.listdir(data_path)):
+        if "movable" in family_directory or "Sliced" in family_directory:
+            continue
+        if family_directory.split("-", 1)[0] not in task_types:
+            continue
+        family_path = data_path / family_directory
+        if not family_path.is_dir():
+            continue
+        for trial in sorted(os.listdir(family_path)):
+            if not trial.startswith("trial_"):
+                continue
+            game = family_path / trial / "game.tw-pddl"
+            if game.is_file():
+                games.append(str(game))
+    if not games:
+        raise SystemExit(f"no executable games found under {data_path}")
+    return games
 
 
 def select_games(
@@ -136,7 +169,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def resolve_game_list(
-    *, config: dict, split: str, cache_path: Path | None
+    *,
+    config: dict,
+    split: str,
+    cache_path: Path | None,
+    task_types: tuple[str, ...],
 ) -> tuple[list[str], str]:
     """Return the split's game list, reusing a cache when one is supplied.
 
@@ -153,7 +190,10 @@ def resolve_game_list(
         if not games or len(set(games)) != len(games):
             raise SystemExit("game list cache is empty or contains duplicates")
         return games, "cache"
-    games = [str(game) for game in list_alfworld_games(config, split)]
+    data_path = Path(
+        os.path.expandvars(str(config["dataset"]["data_path"]))
+    )
+    games = enumerate_split_games(data_path=data_path, task_types=task_types)
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(
@@ -192,7 +232,7 @@ def main() -> None:
     config = yaml.safe_load(env_config_path.read_text(encoding="utf-8"))
     cache_path = args.game_list_cache.resolve() if args.game_list_cache else None
     games, game_list_source = resolve_game_list(
-        config=config, split=args.split, cache_path=cache_path
+        config=config, split=args.split, cache_path=cache_path, task_types=task_types
     )
     candidates = select_games(
         games,
@@ -221,7 +261,13 @@ def main() -> None:
     per_task_type: dict[str, dict[str, int]] = {
         task_type: {"attempts": 0, "solved": 0} for task_type in task_types
     }
-    counts = {"games_attempted": 0, "games_won": 0, "turns": 0, "invalid_turns": 0}
+    counts = {
+        "games_attempted": 0,
+        "games_won": 0,
+        "games_with_environment_error": 0,
+        "turns": 0,
+        "invalid_turns": 0,
+    }
     attempted_games: list[str] = []
     total_budget = len(task_types) * args.max_attempts_per_task_type
     with episodes_path.open("x", encoding="utf-8") as handle:
@@ -241,30 +287,45 @@ def main() -> None:
                 environment_seeds[game] = environment_seed
                 tasks_by_game[game] = task_type
                 attempted_games.append(game)
-                env = AlfworldEnvironment(
-                    config, game, rollout_seed=environment_seed, expert_type="handcoded"
-                )
-                policy = ExpertPolicy(env.expert_action)
+                # A game the environment cannot even load is recorded as a
+                # rejected attempt instead of aborting the whole collection:
+                # the attempt still consumes budget, and the reason is kept.
+                failure_reason: str | None = None
+                seed_attestation: dict | None = None
+                turns: list = []
+                won = False
                 try:
-                    turns, won = rollout_episode(
-                        env,
-                        policy,
-                        truncator,
-                        settings=GenerationSettings(temperature=0.0, max_tokens=64),
-                        max_steps=args.max_steps,
-                        system_prompt=STUDENT_SYSTEM_PROMPT,
-                        state_source="student",
+                    env = AlfworldEnvironment(
+                        config, game, rollout_seed=environment_seed, expert_type="handcoded"
                     )
-                    seed_attestation = env.seed_attestation
-                finally:
-                    env.close()
-                if len(policy.request_ids) != len(turns):
-                    raise SystemExit(f"expert turn accounting drifted for {game}")
+                except Exception as error:  # noqa: BLE001 - recorded, not hidden
+                    failure_reason = f"environment_load_error:{type(error).__name__}"
+                else:
+                    policy = ExpertPolicy(env.expert_action)
+                    try:
+                        turns, won = rollout_episode(
+                            env,
+                            policy,
+                            truncator,
+                            settings=GenerationSettings(temperature=0.0, max_tokens=64),
+                            max_steps=args.max_steps,
+                            system_prompt=STUDENT_SYSTEM_PROMPT,
+                            state_source="student",
+                        )
+                        seed_attestation = env.seed_attestation
+                    except Exception as error:  # noqa: BLE001 - recorded, not hidden
+                        failure_reason = f"expert_rollout_error:{type(error).__name__}"
+                        turns, won = [], False
+                    finally:
+                        env.close()
+                    if failure_reason is None and len(policy.request_ids) != len(turns):
+                        raise SystemExit(f"expert turn accounting drifted for {game}")
                 invalid_turns = sum(1 for turn in turns if not turn.student.valid)
                 per_task_type[family]["attempts"] += 1
                 per_task_type[family]["solved"] += int(bool(won))
                 counts["games_attempted"] += 1
                 counts["games_won"] += int(bool(won))
+                counts["games_with_environment_error"] += int(failure_reason is not None)
                 counts["turns"] += len(turns)
                 counts["invalid_turns"] += invalid_turns
                 handle.write(
@@ -277,6 +338,7 @@ def main() -> None:
                             "won": bool(won),
                             "steps": len(turns),
                             "invalid_turns": invalid_turns,
+                            "failure_reason": failure_reason,
                             "turns": [turn.to_dict() for turn in turns],
                         },
                         ensure_ascii=False,
@@ -289,7 +351,8 @@ def main() -> None:
                 print(
                     f"[{counts['games_attempted']}/{total_budget}] {task_type}: "
                     f"won={bool(won)} steps={len(turns)} invalid={invalid_turns} "
-                    f"solved={per_task_type[family]['solved']}/{args.solved_per_task_type}",
+                    f"solved={per_task_type[family]['solved']}/{args.solved_per_task_type}"
+                    + (f" failure={failure_reason}" if failure_reason else ""),
                     flush=True,
                 )
             if per_task_type[family]["solved"] < args.solved_per_task_type:

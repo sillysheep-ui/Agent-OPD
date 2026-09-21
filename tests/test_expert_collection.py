@@ -258,12 +258,19 @@ def test_game_list_cache_is_reused_and_split_checked():
             json.dumps({"split": "train", "games": ["/a/game.tw-pddl", "/b/game.tw-pddl"]}),
             encoding="utf-8",
         )
-        games, source = resolve_game_list(config={}, split="train", cache_path=cache)
+        games, source = resolve_game_list(
+            config={}, split="train", cache_path=cache, task_types=("pick_and_place_simple",)
+        )
         assert games == ["/a/game.tw-pddl", "/b/game.tw-pddl"]
         assert source == "cache"
 
         try:
-            resolve_game_list(config={}, split="eval_out_of_distribution", cache_path=cache)
+            resolve_game_list(
+                config={},
+                split="eval_out_of_distribution",
+                cache_path=cache,
+                task_types=("pick_and_place_simple",),
+            )
         except SystemExit as error:
             assert "split" in str(error)
         else:
@@ -279,17 +286,44 @@ def test_game_list_cache_written_on_miss():
 
     with tempfile.TemporaryDirectory() as directory:
         cache = Path(directory) / "train_games.json"
-        original = collect_expert_sft.list_alfworld_games
-        collect_expert_sft.list_alfworld_games = lambda config, split: ["/x/game.tw-pddl"]
+        original = collect_expert_sft.enumerate_split_games
+        collect_expert_sft.enumerate_split_games = lambda **kwargs: ["/x/game.tw-pddl"]
         try:
             games, source = collect_expert_sft.resolve_game_list(
-                config={}, split="train", cache_path=cache
+                config={"dataset": {"data_path": "/tmp"}},
+                split="train",
+                cache_path=cache,
+                task_types=("pick_and_place_simple",),
             )
         finally:
-            collect_expert_sft.list_alfworld_games = original
+            collect_expert_sft.enumerate_split_games = original
         assert games == ["/x/game.tw-pddl"]
         assert source == "alfworld_environment"
         assert json.loads(cache.read_text(encoding="utf-8")) == {
             "split": "train",
             "games": ["/x/game.tw-pddl"],
         }
+
+
+def test_fast_enumerator_reads_one_directory_level_at_a_time():
+    import tempfile
+    from pathlib import Path
+
+    from scripts.collect_expert_sft import enumerate_split_games
+
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        wanted = root / "pick_and_place_simple-Apple-None-Desk-1" / "trial_a"
+        wanted.mkdir(parents=True)
+        (wanted / "game.tw-pddl").write_text("{}", encoding="utf-8")
+        other = root / "look_at_obj_in_light-DeskLamp-201" / "trial_b"
+        other.mkdir(parents=True)
+        (other / "game.tw-pddl").write_text("{}", encoding="utf-8")
+        skipped = root / "pick_and_place_simple-movable-2" / "trial_c"
+        skipped.mkdir(parents=True)
+        (skipped / "game.tw-pddl").write_text("{}", encoding="utf-8")
+
+        games = enumerate_split_games(
+            data_path=root, task_types=("pick_and_place_simple",)
+        )
+    assert games == [str(wanted / "game.tw-pddl")]
