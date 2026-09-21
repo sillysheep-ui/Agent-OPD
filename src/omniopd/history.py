@@ -37,6 +37,7 @@ class ConversationHistory:
         game_id: str,
         task_type: str,
         user_turn_style: str = "default",
+        demonstration: Sequence[tuple[str, str]] | None = None,
     ) -> "ConversationHistory":
         actions = tuple(str(action) for action in admissible_actions)
         if user_turn_style == "default":
@@ -45,10 +46,16 @@ class ConversationHistory:
             content = sage_initial_user_message(task, initial_observation, actions)
         else:
             raise ValueError(f"unsupported user_turn_style={user_turn_style!r}")
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": content},
-        ]
+        messages = [{"role": "system", "content": system_prompt}]
+        if demonstration is not None:
+            if not demonstration:
+                raise ValueError("demonstration must contain at least one turn")
+            for demo_user, demo_assistant in demonstration:
+                if not str(demo_user).strip() or not str(demo_assistant).strip():
+                    raise ValueError("demonstration turns must be non-empty")
+                messages.append({"role": "user", "content": str(demo_user)})
+                messages.append({"role": "assistant", "content": str(demo_assistant)})
+        messages.append({"role": "user", "content": content})
         history = cls(task, game_id, task_type, messages, initial_observation, actions)
         history._user_turn_style = user_turn_style
         return history

@@ -126,6 +126,7 @@ def rollout_episode(
     state_source: str = "student",
     user_turn_style: str = "default",
     assistant_history: str = "action_only",
+    demonstration: Sequence[tuple[str, str]] | None = None,
 ) -> tuple[list[RolloutTurn], bool]:
     if max_steps <= 0:
         raise ValueError("max_steps must be positive")
@@ -142,6 +143,7 @@ def rollout_episode(
         game_id=reset.game_id,
         task_type=reset.task_type,
         user_turn_style=user_turn_style,
+        demonstration=demonstration,
     )
     turns: list[RolloutTurn] = []
     won = False

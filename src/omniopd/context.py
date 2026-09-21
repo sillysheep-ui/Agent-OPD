@@ -25,11 +25,20 @@ class TaskPreservingTruncator:
         reserve_tokens: int = 256,
         *,
         enable_thinking: bool = False,
+        anchor_messages: int = 2,
     ):
         self.tokenizer = tokenizer
         self.max_context_tokens = int(max_context_tokens)
         self.reserve_tokens = int(reserve_tokens)
         self.enable_thinking = bool(enable_thinking)
+        # System prompt plus every message that must never be truncated away:
+        # two by default (system, first task turn), four when a demonstration
+        # pair sits between them.
+        self.anchor_messages = int(anchor_messages)
+        if self.anchor_messages < 2 or self.anchor_messages % 2 != 0:
+            raise ValueError(
+                "anchor_messages must be an even number of at least two messages"
+            )
         if self.reserve_tokens < 0 or self.max_context_tokens <= self.reserve_tokens:
             raise ValueError(
                 "reserve_tokens must be non-negative and smaller than max_context_tokens"
@@ -44,12 +53,16 @@ class TaskPreservingTruncator:
         )
         return len(ids)
 
-    @staticmethod
-    def _validate(history: list[Message]) -> list[list[Message]]:
+    def _validate(self, history: list[Message]) -> list[list[Message]]:
         roles = [message.get("role") for message in history]
-        if len(history) < 2 or roles[:2] != ["system", "user"]:
-            raise ValueError("history must begin with system,user")
-        tail = history[2:]
+        anchor = self.anchor_messages
+        expected_prefix = [
+            "system" if index == 0 else "user" if index % 2 == 1 else "assistant"
+            for index in range(anchor)
+        ]
+        if len(history) < anchor or roles[:anchor] != expected_prefix:
+            raise ValueError(f"history must begin with {expected_prefix}")
+        tail = history[anchor:]
         if len(tail) % 2:
             raise ValueError("query history must contain complete assistant,user pairs")
         pairs: list[list[Message]] = []
@@ -62,7 +75,7 @@ class TaskPreservingTruncator:
 
     def truncate(self, history: list[Message]) -> tuple[list[Message], TruncationInfo]:
         pairs = self._validate(history)
-        base = [dict(history[0]), dict(history[1])]
+        base = [dict(message) for message in history[: self.anchor_messages]]
         budget = self.max_context_tokens - self.reserve_tokens
         if self._length(base) > budget:
             raise ValueError("system and initial task/observation exceed the context budget")

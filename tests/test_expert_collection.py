@@ -507,3 +507,70 @@ def test_rollout_keeps_raw_assistant_turns_when_asked():
     )
     assert won is True and len(turns) == 1
     assert turns[0].student.executed_action == "look"
+
+
+def test_conversation_history_injects_the_demonstration_before_the_task():
+    from omniopd.history import ConversationHistory
+
+    history = ConversationHistory.start(
+        system_prompt="SYS",
+        task="put a mug away",
+        initial_observation="you see a mug",
+        admissible_actions=("look",),
+        game_id="g",
+        task_type="pick_and_place_simple",
+        user_turn_style="sage_opd",
+        demonstration=[
+            (
+                "Task: demo\nObservation: d\nAdmissible: look",
+                "Thought: demo\nAction: look",
+            )
+        ],
+    )
+    assert [message["role"] for message in history.messages] == [
+        "system",
+        "user",
+        "assistant",
+        "user",
+    ]
+    assert history.messages[1]["content"].startswith("Task: demo")
+    assert history.messages[2]["content"].startswith("Thought: demo")
+    assert history.messages[3]["content"].startswith("Task: put a mug away")
+
+
+def test_truncator_anchor_keeps_the_demonstration_and_the_task_anchor():
+    from omniopd.context import TaskPreservingTruncator
+
+    history = [
+        {"role": "system", "content": "SYS"},
+        {"role": "user", "content": "Task: demo\nObservation: d\nAdmissible: look"},
+        {"role": "assistant", "content": "Thought: t\nAction: look"},
+        {"role": "user", "content": "Task: real\nObservation: o\nAdmissible: look"},
+        {"role": "assistant", "content": "Thought: t\nAction: look"},
+        {"role": "user", "content": "Observation: after\nAdmissible: look"},
+    ]
+    anchored = TaskPreservingTruncator(
+        _PromptStubTokenizer(),
+        max_context_tokens=8,
+        reserve_tokens=1,
+        anchor_messages=4,
+    ).truncate(history)
+    kept, info = anchored
+    assert [message["role"] for message in kept] == [
+        "system",
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+        "user",
+    ]
+    assert kept[1]["content"].startswith("Task: demo")
+    assert kept[3]["content"].startswith("Task: real")
+    assert info.kept_pairs == 1
+
+    # Without the widened anchor the demonstration pair is treated as the first
+    # droppable pair and the real task anchor disappears with it.
+    plain, _ = TaskPreservingTruncator(
+        _PromptStubTokenizer(), max_context_tokens=8, reserve_tokens=1
+    ).truncate(history)
+    assert all(not message["content"].startswith("Task: real") for message in plain)

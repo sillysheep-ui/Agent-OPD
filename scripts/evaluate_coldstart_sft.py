@@ -62,6 +62,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-tokens", type=int, default=64)
     parser.add_argument("--student-prompt", default="v1")
     parser.add_argument(
+        "--demonstration-json",
+        type=Path,
+        default=None,
+        help="one-shot demonstration artifact with 'user' and 'assistant' blocks",
+    )
+    parser.add_argument(
         "--user-turn-style",
         default="default",
         choices=["default", "sage_opd"],
@@ -142,11 +148,18 @@ def main() -> None:
     tokenizer = AutoTokenizer.from_pretrained(
         str(tokenizer_path), use_fast=True, local_files_only=True, trust_remote_code=False
     )
+    demonstration: list[tuple[str, str]] | None = None
+    if args.demonstration_json is not None:
+        demo = json.loads(args.demonstration_json.read_text(encoding="utf-8"))
+        demonstration = [
+            (str(turn["user"]), str(turn["assistant"])) for turn in demo["turns"]
+        ]
     truncator = TaskPreservingTruncator(
         tokenizer,
         max_context_tokens=args.max_context_tokens,
         reserve_tokens=args.reserve_tokens,
         enable_thinking=False,
+        anchor_messages=2 + 2 * len(demonstration) if demonstration else 2,
     )
     if args.prompt_json is not None:
         reference = json.loads(args.prompt_json.read_text(encoding="utf-8"))
@@ -189,6 +202,7 @@ def main() -> None:
                 state_source="student",
                 user_turn_style=args.user_turn_style,
                 assistant_history=args.assistant_history,
+                demonstration=demonstration,
             )
         finally:
             env.close()
@@ -232,6 +246,14 @@ def main() -> None:
             else {"path": str(args.prompt_json.resolve()), "sha256": sha256_file(args.prompt_json)}
         ),
         "user_turn_style": args.user_turn_style,
+        "demonstration": (
+            None
+            if args.demonstration_json is None
+            else {
+                "path": str(args.demonstration_json.resolve()),
+                "sha256": sha256_file(args.demonstration_json),
+            }
+        ),
         "assistant_history": args.assistant_history,
         "constraint_mode": (
             "admissible_choice" if args.constrain_admissible else "free_generation"
