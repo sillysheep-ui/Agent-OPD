@@ -138,7 +138,6 @@ def main() -> None:
     )
     if args.prompt_json is not None:
         reference = json.loads(args.prompt_json.read_text(encoding="utf-8"))
-        instruction = str(reference["instruction"])
         prompt_name = f"reference:{args.prompt_json.name}"
         prompt_text = build_reference_prompt(
             str(reference["instruction"]), reference.get("examples") or []
