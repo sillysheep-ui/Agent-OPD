@@ -398,11 +398,16 @@ def test_dataset_checks_the_configured_prompt_version():
         path = Path(directory) / "rows.jsonl"
         path.write_text(json.dumps(row) + "\n", encoding="utf-8")
         dataset = FinalTurnActionDataset(
-            files=path, tokenizer=FakeTokenizer(), max_length=10, config={"student_prompt": "v2"}
+            files=path,
+            tokenizer=FakeTokenizer(),
+            max_length=10,
+            config={"student_prompt": "v2"},
         )
         assert dataset.student_prompt_name == "v2"
         try:
-            FinalTurnActionDataset(files=path, tokenizer=FakeTokenizer(), max_length=10)
+            FinalTurnActionDataset(
+                files=path, tokenizer=FakeTokenizer(), max_length=10
+            )
         except ValueError as error:
             assert "Student-context" in str(error)
         else:
