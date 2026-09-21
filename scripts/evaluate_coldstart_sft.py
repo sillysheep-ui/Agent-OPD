@@ -140,8 +140,15 @@ def main() -> None:
         reference = json.loads(args.prompt_json.read_text(encoding="utf-8"))
         instruction = str(reference["instruction"])
         examples = reference.get("examples") or []
-        if isinstance(examples, str):
+        if isinstance(examples, dict):
+            examples = ["".join(value) for value in examples.values()]
+        elif isinstance(examples, str):
             examples = [examples]
+        else:
+            examples = [
+                "".join(item) if isinstance(item, list) else str(item)
+                for item in examples
+            ]
         prompt_name = f"reference:{args.prompt_json.name}"
         prompt_text = instruction
         if examples:
