@@ -318,3 +318,29 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   `<think>`+`env_step` 工具调用协议；因此本次比选是"提示词内容"的对比，
   不是各框架完整协议的对拍。
 
+## 2026-09-21（续）：冻结提示词后的规模阶梯
+
+- **R05｜在冻结的 AgentBoard 形式提示词下，模型规模与 ALFWorld 成功率单调。**
+  评测条件：ALFWorld valid_seen 全 140 局、每局最多 30 轮、贪心解码、
+  `Task/Observation/Admissible` 用户轮、六段任务家族示范（AgentBoard
+  `prompts/VanillaAgent/alfworld_base.json`，仓库提交 `bb7255e`，文件 sha256
+  `3d20f49a…`）。结果：
+
+  | 模型 | seen SR | 无效动作 | 备注 |
+  |---|---|---|---|
+  | Qwen3-1.7B | 5/140 = 3.57% | 288 | 论文同规模 base 为 25.71%，差约 7 倍 |
+  | Qwen3-4B-Instruct-2507 | 45/140 = 32.14% | 446 | 本项目 Student |
+  | Qwen3-8B | 69/140 = 49.29% | 259 | 论文 8B base 为 61.43% |
+  | Qwen3-14B | 84/140 = 60.00% | 379 | 文档指定的冻结 Teacher |
+  | Qwen3-32B-AWQ | 96/140 = 68.57% | 404 | 论文 32B base 为 57.14%，我们更高 |
+
+  结论：**换成外部验证过的提示词后，本项目第一次得到单调、可用的评测阶梯**；
+  但仍无法与论文逐点对齐（1.7B 差 7 倍、8B 偏低、32B 偏高），因此跨论文的
+  绝对数字不可直接比较，只能在同一协议内部做对照。各模型的短板都集中在
+  `pick_clean_then_place_in_recep`、`pick_heat_then_place_in_recep` 与
+  `pick_two_obj_and_place`。
+- **R06｜对照实验的四要素已固定，可用于四条臂。** Student 初始化 =
+  Qwen3-4B-Instruct-2507（base，32.14%）；Teacher = 冻结 Qwen3-14B（60.00%）；
+  提示词 = 上述冻结形式；评测 = valid_seen 140 局、30 轮、贪心。四条臂为：
+  无更新基线、传统逐 Token OPD、随机状态动作校正、所提选样策略。
+
