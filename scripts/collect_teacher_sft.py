@@ -80,6 +80,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--game-order-seed", type=int, default=42)
     parser.add_argument("--environment-master-seed", type=int, default=314159)
     parser.add_argument("--max-steps", type=int, default=30)
+    parser.add_argument(
+        "--state-source",
+        default="teacher",
+        choices=["student", "teacher"],
+        help="role whose states these rollouts are: student pools for OPD, teacher pools for demonstrations",
+    )
     parser.add_argument("--max-context-tokens", type=int, default=8192)
     parser.add_argument("--reserve-tokens", type=int, default=256)
     parser.add_argument("--max-tokens", type=int, default=64)
@@ -191,7 +197,7 @@ def main() -> None:
                         ),
                         max_steps=args.max_steps,
                         system_prompt=system_prompt,
-                        state_source="teacher",
+                        state_source=args.state_source,
                     )
                     seed_attestation = env.seed_attestation
                 finally:
@@ -258,6 +264,7 @@ def main() -> None:
             "request_ledger_sha256": sha256_json(policy.request_ledger),
         },
         "split": args.split,
+        "state_source": args.state_source,
         "task_types": list(task_types),
         "target": args.target,
         "solved_per_task_type": args.solved_per_task_type,
