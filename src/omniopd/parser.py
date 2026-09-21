@@ -23,6 +23,11 @@ def _normalize(text: str) -> str:
     match = re.fullmatch(r"put\s+(.+?)\s+(?:in|on|into|onto)\s+(.+)", value, re.I)
     if match:
         value = f"move {match.group(1)} to {match.group(2)}"
+    # The reference ALFWorld prompts spell the transformation actions with
+    # "using" while TextWorld's grammar uses "with"; accept both spellings.
+    match = re.fullmatch(r"(clean|heat|cool)\s+(.+?)\s+using\s+(.+)", value, re.I)
+    if match:
+        value = f"{match.group(1)} {match.group(2)} with {match.group(3)}"
     return value.lower()
 
 
