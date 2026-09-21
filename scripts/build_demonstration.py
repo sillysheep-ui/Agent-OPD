@@ -149,8 +149,17 @@ def main() -> None:
             }
         )
         print(f"{game.split('/')[-3]}: won={bool(won)} steps={len(turns)}", flush=True)
-        if won and (chosen is None or len(turns) < chosen["steps"]):
+        executed = [turn.student.executed_action for turn in turns]
+        has_repeat = any(
+            first == second for first, second in zip(executed, executed[1:])
+        )
+        # A demonstration that repeats a useless action teaches the exact
+        # pathology the student already shows, so prefer clean trajectories.
+        key = (has_repeat, len(turns))
+        if won and (chosen is None or key < chosen["key"]):
             chosen = {
+                "key": key,
+                "has_consecutive_repeat": has_repeat,
                 "game_id": game,
                 "environment_seed": environment_seed,
                 "steps": len(turns),
@@ -185,6 +194,7 @@ def main() -> None:
         "game_sha256": sha256_file(chosen["game_id"]),
         "environment_seed": chosen["environment_seed"],
         "steps": chosen["steps"],
+        "has_consecutive_repeat": chosen["has_consecutive_repeat"],
         "system_prompt_sha256": sha256_text(SAGE_OPD_ALFWORLD_SYSTEM_PROMPT),
         "student_prompt_name": resolve_student_prompt("sage_opd")[0],
         "attempts": attempts,

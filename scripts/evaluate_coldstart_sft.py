@@ -62,6 +62,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-tokens", type=int, default=64)
     parser.add_argument("--student-prompt", default="v1")
     parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.0,
+        help="sampling temperature; the reference protocol uses 0.4",
+    )
+    parser.add_argument(
         "--demonstration-json",
         type=Path,
         default=None,
@@ -196,7 +202,9 @@ def main() -> None:
                 env,
                 policy,
                 truncator,
-                settings=GenerationSettings(temperature=0.0, max_tokens=args.max_tokens),
+                settings=GenerationSettings(
+                    temperature=args.temperature, max_tokens=args.max_tokens
+                ),
                 max_steps=args.max_steps,
                 system_prompt=prompt_text,
                 state_source="student",
@@ -246,6 +254,7 @@ def main() -> None:
             else {"path": str(args.prompt_json.resolve()), "sha256": sha256_file(args.prompt_json)}
         ),
         "user_turn_style": args.user_turn_style,
+        "temperature": args.temperature,
         "demonstration": (
             None
             if args.demonstration_json is None
