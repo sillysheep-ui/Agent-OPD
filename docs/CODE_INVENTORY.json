@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "df197b5b341cf98492f437a4b3e15ef39f267562",
+  "code_revision_at_generation": "fc9357139c1f94c332412599d0493f9673a2010e",
   "canonical_code": {
-    "tree_sha256": "c3347bf3f239983bc462cfa301de8a4a8e7df202c5686c712d1b9ab40bbec062",
+    "tree_sha256": "c3a7133520182bf46883442c6de34105395e11d3fed506e69a9cebf09cbdd9a0",
     "files": 113,
-    "bytes": 955189
+    "bytes": 957939
   },
   "files": 267,
-  "bytes": 1741777,
+  "bytes": 1745792,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -936,8 +936,8 @@
     },
     {
       "path": "scripts/collect_expert_sft.py",
-      "bytes": 15126,
-      "sha256": "02dfc6cae4f3b2474d9a84d5d91699e9f81274f8abb5a8a6dc8cf823bd92aaa2",
+      "bytes": 17876,
+      "sha256": "4673b6b5b5e31e4320405378f31897494b6b852b8e67556daee8d9f76458fbd4",
       "role": "canonical_or_documentation"
     },
     {
@@ -1446,8 +1446,8 @@
     },
     {
       "path": "tests/test_expert_collection.py",
-      "bytes": 10110,
-      "sha256": "09ed923b1f4eee343fbee603f5214d7b6153d788ac315615d7a56ddc04be7a01",
+      "bytes": 11375,
+      "sha256": "2516b94394eb68f3b6d5a2d4482444c87cd96a7d8e9c818af108bedfa1cfd072",
       "role": "canonical_or_documentation"
     },
     {
