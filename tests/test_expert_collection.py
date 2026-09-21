@@ -221,3 +221,75 @@ def test_collector_defaults_to_ten_solved_episodes_per_family():
     assert args.solved_per_task_type == 10
     assert args.max_attempts_per_task_type == 50
     assert args.split == "train"
+
+
+def test_held_out_games_preserves_first_seen_order(tmp_path=None):
+    import json
+    import tempfile
+    from pathlib import Path
+
+    from scripts.evaluate_coldstart_sft import held_out_games
+
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "val.jsonl"
+        rows = [
+            {"game_id": "g-b", "task_type": "look"},
+            {"game_id": "g-b", "task_type": "look"},
+            {"game_id": "g-a", "task_type": "pick"},
+            {"game_id": "g-c", "task_type": "look"},
+        ]
+        path.write_text(
+            "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+        )
+        games = held_out_games(path)
+    assert games == {"look": ["g-b", "g-c"], "pick": ["g-a"]}
+
+
+def test_game_list_cache_is_reused_and_split_checked():
+    import json
+    import tempfile
+    from pathlib import Path
+
+    from scripts.collect_expert_sft import resolve_game_list
+
+    with tempfile.TemporaryDirectory() as directory:
+        cache = Path(directory) / "train_games.json"
+        cache.write_text(
+            json.dumps({"split": "train", "games": ["/a/game.tw-pddl", "/b/game.tw-pddl"]}),
+            encoding="utf-8",
+        )
+        games, source = resolve_game_list(config={}, split="train", cache_path=cache)
+        assert games == ["/a/game.tw-pddl", "/b/game.tw-pddl"]
+        assert source == "cache"
+
+        try:
+            resolve_game_list(config={}, split="eval_out_of_distribution", cache_path=cache)
+        except SystemExit as error:
+            assert "split" in str(error)
+        else:
+            raise AssertionError("a cache for another split must not be reused")
+
+
+def test_game_list_cache_written_on_miss():
+    import json
+    import tempfile
+    from pathlib import Path
+
+    from scripts import collect_expert_sft
+
+    with tempfile.TemporaryDirectory() as directory:
+        cache = Path(directory) / "train_games.json"
+        original = collect_expert_sft.list_alfworld_games
+        collect_expert_sft.list_alfworld_games = lambda config, split: ["/x/game.tw-pddl"]
+        try:
+            games, source = collect_expert_sft.resolve_game_list(
+                config={}, split="train", cache_path=cache
+            )
+        finally:
+            collect_expert_sft.list_alfworld_games = original
+        assert games == ["/x/game.tw-pddl"]
+        assert source == "alfworld_environment"
+        assert json.loads(cache.read_text(encoding="utf-8")) == {
+            "split": "train",
+            "games": ["/x/game.tw-pddl"],
+        }

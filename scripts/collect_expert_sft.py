@@ -114,6 +114,14 @@ def parse_args() -> argparse.Namespace:
         help="solved episodes required from every task family",
     )
     parser.add_argument(
+        "--game-list-cache",
+        type=Path,
+        help=(
+            "optional JSON cache of the split's game list; a cache miss walks "
+            "the ALFWorld tree once and writes the cache"
+        ),
+    )
+    parser.add_argument(
         "--max-attempts-per-task-type",
         type=int,
         default=50,
@@ -125,6 +133,34 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-context-tokens", type=int, default=4096)
     parser.add_argument("--reserve-tokens", type=int, default=256)
     return parser.parse_args()
+
+
+def resolve_game_list(
+    *, config: dict, split: str, cache_path: Path | None
+) -> tuple[list[str], str]:
+    """Return the split's game list, reusing a cache when one is supplied.
+
+    Walking the ALFWorld tree costs minutes on a FUSE-backed shared
+    filesystem and has been observed to block indefinitely, so the walk is
+    paid once and persisted instead of running at every collection.
+    """
+
+    if cache_path is not None and cache_path.is_file():
+        cached = json.loads(cache_path.read_text(encoding="utf-8"))
+        if cached.get("split") != split or not isinstance(cached.get("games"), list):
+            raise SystemExit(f"game list cache does not describe split {split!r}")
+        games = [str(item) for item in cached["games"]]
+        if not games or len(set(games)) != len(games):
+            raise SystemExit("game list cache is empty or contains duplicates")
+        return games, "cache"
+    games = [str(game) for game in list_alfworld_games(config, split)]
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(
+            json.dumps({"split": split, "games": games}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    return games, "alfworld_environment"
 
 
 def main() -> None:
@@ -154,7 +190,10 @@ def main() -> None:
     from transformers import AutoTokenizer
 
     config = yaml.safe_load(env_config_path.read_text(encoding="utf-8"))
-    games = list_alfworld_games(config, args.split)
+    cache_path = args.game_list_cache.resolve() if args.game_list_cache else None
+    games, game_list_source = resolve_game_list(
+        config=config, split=args.split, cache_path=cache_path
+    )
     candidates = select_games(
         games,
         task_types=task_types,
@@ -283,6 +322,16 @@ def main() -> None:
             "enable_thinking": False,
         },
         "student_system_prompt_sha256": sha256_text(STUDENT_SYSTEM_PROMPT),
+        "game_list": {
+            "source": game_list_source,
+            "cache_path": None if cache_path is None else str(cache_path),
+            "cache_sha256": (
+                None
+                if cache_path is None or not cache_path.is_file()
+                else sha256_file(cache_path)
+            ),
+            "games_in_split": len(games),
+        },
         "selection": {
             "rule": "per_task_type_stable_shuffle_attempt_until_solved_target",
             "task_family_source": "trial_directory_name_cross_checked_with_traj_data",
