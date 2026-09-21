@@ -62,6 +62,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-tokens", type=int, default=64)
     parser.add_argument("--student-prompt", default="v1")
     parser.add_argument(
+        "--prompt-json",
+        type=Path,
+        default=None,
+        help=(
+            "path to a reference prompt JSON with 'instruction' and 'examples' "
+            "(for example AgentBoard's prompts/VanillaAgent/alfworld_base.json)"
+        ),
+    )
+    parser.add_argument(
         "--constrain-admissible",
         action="store_true",
         help="sample only from the current admissible action set",
@@ -127,7 +136,24 @@ def main() -> None:
         reserve_tokens=args.reserve_tokens,
         enable_thinking=False,
     )
-    prompt_name, prompt_text = resolve_student_prompt(args.student_prompt)
+    if args.prompt_json is not None:
+        reference = json.loads(args.prompt_json.read_text(encoding="utf-8"))
+        instruction = str(reference["instruction"])
+        examples = reference.get("examples") or []
+        if isinstance(examples, str):
+            examples = [examples]
+        prompt_name = f"reference:{args.prompt_json.name}"
+        prompt_text = instruction
+        if examples:
+            prompt_text += "\nHere are examples:\n" + "".join(
+                f"{example}\n" for example in examples
+            )
+        prompt_text += (
+            "\nRespond with exactly the next action on a single line, in the form "
+            "'Action: <command>'.\n"
+        )
+    else:
+        prompt_name, prompt_text = resolve_student_prompt(args.student_prompt)
     policy_kwargs = {
         "model": args.model,
         "base_url": args.base_url,
@@ -196,6 +222,11 @@ def main() -> None:
         "confirmatory_use_allowed": False,
         "training_performed": False,
         "student_prompt": {"name": prompt_name, "sha256": sha256_text(prompt_text)},
+        "prompt_json": (
+            None
+            if args.prompt_json is None
+            else {"path": str(args.prompt_json.resolve()), "sha256": sha256_file(args.prompt_json)}
+        ),
         "constraint_mode": (
             "admissible_choice" if args.constrain_admissible else "free_generation"
         ),
