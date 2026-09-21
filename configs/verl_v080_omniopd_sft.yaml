@@ -9,6 +9,9 @@ data:
   max_length: 4096
   truncation: error
   chat_template: null
+  # Student system prompt version; see omniopd.prompts.  Declared here so
+  # a prompt ablation overrides an existing key instead of appending one.
+  student_prompt: v1
   num_workers: 0
 model:
   partial_pretrain: null
