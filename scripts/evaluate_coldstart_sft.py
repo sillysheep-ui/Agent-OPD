@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from omniopd.adapters import (  # noqa: E402
+    AdmissibleChoicePolicy,
     AlfworldEnvironment,
     OpenAIChatPolicy,
     validate_provider_response_model_identity,
@@ -60,6 +61,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reserve-tokens", type=int, default=256)
     parser.add_argument("--max-tokens", type=int, default=64)
     parser.add_argument("--student-prompt", default="v1")
+    parser.add_argument(
+        "--constrain-admissible",
+        action="store_true",
+        help="sample only from the current admissible action set",
+    )
     return parser.parse_args()
 
 
@@ -116,7 +122,10 @@ def main() -> None:
         enable_thinking=False,
     )
     prompt_name, prompt_text = resolve_student_prompt(args.student_prompt)
-    policy = OpenAIChatPolicy(
+    policy_cls = (
+        AdmissibleChoicePolicy if args.constrain_admissible else OpenAIChatPolicy
+    )
+    policy = policy_cls(
         model=args.model,
         base_url=args.base_url,
         api_key="EMPTY",
@@ -178,6 +187,9 @@ def main() -> None:
         "confirmatory_use_allowed": False,
         "training_performed": False,
         "student_prompt": {"name": prompt_name, "sha256": sha256_text(prompt_text)},
+        "constraint_mode": (
+            "admissible_choice" if args.constrain_admissible else "free_generation"
+        ),
         "code_revision": git_revision(ROOT),
         "code": fingerprint_code_tree(ROOT),
         "script_sha256": sha256_file(Path(__file__)),
