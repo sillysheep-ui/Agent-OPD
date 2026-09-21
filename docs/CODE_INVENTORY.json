@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "fc9357139c1f94c332412599d0493f9673a2010e",
+  "code_revision_at_generation": "94189b5afe36054d977a2bf0dcf01673a35133b5",
   "canonical_code": {
-    "tree_sha256": "c3a7133520182bf46883442c6de34105395e11d3fed506e69a9cebf09cbdd9a0",
+    "tree_sha256": "70f247597d69bccd5cb21754b97577efa352366f0db7be23ee2d2799e24269ce",
     "files": 113,
-    "bytes": 957939
+    "bytes": 961651
   },
   "files": 267,
-  "bytes": 1745792,
+  "bytes": 1752308,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -894,8 +894,8 @@
     },
     {
       "path": "scripts/build_expert_sft_data.py",
-      "bytes": 10670,
-      "sha256": "5543594808f0d703d93824828f81a382e0e7abb23ace15e44f1496112e1332bd",
+      "bytes": 11217,
+      "sha256": "fb84afb44920d1c35ae2757eb676bd49bcc41a05405fe2b8bef71d6a25a2e759",
       "role": "canonical_or_documentation"
     },
     {
@@ -966,8 +966,8 @@
     },
     {
       "path": "scripts/evaluate_coldstart_sft.py",
-      "bytes": 8777,
-      "sha256": "2fa5629a865b0cbd3a086851cfa52bb2f4ed20cf06d1db4f8e8e8c3e5fffb4cb",
+      "bytes": 8910,
+      "sha256": "ff951e5e3284be1a8be21b62fc532c6a397311165a1eddb3cad355d194cb4fec",
       "role": "canonical_or_documentation"
     },
     {
@@ -1056,8 +1056,8 @@
     },
     {
       "path": "scripts/run_sft_coldstart.sh",
-      "bytes": 12295,
-      "sha256": "585aa19392113961514dbed45e2aa19eb39c5711e5dcb6c87a8183771cfcfd78",
+      "bytes": 12768,
+      "sha256": "7d432be889bd39cfdf5c9bb59ba3bd49d19e6fcbe94fcca46e68a254a1b7f48d",
       "role": "canonical_or_documentation"
     },
     {
@@ -1320,8 +1320,8 @@
     },
     {
       "path": "src/omniopd/prompts.py",
-      "bytes": 2109,
-      "sha256": "25f2b81520dd54d7827a94111f1e0538797152b4c65310ad9b59eafa48ce7663",
+      "bytes": 4312,
+      "sha256": "dc1a5c0db2ca2e54e0aa3595ef75c18b760f3c4894fb0d62a6fe5b625c018947",
       "role": "canonical_or_documentation"
     },
     {
@@ -1386,8 +1386,8 @@
     },
     {
       "path": "src/omniopd/torch_dataset.py",
-      "bytes": 8925,
-      "sha256": "3d8eba8f074b901f003b1a93da9e4cd888469e592174d0ef83e6eaf89df07467",
+      "bytes": 9281,
+      "sha256": "1f979babc2c6fa259c83d0a4ba7010d9ffed4503def383298c0c53a9233677ad",
       "role": "canonical_or_documentation"
     },
     {
@@ -1446,8 +1446,8 @@
     },
     {
       "path": "tests/test_expert_collection.py",
-      "bytes": 11375,
-      "sha256": "2516b94394eb68f3b6d5a2d4482444c87cd96a7d8e9c818af108bedfa1cfd072",
+      "bytes": 14179,
+      "sha256": "f6cabe45a3a53f32f25fe199e2d8929b0704f7fb640a83c1e9d417f35563f92e",
       "role": "canonical_or_documentation"
     },
     {
