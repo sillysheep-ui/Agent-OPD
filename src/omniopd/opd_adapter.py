@@ -28,14 +28,26 @@ def _canonical_sha256(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def prompts_for_opd_turn(turn: RolloutTurn) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
-    """Return the distinct Student-generation and Teacher-scoring prompt views."""
+def prompts_for_opd_turn(
+    turn: RolloutTurn,
+    *,
+    student_system_prompt: str = STUDENT_SYSTEM_PROMPT,
+    teacher_system_prompt: str | None = None,
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """Return the Student-generation and Teacher-scoring prompt views.
+
+    ``teacher_system_prompt=None`` keeps the Teacher on the Student's own
+    context, which is the definition of standard token-level OPD: the Teacher
+    reads the Student prefix. Passing a prompt swaps it (the paper's P_T view),
+    which is what the teacher-sampling arm needs.
+    """
+
     state = turn.state
     if state.state_source != "student":
         raise ValueError("fixed-pool token OPD requires Student-source states")
     messages = [dict(message) for message in state.messages]
-    if not messages or messages[0] != {"role": "system", "content": STUDENT_SYSTEM_PROMPT}:
-        raise ValueError("state must contain the canonical Student system prompt")
+    if not messages or messages[0] != {"role": "system", "content": student_system_prompt}:
+        raise ValueError("state must contain the expected Student system prompt")
     expected_roles = ["system"] + [
         "user" if index % 2 else "assistant" for index in range(1, len(messages))
     ]
@@ -45,11 +57,20 @@ def prompts_for_opd_turn(turn: RolloutTurn) -> tuple[list[dict[str, str]], list[
         raise ValueError("state prompt must stop before the Student action")
     if any(not isinstance(message.get("content"), str) for message in messages):
         raise ValueError("state messages must contain text content")
-    return messages, replace_system(messages, TEACHER_SYSTEM_PROMPT)
+    teacher_messages = (
+        messages
+        if teacher_system_prompt is None
+        else replace_system(messages, teacher_system_prompt)
+    )
+    return messages, [dict(message) for message in teacher_messages]
 
 
 def build_fixed_pool_opd_prompts(
-    turns: Iterable[RolloutTurn], selections: Iterable[Mapping[str, Any]]
+    turns: Iterable[RolloutTurn],
+    selections: Iterable[Mapping[str, Any]],
+    *,
+    student_system_prompt: str = STUDENT_SYSTEM_PROMPT,
+    teacher_system_prompt: str | None = None,
 ) -> list[dict[str, Any]]:
     """Create veRL RLHF prompt rows without leaking behavior/Teacher actions.
 
@@ -80,7 +101,11 @@ def build_fixed_pool_opd_prompts(
             or selection.get("turn_index") != state.turn_index
         ):
             raise ValueError("selection row does not identify its frozen state")
-        student_prompt, teacher_prompt = prompts_for_opd_turn(turn)
+        student_prompt, teacher_prompt = prompts_for_opd_turn(
+            turn,
+            student_system_prompt=student_system_prompt,
+            teacher_system_prompt=teacher_system_prompt,
+        )
         weight = 1.0 / counts_by_game[state.game_id]
         rows.append(
             {

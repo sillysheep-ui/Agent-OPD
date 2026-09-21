@@ -66,6 +66,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--split", default="train")
     parser.add_argument("--task-types", default=",".join(CANONICAL_TASK_TYPES))
     parser.add_argument("--solved-per-task-type", type=int, default=20)
+    parser.add_argument(
+        "--target",
+        default="solved",
+        choices=["solved", "attempts"],
+        help=(
+            "solved: stop once each family has this many solved episodes; "
+            "attempts: run a fixed number of attempts per family and keep every "
+            "trajectory, which is what on-policy distillation needs"
+        ),
+    )
     parser.add_argument("--max-attempts-per-task-type", type=int, default=60)
     parser.add_argument("--game-order-seed", type=int, default=42)
     parser.add_argument("--environment-master-seed", type=int, default=314159)
@@ -154,7 +164,9 @@ def main() -> None:
     with episodes_path.open("x", encoding="utf-8") as handle:
         for family in task_types:
             for game in candidates_by_type[family]:
-                if per_task_type[family]["solved"] >= args.solved_per_task_type:
+                if args.target == "solved" and (
+                    per_task_type[family]["solved"] >= args.solved_per_task_type
+                ):
                     break
                 if per_task_type[family]["attempts"] >= args.max_attempts_per_task_type:
                     break
@@ -219,7 +231,10 @@ def main() -> None:
                     f"solved={per_task_type[family]['solved']}/{args.solved_per_task_type}",
                     flush=True,
                 )
-            if per_task_type[family]["solved"] < args.solved_per_task_type:
+            if (
+                args.target == "solved"
+                and per_task_type[family]["solved"] < args.solved_per_task_type
+            ):
                 raise SystemExit(
                     f"task family {family!r} solved only "
                     f"{per_task_type[family]['solved']} of {args.solved_per_task_type} "
@@ -244,6 +259,7 @@ def main() -> None:
         },
         "split": args.split,
         "task_types": list(task_types),
+        "target": args.target,
         "solved_per_task_type": args.solved_per_task_type,
         "max_attempts_per_task_type": args.max_attempts_per_task_type,
         "per_task_type": per_task_type,
