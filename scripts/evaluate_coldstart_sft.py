@@ -36,7 +36,7 @@ from omniopd.environment_provenance import (  # noqa: E402
     fingerprint_game_artifacts,
     game_artifacts_digest,
 )
-from omniopd.prompts import resolve_student_prompt  # noqa: E402
+from omniopd.prompts import build_reference_prompt, resolve_student_prompt  # noqa: E402
 from omniopd.protocol import GenerationSettings, rollout_episode  # noqa: E402
 from omniopd.provenance import (  # noqa: E402
     fingerprint_code_tree,
@@ -139,25 +139,9 @@ def main() -> None:
     if args.prompt_json is not None:
         reference = json.loads(args.prompt_json.read_text(encoding="utf-8"))
         instruction = str(reference["instruction"])
-        examples = reference.get("examples") or []
-        if isinstance(examples, dict):
-            examples = ["".join(value) for value in examples.values()]
-        elif isinstance(examples, str):
-            examples = [examples]
-        else:
-            examples = [
-                "".join(item) if isinstance(item, list) else str(item)
-                for item in examples
-            ]
         prompt_name = f"reference:{args.prompt_json.name}"
-        prompt_text = instruction
-        if examples:
-            prompt_text += "\nHere are examples:\n" + "".join(
-                f"{example}\n" for example in examples
-            )
-        prompt_text += (
-            "\nRespond with exactly the next action on a single line, in the form "
-            "'Action: <command>'.\n"
+        prompt_text = build_reference_prompt(
+            str(reference["instruction"]), reference.get("examples") or []
         )
     else:
         prompt_name, prompt_text = resolve_student_prompt(args.student_prompt)

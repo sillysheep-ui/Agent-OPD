@@ -37,11 +37,14 @@ from omniopd.provenance import (  # noqa: E402
     sha256_text,
 )
 
-TARGET_SOURCE = "alfworld_handcoded_expert"
+DEFAULT_TARGET_SOURCE = "alfworld_handcoded_expert"
 
 
 def build_rows(
-    episodes: list[dict], *, student_prompt: str | None = None
+    episodes: list[dict],
+    *,
+    student_prompt: str | None = None,
+    target_source: str = DEFAULT_TARGET_SOURCE,
 ) -> tuple[list[dict], dict]:
     """Build training rows from solved episodes and report what was dropped."""
 
@@ -98,7 +101,7 @@ def build_rows(
                     "episode_step": step_index,
                     "target_sample_index": 0,
                     "target_action": turn.student.executed_action,
-                    "target_source": TARGET_SOURCE,
+                    "target_source": target_source,
                     "weighting_mode": "game_state_mean",
                     "protocol_version": "omniopd-v1",
                     "enable_thinking": False,
@@ -160,19 +163,24 @@ def main() -> None:
         raise SystemExit("invalid expert SFT data build input or output")
 
     collection = json.loads(collection_manifest_path.read_text(encoding="utf-8"))
+    supervision_source = str(collection.get("supervision_source") or "")
     if (
         collection.get("artifact") != "expert_trajectory_collection"
-        or collection.get("supervision_source") != TARGET_SOURCE
+        or not supervision_source
         or collection.get("split") != "train"
     ):
-        raise SystemExit("collection manifest is not a train-split expert collection")
+        raise SystemExit(
+            "collection manifest is not a train-split demonstration collection"
+        )
     recorded_episodes = collection.get("episodes") or {}
     if recorded_episodes.get("sha256") != sha256_file(episodes_path):
         raise SystemExit("episode file does not match the collection manifest hash")
 
     episodes = list(read_jsonl(episodes_path))
     prompt_name, prompt_text = resolve_student_prompt(args.student_prompt)
-    rows, counts = build_rows(episodes, student_prompt=prompt_text)
+    rows, counts = build_rows(
+        episodes, student_prompt=prompt_text, target_source=supervision_source
+    )
     # Stratify by task family so every family reaches the validation side;
     # a global split can leave whole families without any closed-loop game.
     train_rows, val_rows, split_metadata = split_rows_by_game_stratified(
@@ -214,7 +222,7 @@ def main() -> None:
         "protocol_version": "omniopd-v1",
         "training_ready": True,
         "confirmatory_use_allowed": False,
-        "supervision_source": TARGET_SOURCE,
+        "supervision_source": supervision_source,
         "target_format": "Action: <executed command>",
         "weighting_mode": "game_state_mean",
         "student_prompt": {

@@ -87,6 +87,35 @@ Action: <command>
 Do not output reasoning, explanations, multiple actions, predicted observations, or future turns."""
 
 
+def build_reference_prompt(instruction: str, examples: object) -> str:
+    """Assemble a reference agent prompt from its instruction and examples.
+
+    The reference ALFWorld harnesses ship the instruction plus worked
+    trajectories as data.  Collection, evaluation and any later data build must
+    see the identical string, so the assembly lives here instead of being
+    written once per script.
+    """
+
+    blocks: list[str] = []
+    if isinstance(examples, dict):
+        blocks = ["".join(value) for value in examples.values()]
+    elif isinstance(examples, str):
+        blocks = [examples]
+    elif isinstance(examples, (list, tuple)):
+        blocks = [
+            "".join(item) if isinstance(item, (list, tuple)) else str(item)
+            for item in examples
+        ]
+    prompt = str(instruction)
+    if blocks:
+        prompt += "\nHere are examples:\n" + "".join(f"{block}\n" for block in blocks)
+    prompt += (
+        "\nRespond with exactly the next action on a single line, in the form "
+        "'Action: <command>'.\n"
+    )
+    return prompt
+
+
 def admissible_block(actions: Sequence[str]) -> str:
     return "\n".join(f"- {action}" for action in actions)
 
