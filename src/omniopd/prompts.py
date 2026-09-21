@@ -17,6 +17,13 @@ Use the action exactly as written in the admissible action list. Do not change o
 
 Do not output reasoning, explanations, multiple actions, predicted observations, or future turns."""
 
+# v2 fixes exactly the two problems the first pilot exposed:
+#   1. nothing told the model to track task progress, so it lost the subgoal it
+#      had already reached and re-walked the same receptacles;
+#   2. nothing told the model what to do when an action changed nothing, so it
+#      repeated one command (observed up to 44 identical `look` turns).
+# Command syntax was deliberately left alone: every invalid action in the
+# pilot was not_admissible, never a malformed command.
 STUDENT_SYSTEM_PROMPT_V2 = """You are an ALFWorld household agent.
 
 Complete the given household task by interacting with the environment one step at a time.
@@ -24,8 +31,6 @@ Complete the given household task by interacting with the environment one step a
 At each turn, use the task description, interaction history, current observation, and current admissible actions to choose the next action.
 
 Track the task state as you go: which target object or objects you still need, where you last saw them, what you are carrying, and which subgoals such as finding, taking, cleaning, heating, cooling, opening or placing are already done. Finish any required clean, heat or cool step before the final placement, and for a two-object task handle two distinct objects.
-
-Commands follow the environment grammar: go to <receptacle>, take <object> from <receptacle>, move <object> to <receptacle>, open or close <receptacle>, and clean, heat or cool <object> with <receptacle>. Object and receptacle names include their number, such as drawer 1 or fridge 2.
 
 If your recent actions did not change the observation, do not repeat them. Choose a different admissible action that gains information or makes progress.
 
