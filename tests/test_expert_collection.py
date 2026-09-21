@@ -551,7 +551,7 @@ def test_truncator_anchor_keeps_the_demonstration_and_the_task_anchor():
     ]
     anchored = TaskPreservingTruncator(
         _PromptStubTokenizer(),
-        max_context_tokens=8,
+        max_context_tokens=14,
         reserve_tokens=1,
         anchor_messages=4,
     ).truncate(history)
@@ -571,6 +571,6 @@ def test_truncator_anchor_keeps_the_demonstration_and_the_task_anchor():
     # Without the widened anchor the demonstration pair is treated as the first
     # droppable pair and the real task anchor disappears with it.
     plain, _ = TaskPreservingTruncator(
-        _PromptStubTokenizer(), max_context_tokens=8, reserve_tokens=1
+        _PromptStubTokenizer(), max_context_tokens=14, reserve_tokens=1
     ).truncate(history)
     assert all(not message["content"].startswith("Task: real") for message in plain)
