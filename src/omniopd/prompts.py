@@ -53,13 +53,6 @@ Use the command grammar shown by the environment (for example go to, take, move,
 To place objects use "move X to Y" (NOT "put X in/on Y"). Object and receptacle names include their numbers, e.g. "fridge 1", "drawer 2".
 Do not simulate future observations or future turns."""
 
-STUDENT_SYSTEM_PROMPTS: dict[str, str] = {
-    "v1": STUDENT_SYSTEM_PROMPT,
-    "v2": STUDENT_SYSTEM_PROMPT_V2,
-    "react": STUDENT_SYSTEM_PROMPT_REACT,
-    "sage_opd": SAGE_OPD_ALFWORLD_SYSTEM_PROMPT,
-}
-STUDENT_SYSTEM_PROMPT_DEFAULT = "v1"
 
 
 def resolve_student_prompt(name: str | None = None) -> tuple[str, str]:
@@ -103,6 +96,14 @@ SAGE_OPD_ALFWORLD_SYSTEM_PROMPT = (
 )
 
 SAGE_OPD_ADMISSIBLE_LIMIT = 30
+
+STUDENT_SYSTEM_PROMPTS: dict[str, str] = {
+    "v1": STUDENT_SYSTEM_PROMPT,
+    "v2": STUDENT_SYSTEM_PROMPT_V2,
+    "react": STUDENT_SYSTEM_PROMPT_REACT,
+    "sage_opd": SAGE_OPD_ALFWORLD_SYSTEM_PROMPT,
+}
+STUDENT_SYSTEM_PROMPT_DEFAULT = "v1"
 
 
 def sage_admissible_line(actions: Sequence[str], *, limit: int = SAGE_OPD_ADMISSIBLE_LIMIT) -> str:
