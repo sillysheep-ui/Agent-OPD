@@ -19,7 +19,6 @@ from transformers import AutoTokenizer
 from omniopd.adapters import (
     AdmissibleChoicePolicy,
     AlfworldEnvironment,
-    OpenAIChatPolicy,
     extract_task_type,
     list_alfworld_games,
     validate_provider_response_model_identity,
@@ -27,7 +26,7 @@ from omniopd.adapters import (
 from omniopd.context import TaskPreservingTruncator
 from omniopd.environment_provenance import derive_environment_seed
 from omniopd.protocol import GenerationSettings, rollout_episode
-from omniopd.provenance import sha256_file, sha256_json
+from omniopd.provenance import sha256_file
 from omniopd.sampling import stable_shuffled
 
 
