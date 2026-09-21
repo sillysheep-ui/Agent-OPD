@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "94189b5afe36054d977a2bf0dcf01673a35133b5",
+  "code_revision_at_generation": "71eb006c609053f06a2577e85fc416ac23edea56",
   "canonical_code": {
-    "tree_sha256": "70f247597d69bccd5cb21754b97577efa352366f0db7be23ee2d2799e24269ce",
+    "tree_sha256": "48292a361f3e90c8c2c90bee7c81c29a10ec3825f6267be140b47de969fc13f0",
     "files": 113,
-    "bytes": 961651
+    "bytes": 961926
   },
   "files": 267,
-  "bytes": 1752308,
+  "bytes": 1753281,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -894,8 +894,8 @@
     },
     {
       "path": "scripts/build_expert_sft_data.py",
-      "bytes": 11217,
-      "sha256": "fb84afb44920d1c35ae2757eb676bd49bcc41a05405fe2b8bef71d6a25a2e759",
+      "bytes": 11294,
+      "sha256": "2cd1c4ccaed7b07dafc171b5263fd6f43681d9ae065c72edeac1f1d4344a506a",
       "role": "canonical_or_documentation"
     },
     {
@@ -1320,8 +1320,8 @@
     },
     {
       "path": "src/omniopd/prompts.py",
-      "bytes": 4312,
-      "sha256": "dc1a5c0db2ca2e54e0aa3595ef75c18b760f3c4894fb0d62a6fe5b625c018947",
+      "bytes": 4510,
+      "sha256": "5d4ef8a48ed8e6d65101d78ee4654e2edc6bbc3df29484f670d27fbe9b9450fd",
       "role": "canonical_or_documentation"
     },
     {
@@ -1446,8 +1446,8 @@
     },
     {
       "path": "tests/test_expert_collection.py",
-      "bytes": 14179,
-      "sha256": "f6cabe45a3a53f32f25fe199e2d8929b0704f7fb640a83c1e9d417f35563f92e",
+      "bytes": 14877,
+      "sha256": "01415317f37f00ad9cd298fa646a38352577a1c689cb6affda814e7d459625b1",
       "role": "canonical_or_documentation"
     },
     {
