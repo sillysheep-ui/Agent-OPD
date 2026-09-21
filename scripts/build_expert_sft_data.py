@@ -197,7 +197,10 @@ def main() -> None:
     checked = {}
     for name, path in (("train", train_path), ("validation", val_path)):
         dataset = FinalTurnActionDataset(
-            files=path, tokenizer=tokenizer, max_length=args.max_length
+            files=path,
+            tokenizer=tokenizer,
+            max_length=args.max_length,
+            config={"student_prompt": prompt_name},
         )
         checked[name] = {
             "rows": len(dataset),
