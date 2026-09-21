@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "0dd7e298685d2a0ba798ae3f3181b2cb0b6cb885",
+  "code_revision_at_generation": "e36cc43313ac517bd55d0d73bca4ad353b2f6542",
   "canonical_code": {
-    "tree_sha256": "75941ffb32a003ce3b028b20d64d5912d3add37cea7c33053c3906aa76c92a76",
+    "tree_sha256": "3ae2fea1237f9933dcb385b86363735e9119706ed9fb44e3b4e2314ea7bffadf",
     "files": 112,
-    "bytes": 938889
+    "bytes": 944363
   },
   "files": 266,
-  "bytes": 1720565,
+  "bytes": 1728410,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -894,8 +894,8 @@
     },
     {
       "path": "scripts/build_expert_sft_data.py",
-      "bytes": 10345,
-      "sha256": "3318994a3891f6f5ac0ac8893c2f37e861258894e8d3801cf9b48d648d201676",
+      "bytes": 10670,
+      "sha256": "5543594808f0d703d93824828f81a382e0e7abb23ace15e44f1496112e1332bd",
       "role": "canonical_or_documentation"
     },
     {
@@ -936,8 +936,8 @@
     },
     {
       "path": "scripts/collect_expert_sft.py",
-      "bytes": 10948,
-      "sha256": "2a0426688c55739081bb1fd5966cc14973e8852b95ced094d7670c49ee020a38",
+      "bytes": 13077,
+      "sha256": "ecfe8d217c3854d8cc4baad5fe2699c0d409c3bff3b431df439c71492985bdef",
       "role": "canonical_or_documentation"
     },
     {
@@ -1242,8 +1242,8 @@
     },
     {
       "path": "src/omniopd/dataset.py",
-      "bytes": 7740,
-      "sha256": "8ae43887f1e75252cbd6bffe312ccf707b93db2f19d15ab641db42c2f10d97af",
+      "bytes": 10760,
+      "sha256": "31e8111deb13e1cc7463f8286f46dd7e0bea8a2d2600ad1c05efec64f7e0d290",
       "role": "canonical_or_documentation"
     },
     {
@@ -1440,8 +1440,8 @@
     },
     {
       "path": "tests/test_expert_collection.py",
-      "bytes": 5198,
-      "sha256": "13097b839ae6952f4a86632c6148762328e62a890ec46cf8897026cf87485333",
+      "bytes": 7569,
+      "sha256": "9177a8dd17034cb7d3d60ef7c7ed9260600c8b1229b0f6499fabaed03275ab96",
       "role": "canonical_or_documentation"
     },
     {
