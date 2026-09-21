@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "164b97eb9a6d0ca5236d39b3afa8d83359eed3d5",
+  "code_revision_at_generation": "56dec8cd835372f6c01222abe2b3e25e09d8805c",
   "canonical_code": {
-    "tree_sha256": "9696b86840fdf99e7f03376804bf46b2e59aaae66a73d708b883f9c398068c3f",
-    "files": 113,
-    "bytes": 966914
+    "tree_sha256": "d43592e59fac624450c41b13d9705186e0d16488155f9e7e27741186dd7abe38",
+    "files": 114,
+    "bytes": 980142
   },
-  "files": 267,
-  "bytes": 1759152,
+  "files": 268,
+  "bytes": 1772380,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 55,
+    "scripts": 56,
     "src": 42,
     "tests": 36
   },
@@ -894,8 +894,8 @@
     },
     {
       "path": "scripts/build_expert_sft_data.py",
-      "bytes": 11294,
-      "sha256": "2cd1c4ccaed7b07dafc171b5263fd6f43681d9ae065c72edeac1f1d4344a506a",
+      "bytes": 11483,
+      "sha256": "6d7ed6f361c5f95f51284cf8bbfdd88bf08de04dc39d9085ddbe8af0bb9855a4",
       "role": "canonical_or_documentation"
     },
     {
@@ -953,6 +953,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/collect_teacher_sft.py",
+      "bytes": 12551,
+      "sha256": "8a39230ba703ee517818df3d51968d8b0ebb51f443b17d0810938e0948e1300b",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/count_state_population.py",
       "bytes": 3112,
       "sha256": "c8ecf9b2a8c100aad911f45dec3fe825af09c611da12a9825df24b5f5c2ab13e",
@@ -966,8 +972,8 @@
     },
     {
       "path": "scripts/evaluate_coldstart_sft.py",
-      "bytes": 11130,
-      "sha256": "21530c7984be0f9ccbb91ee219154a792284b4f448fdd23e7092903819dd605b",
+      "bytes": 10546,
+      "sha256": "6ac6187edb8e8ee2c42ecc9d6772166b8847bbe6e299c5cbfe8a291850a6167a",
       "role": "canonical_or_documentation"
     },
     {
@@ -1320,8 +1326,8 @@
     },
     {
       "path": "src/omniopd/prompts.py",
-      "bytes": 5349,
-      "sha256": "98512353978d1d36fa721da9b85286644a754fab0d4a8a69faa3212ce4ecaf33",
+      "bytes": 6421,
+      "sha256": "fd401adac0fc455a217428118ece3b5f9e2a8b036bfb4494df0551fe150b5cd2",
       "role": "canonical_or_documentation"
     },
     {
