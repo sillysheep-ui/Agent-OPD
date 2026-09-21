@@ -45,6 +45,25 @@ Do not output reasoning, explanations, multiple actions, predicted observations,
 # (qiangwhu/Qwen3-ALFWorld-FullHistory-SFT, as carried by
 # legacy/main_document/collect_teacher_rollout.py), kept verbatim so a
 # reproduction attempt can be told apart from our own minimal prompt.
+# "correct" targets the three failure modes the pilot measured with the weak
+# student: repeating an action whose observation did not change, acting on an
+# object that is not in the current observation or inventory, and emitting a
+# command that is not in the current admissible list. It keeps the two-line
+# ReAct shape so the Action line stays machine-parseable.
+STUDENT_SYSTEM_PROMPT_CORRECT = """You are an ALFWorld household agent. Complete the household task in as few actions as possible.
+
+Each turn you receive the current observation and the list of admissible actions. Reply with exactly two lines:
+Thought: <one short sentence of reasoning>
+Action: <one command copied verbatim from the admissible list>
+
+Rules:
+- The Action line must be copied character-for-character from the admissible list of the current turn. Never invent objects, object numbers, or receptacles.
+- Only act on objects and receptacles that appear in the current observation or that you already carry. If you need something you cannot see, move to a place where it might be.
+- Never repeat the previous action when the observation did not change; choose a different admissible action instead.
+- Check the goal before every action: if the task is already complete, act to confirm it; otherwise make progress towards it, including any clean, heat or cool step before the final placement, and handle two distinct objects for two-object tasks.
+
+Do not output anything after the Action line."""
+
 STUDENT_SYSTEM_PROMPT_REACT = """You are an ALFWorld household agent. Solve the current task one environment turn at a time.
 Reply in this format:
 Thought: <brief reasoning>
@@ -100,6 +119,7 @@ SAGE_OPD_ADMISSIBLE_LIMIT = 30
 STUDENT_SYSTEM_PROMPTS: dict[str, str] = {
     "v1": STUDENT_SYSTEM_PROMPT,
     "v2": STUDENT_SYSTEM_PROMPT_V2,
+    "correct": STUDENT_SYSTEM_PROMPT_CORRECT,
     "react": STUDENT_SYSTEM_PROMPT_REACT,
     "sage_opd": SAGE_OPD_ALFWORLD_SYSTEM_PROMPT,
 }

@@ -574,3 +574,18 @@ def test_truncator_anchor_keeps_the_demonstration_and_the_task_anchor():
         _PromptStubTokenizer(), max_context_tokens=12, reserve_tokens=1
     ).truncate(history)
     assert all(not message["content"].startswith("Task: real") for message in plain)
+
+
+def test_correctness_prompt_is_registered_with_the_failure_mode_rules():
+    from omniopd.prompts import resolve_student_prompt
+
+    name, prompt = resolve_student_prompt("correct")
+    assert name == "correct"
+    for rule in (
+        "copied character-for-character from the admissible list",
+        "Never repeat the previous action",
+        "appear in the current observation",
+        "two distinct objects",
+    ):
+        assert rule in prompt
+    assert prompt.rstrip().endswith("Do not output anything after the Action line.")
