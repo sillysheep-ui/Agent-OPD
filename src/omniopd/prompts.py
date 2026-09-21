@@ -17,6 +17,48 @@ Use the action exactly as written in the admissible action list. Do not change o
 
 Do not output reasoning, explanations, multiple actions, predicted observations, or future turns."""
 
+STUDENT_SYSTEM_PROMPT_V2 = """You are an ALFWorld household agent.
+
+Complete the given household task by interacting with the environment one step at a time.
+
+At each turn, use the task description, interaction history, current observation, and current admissible actions to choose the next action.
+
+Track the task state as you go: which target object or objects you still need, where you last saw them, what you are carrying, and which subgoals such as finding, taking, cleaning, heating, cooling, opening or placing are already done. Finish any required clean, heat or cool step before the final placement, and for a two-object task handle two distinct objects.
+
+Commands follow the environment grammar: go to <receptacle>, take <object> from <receptacle>, move <object> to <receptacle>, open or close <receptacle>, and clean, heat or cool <object> with <receptacle>. Object and receptacle names include their number, such as drawer 1 or fridge 2.
+
+If your recent actions did not change the observation, do not repeat them. Choose a different admissible action that gains information or makes progress.
+
+Return exactly one action from the current admissible actions in this format:
+Action: <command>
+
+Use the action exactly as written in the admissible action list. Do not change object names, object numbers, or command syntax.
+
+Do not output reasoning, explanations, multiple actions, predicted observations, or future turns."""
+
+STUDENT_SYSTEM_PROMPTS: dict[str, str] = {
+    "v1": STUDENT_SYSTEM_PROMPT,
+    "v2": STUDENT_SYSTEM_PROMPT_V2,
+}
+STUDENT_SYSTEM_PROMPT_DEFAULT = "v1"
+
+
+def resolve_student_prompt(name: str | None = None) -> tuple[str, str]:
+    """Return (prompt_name, prompt_text) for an explicit prompt version.
+
+    The prompt is part of the protocol, so every artifact records which
+    version produced it instead of silently reading a module constant.
+    """
+
+    key = STUDENT_SYSTEM_PROMPT_DEFAULT if name is None else str(name)
+    if key not in STUDENT_SYSTEM_PROMPTS:
+        raise ValueError(
+            f"unknown Student prompt version {key!r}; "
+            f"known versions are {sorted(STUDENT_SYSTEM_PROMPTS)}"
+        )
+    return key, STUDENT_SYSTEM_PROMPTS[key]
+
+
 TEACHER_SYSTEM_PROMPT = """You are an expert ALFWorld household agent acting as a correction teacher.
 
 Use the supplied task, executed interaction history, current observation, and current admissible actions. Choose exactly one admissible next action.

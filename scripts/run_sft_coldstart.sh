@@ -31,6 +31,7 @@ SAVE_FREQ=${SAVE_FREQ:-0}
 TEST_FREQ=${TEST_FREQ:-0}
 PROJECT_NAME=${PROJECT_NAME:-agent_omniopd}
 EXPERIMENT_NAME=${EXPERIMENT_NAME:-sft_coldstart}
+SFT_STUDENT_PROMPT=${SFT_STUDENT_PROMPT:-v1}
 
 require_positive_integer() {
   local name=$1 value=$2
@@ -103,6 +104,7 @@ export VERL_ROOT SFT_MODEL SFT_TRAIN_FILES SFT_VAL_FILES SFT_DATA_AUDIT
 export SFT_OUTPUT_DIR NUM_GPUS TRAIN_BSZ LOCAL_TRAIN_BSZ MICRO_BSZ EPOCHS
 export TOTAL_TRAINING_STEPS LR MAX_LENGTH MODEL_DTYPE TRAINING_DTYPE
 export LORA_RANK LORA_ALPHA SEED SAVE_FREQ TEST_FREQ PROJECT_NAME EXPERIMENT_NAME
+export SFT_STUDENT_PROMPT
 export OMNIOPD_REPO_ROOT="${repo_root}"
 export PYTHONPATH="${repo_root}/src:${VERL_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 
@@ -182,6 +184,13 @@ if audit.get("artifact") != "expert_sft_data_audit" or not audit.get("training_r
     fail("data audit is not a training-ready expert SFT audit")
 if audit.get("weighting_mode") != "game_state_mean":
     fail("data audit does not carry the game_state_mean weighting contract")
+recorded_prompt = (audit.get("student_prompt") or {}).get("name")
+if recorded_prompt != os.environ["SFT_STUDENT_PROMPT"]:
+    fail(
+        "data audit was built with Student prompt "
+        f"{recorded_prompt!r} but the launch asks for "
+        f"{os.environ['SFT_STUDENT_PROMPT']!r}"
+    )
 outputs = audit.get("outputs") or {}
 if outputs.get("train", {}).get("sha256") != sha256_file(train_path):
     fail("training rows do not match the data audit hash")
@@ -215,6 +224,7 @@ payload = {
         "lora_alpha": int(os.environ["LORA_ALPHA"]),
         "weighting": audit.get("weighting_mode"),
         "target_format": audit.get("target_format"),
+        "student_prompt": os.environ["SFT_STUDENT_PROMPT"],
         "encoded_sequence_overflow_policy": "error",
         "confirmatory_use_allowed": bool(audit.get("confirmatory_use_allowed")),
     },
@@ -239,6 +249,7 @@ cd "${repo_root}"
   data.val_files="${SFT_VAL_FILES}" \
   data.max_length="${MAX_LENGTH}" \
   data.truncation=error \
+  data.student_prompt="${SFT_STUDENT_PROMPT}" \
   data.train_batch_size="${TRAIN_BSZ}" \
   data.micro_batch_size_per_gpu="${MICRO_BSZ}" \
   model.partial_pretrain="${SFT_MODEL}" \

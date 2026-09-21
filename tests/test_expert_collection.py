@@ -327,3 +327,83 @@ def test_fast_enumerator_reads_one_directory_level_at_a_time():
             data_path=root, task_types=("pick_and_place_simple",)
         )
     assert games == [str(wanted / "game.tw-pddl")]
+
+
+def test_student_prompt_versions_resolve_and_record():
+    from omniopd.prompts import (
+        STUDENT_SYSTEM_PROMPT,
+        STUDENT_SYSTEM_PROMPTS,
+        resolve_student_prompt,
+    )
+
+    assert resolve_student_prompt() == ("v1", STUDENT_SYSTEM_PROMPT)
+    name, text = resolve_student_prompt("v2")
+    assert name == "v2"
+    assert text in STUDENT_SYSTEM_PROMPTS.values()
+    assert text != STUDENT_SYSTEM_PROMPT
+    assert "Track the task state" in text
+    try:
+        resolve_student_prompt("v3")
+    except ValueError as error:
+        assert "unknown Student prompt version" in str(error)
+    else:
+        raise AssertionError("an unknown prompt version must fail closed")
+
+
+def test_expert_rows_follow_the_requested_prompt_version():
+    from omniopd.prompts import resolve_student_prompt
+    from scripts.build_expert_sft_data import build_rows
+
+    _, prompt_text = resolve_student_prompt("v2")
+    rows, _ = build_rows(
+        [_expert_episode("game-a", ["look"])], student_prompt=prompt_text
+    )
+    assert rows[0]["messages"][0] == {"role": "system", "content": prompt_text}
+
+
+def test_dataset_checks_the_configured_prompt_version():
+    try:
+        import torch  # noqa: F401
+    except ModuleNotFoundError:
+        from unittest import SkipTest
+
+        raise SkipTest("optional training dependencies are not installed")
+
+    import json
+    import tempfile
+    from pathlib import Path
+
+    from omniopd.prompts import resolve_student_prompt
+    from omniopd.torch_dataset import FinalTurnActionDataset
+
+    _, prompt_text = resolve_student_prompt("v2")
+    row = {
+        "messages": [
+            {"role": "system", "content": prompt_text},
+            {"role": "user", "content": "u"},
+            {"role": "assistant", "content": "Action: look"},
+        ],
+        "state_weight": 1.0,
+        "state_hash": "h",
+        "game_id": "g",
+        "turn_index": 0,
+        "target_sample_index": 0,
+        "target_action": "look",
+        "target_source": "alfworld_handcoded_expert",
+        "weighting_mode": "game_state_mean",
+        "protocol_version": "omniopd-v1",
+        "enable_thinking": False,
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "rows.jsonl"
+        path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+        dataset = FinalTurnActionDataset(
+            files=path, tokenizer=FakeTokenizer(), max_length=10, config={"student_prompt": "v2"}
+        )
+        assert dataset.student_prompt_name == "v2"
+        try:
+            FinalTurnActionDataset(files=path, tokenizer=FakeTokenizer(), max_length=10)
+        except ValueError as error:
+            assert "Student-context" in str(error)
+        else:
+            raise AssertionError("a v2 row must not pass the default v1 dataset check")

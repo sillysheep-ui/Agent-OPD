@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from omniopd.dataset import split_rows_by_game_stratified  # noqa: E402
 from omniopd.io import read_jsonl, rollout_turn_from_dict  # noqa: E402
-from omniopd.prompts import STUDENT_SYSTEM_PROMPT  # noqa: E402
+from omniopd.prompts import resolve_student_prompt  # noqa: E402
 from omniopd.provenance import (  # noqa: E402
     fingerprint_code_tree,
     git_revision,
@@ -40,7 +40,9 @@ from omniopd.provenance import (  # noqa: E402
 TARGET_SOURCE = "alfworld_handcoded_expert"
 
 
-def build_rows(episodes: list[dict]) -> tuple[list[dict], dict]:
+def build_rows(
+    episodes: list[dict], *, student_prompt: str | None = None
+) -> tuple[list[dict], dict]:
     """Build training rows from solved episodes and report what was dropped."""
 
     rows: list[dict] = []
@@ -71,11 +73,14 @@ def build_rows(episodes: list[dict]) -> tuple[list[dict], dict]:
                     f"{turn.student.failure_reason}"
                 )
             messages = [dict(message) for message in turn.state.messages]
-            if not messages or messages[0].get("content") != STUDENT_SYSTEM_PROMPT:
+            # The scripted expert ignores the prompt, so a prompt ablation
+            # re-roles the same executed actions instead of re-collecting.
+            if not messages or messages[0].get("role") != "system":
                 raise ValueError(
-                    f"episode turn does not carry the Student system prompt: "
+                    f"episode turn does not start with a system message: "
                     f"{turn.state.game_id}/t{turn.state.turn_index}"
                 )
+            messages[0] = {"role": "system", "content": student_prompt}
             messages.append(
                 {
                     "role": "assistant",
@@ -116,6 +121,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--val-fraction", type=float, default=0.1)
     parser.add_argument("--split-seed", type=int, default=42)
     parser.add_argument("--max-length", type=int, default=4096)
+    parser.add_argument(
+        "--student-prompt",
+        default="v1",
+        help="Student system prompt version used for the rebuilt rows",
+    )
     return parser.parse_args()
 
 
@@ -161,7 +171,8 @@ def main() -> None:
         raise SystemExit("episode file does not match the collection manifest hash")
 
     episodes = list(read_jsonl(episodes_path))
-    rows, counts = build_rows(episodes)
+    prompt_name, prompt_text = resolve_student_prompt(args.student_prompt)
+    rows, counts = build_rows(episodes, student_prompt=prompt_text)
     # Stratify by task family so every family reaches the validation side;
     # a global split can leave whole families without any closed-loop game.
     train_rows, val_rows, split_metadata = split_rows_by_game_stratified(
@@ -203,7 +214,10 @@ def main() -> None:
         "supervision_source": TARGET_SOURCE,
         "target_format": "Action: <executed command>",
         "weighting_mode": "game_state_mean",
-        "student_system_prompt_sha256": sha256_text(STUDENT_SYSTEM_PROMPT),
+        "student_prompt": {
+            "name": prompt_name,
+            "sha256": sha256_text(prompt_text),
+        },
         "code_revision": git_revision(ROOT),
         "code": fingerprint_code_tree(ROOT),
         "script_sha256": sha256_file(Path(__file__)),

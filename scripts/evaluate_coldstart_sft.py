@@ -35,7 +35,7 @@ from omniopd.environment_provenance import (  # noqa: E402
     fingerprint_game_artifacts,
     game_artifacts_digest,
 )
-from omniopd.prompts import STUDENT_SYSTEM_PROMPT  # noqa: E402
+from omniopd.prompts import resolve_student_prompt  # noqa: E402
 from omniopd.protocol import GenerationSettings, rollout_episode  # noqa: E402
 from omniopd.provenance import (  # noqa: E402
     fingerprint_code_tree,
@@ -59,6 +59,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-context-tokens", type=int, default=4096)
     parser.add_argument("--reserve-tokens", type=int, default=256)
     parser.add_argument("--max-tokens", type=int, default=64)
+    parser.add_argument("--student-prompt", default="v1")
     return parser.parse_args()
 
 
@@ -114,6 +115,7 @@ def main() -> None:
         reserve_tokens=args.reserve_tokens,
         enable_thinking=False,
     )
+    prompt_name, prompt_text = resolve_student_prompt(args.student_prompt)
     policy = OpenAIChatPolicy(
         model=args.model,
         base_url=args.base_url,
@@ -137,7 +139,7 @@ def main() -> None:
                 truncator,
                 settings=GenerationSettings(temperature=0.0, max_tokens=args.max_tokens),
                 max_steps=args.max_steps,
-                system_prompt=STUDENT_SYSTEM_PROMPT,
+                system_prompt=prompt_text,
                 state_source="student",
             )
         finally:
@@ -175,7 +177,7 @@ def main() -> None:
         "artifact": "nonconfirmatory_coldstart_closed_loop_evaluation",
         "confirmatory_use_allowed": False,
         "training_performed": False,
-        "student_system_prompt_sha256": sha256_text(STUDENT_SYSTEM_PROMPT),
+        "student_prompt": {"name": prompt_name, "sha256": sha256_text(prompt_text)},
         "code_revision": git_revision(ROOT),
         "code": fingerprint_code_tree(ROOT),
         "script_sha256": sha256_file(Path(__file__)),
