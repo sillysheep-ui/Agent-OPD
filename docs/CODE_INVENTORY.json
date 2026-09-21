@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "604c64f2874aeaafdd003004616ca12f6913fecb",
+  "code_revision_at_generation": "619331d20955a99a3cb9d02d8885940b2f255eb4",
   "canonical_code": {
-    "tree_sha256": "0eafb581ed759c245663eee9d6da6c9ce29f94d79e820b3f7a437656f6613bef",
+    "tree_sha256": "a1f2eefb54f78f18d55543aa81ab7423e363e8cfc2d8e803febf1b4ceb4a965a",
     "files": 113,
-    "bytes": 965309
+    "bytes": 963837
   },
   "files": 267,
-  "bytes": 1756664,
+  "bytes": 1755192,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -966,8 +966,8 @@
     },
     {
       "path": "scripts/evaluate_coldstart_sft.py",
-      "bytes": 8910,
-      "sha256": "ff951e5e3284be1a8be21b62fc532c6a397311165a1eddb3cad355d194cb4fec",
+      "bytes": 9324,
+      "sha256": "cd0d7b6af0afdc4593f23a2c59571806a6839d237300910e69f3d4ac45207f40",
       "role": "canonical_or_documentation"
     },
     {
@@ -1002,8 +1002,8 @@
     },
     {
       "path": "scripts/pilot_paired_model_baseline.py",
-      "bytes": 11185,
-      "sha256": "451f00a6580452ba7a1720ed177c6832543e6cca374980a7c9552375bc26701f",
+      "bytes": 9299,
+      "sha256": "5e10278435a228807490ecb983c6e241594ee673e587fe9ef3643ef303569e17",
       "role": "canonical_or_documentation"
     },
     {
