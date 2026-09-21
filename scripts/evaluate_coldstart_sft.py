@@ -66,6 +66,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="sample only from the current admissible action set",
     )
+    parser.add_argument(
+        "--constraint-field",
+        default="guided_choice",
+        choices=["guided_choice", "structured_outputs"],
+        help="request field the served vLLM honours for choice constraints",
+    )
     return parser.parse_args()
 
 
@@ -122,17 +128,20 @@ def main() -> None:
         enable_thinking=False,
     )
     prompt_name, prompt_text = resolve_student_prompt(args.student_prompt)
-    policy_cls = (
-        AdmissibleChoicePolicy if args.constrain_admissible else OpenAIChatPolicy
-    )
-    policy = policy_cls(
-        model=args.model,
-        base_url=args.base_url,
-        api_key="EMPTY",
-        thinking_mode="disabled",
-        thinking_control="chat_template",
-        max_retries=0,
-    )
+    policy_kwargs = {
+        "model": args.model,
+        "base_url": args.base_url,
+        "api_key": "EMPTY",
+        "thinking_mode": "disabled",
+        "thinking_control": "chat_template",
+        "max_retries": 0,
+    }
+    if args.constrain_admissible:
+        policy = AdmissibleChoicePolicy(
+            constraint_field=args.constraint_field, **policy_kwargs
+        )
+    else:
+        policy = OpenAIChatPolicy(**policy_kwargs)
 
     episodes = []
     environment_seeds: dict[str, int] = {}

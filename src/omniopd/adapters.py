@@ -447,7 +447,24 @@ class AdmissibleChoicePolicy(OpenAIChatPolicy):
     commands the environment currently accepts.  It lives here rather than in
     a pilot script so the evaluation harness and the pilots share one
     implementation.
+
+    ``constraint_field`` names the request field the served vLLM understands:
+    vLLM 0.8.x honours ``guided_choice`` while newer builds use
+    ``structured_outputs.choice``.  Sending the wrong one is silently ignored,
+    which would turn a constrained run into a free-generation run, so the
+    choice is explicit and recorded in the request ledger.
     """
+
+    def __init__(
+        self,
+        *args: Any,
+        constraint_field: Literal["guided_choice", "structured_outputs"] = "guided_choice",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        if constraint_field not in {"guided_choice", "structured_outputs"}:
+            raise ValueError(f"unsupported constraint_field={constraint_field!r}")
+        self.constraint_field = constraint_field
 
     def generate(
         self,
@@ -474,14 +491,16 @@ class AdmissibleChoicePolicy(OpenAIChatPolicy):
         choices = ["Action: " + action for action in actions]
         self._choice_metadata = {
             "constraint_mode": "admissible_choice",
+            "constraint_field": self.constraint_field,
             "choice_count": len(choices),
             "choices_sha256": sha256_json(choices),
         }
         previous_extra_body = self.extra_body
-        self.extra_body = {
-            **previous_extra_body,
-            "structured_outputs": {"choice": choices},
-        }
+        if self.constraint_field == "guided_choice":
+            constraint: dict[str, Any] = {"guided_choice": choices}
+        else:
+            constraint = {"structured_outputs": {"choice": choices}}
+        self.extra_body = {**previous_extra_body, **constraint}
         try:
             return super().generate(
                 messages,
