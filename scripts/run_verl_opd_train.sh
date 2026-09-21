@@ -140,6 +140,7 @@ cd "${repo_root}"
   trainer.resume_mode=disable \
   trainer.default_local_dir="${OPD_OUTPUT}/checkpoints" \
   trainer.rollout_data_dir="${OPD_OUTPUT}/rollouts" \
+  hydra.run.dir="${OPD_OUTPUT}/hydra" \
   distillation.enabled=true \
   distillation.n_gpus_per_node=1 \
   distillation.nnodes=1 \
