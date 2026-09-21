@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "e9337a3d37721fe0cfa4f1a55e80d683193ab65f",
+  "code_revision_at_generation": "dfb03e81569a70062f7aa812ed1f63baa501d0a6",
   "canonical_code": {
-    "tree_sha256": "5f867e1c248e8095cde5785d9ee97f146e5615c603f182c8fc1146baa75d107a",
+    "tree_sha256": "f4f876a95ceb6e3a2762964d014626dabc02a28674221ab3240e1a2765b3ea14",
     "files": 117,
-    "bytes": 1010682
+    "bytes": 1010967
   },
   "files": 271,
-  "bytes": 1814699,
+  "bytes": 1814984,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -960,8 +960,8 @@
     },
     {
       "path": "scripts/collect_teacher_sft.py",
-      "bytes": 13191,
-      "sha256": "fdec26cd9d0e43cc011d4d57667c31b32ebe7d87942c21bc0a71ad69df9a747a",
+      "bytes": 13476,
+      "sha256": "3c04733658c620459e2b6b44fae8188f2ce8a692ff6cb9423ffac99387bc6c81",
       "role": "canonical_or_documentation"
     },
     {
