@@ -27,7 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from omniopd.dataset import split_rows_by_game  # noqa: E402
+from omniopd.dataset import split_rows_by_game_stratified  # noqa: E402
 from omniopd.io import read_jsonl, rollout_turn_from_dict  # noqa: E402
 from omniopd.prompts import STUDENT_SYSTEM_PROMPT  # noqa: E402
 from omniopd.provenance import (  # noqa: E402
@@ -162,10 +162,13 @@ def main() -> None:
 
     episodes = list(read_jsonl(episodes_path))
     rows, counts = build_rows(episodes)
-    train_rows, val_rows, split_metadata = split_rows_by_game(
+    # Stratify by task family so every family reaches the validation side;
+    # a global split can leave whole families without any closed-loop game.
+    train_rows, val_rows, split_metadata = split_rows_by_game_stratified(
         rows,
         val_fraction=args.val_fraction,
         rng_seed=args.split_seed,
+        stratum_key=lambda row: row["task_type"],
         game_key=lambda row: row["game_id"],
     )
     if not train_rows or not val_rows:
@@ -233,6 +236,7 @@ def main() -> None:
             "validation": {"path": str(val_path), "sha256": sha256_file(val_path)},
         },
         "notes": [
+            "split is stratified by task family: every family contributes whole games to validation",
             "evaluation games come from the valid_seen/valid_unseen splits and never appear here",
             "an unsolved expert episode contributes no training row; its turn count is recorded above",
         ],

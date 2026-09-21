@@ -150,3 +150,74 @@ def test_game_split_accepts_dict_rows_through_a_game_key():
     assert len(train) + len(validation) == 4
     assert metadata["split_unit"] == "game"
     assert metadata["validation_games"] and metadata["train_games"]
+
+
+def test_stratified_split_covers_every_task_family():
+    from omniopd.dataset import split_rows_by_game_stratified
+
+    rows = []
+    for task_type in ("pick_and_place_simple", "look_at_obj_in_light"):
+        for game_index in range(4):
+            for step in range(2):
+                rows.append(
+                    {
+                        "game_id": f"{task_type}-{game_index}",
+                        "task_type": task_type,
+                        "episode_step": step,
+                    }
+                )
+    train, validation, metadata = split_rows_by_game_stratified(
+        rows,
+        val_fraction=0.25,
+        rng_seed=11,
+        stratum_key=lambda row: row["task_type"],
+        game_key=lambda row: row["game_id"],
+    )
+    assert len(train) + len(validation) == len(rows)
+    assert metadata["split_unit"] == "game_within_stratum"
+    for task_type, stats in metadata["strata"].items():
+        assert stats["validation_games"], task_type
+        assert stats["train_games"], task_type
+        assert not set(stats["validation_games"]) & set(stats["train_games"])
+    assert {row["task_type"] for row in validation} == {
+        "pick_and_place_simple",
+        "look_at_obj_in_light",
+    }
+
+
+def test_stratified_split_refuses_a_single_game_family():
+    from omniopd.dataset import split_rows_by_game_stratified
+
+    rows = [
+        {"game_id": "solo-a", "task_type": "solo"},
+        {"game_id": "pair-a", "task_type": "pair"},
+        {"game_id": "pair-b", "task_type": "pair"},
+    ]
+    try:
+        split_rows_by_game_stratified(
+            rows,
+            val_fraction=0.5,
+            rng_seed=3,
+            stratum_key=lambda row: row["task_type"],
+            game_key=lambda row: row["game_id"],
+        )
+    except ValueError as error:
+        assert "solo" in str(error)
+    else:
+        raise AssertionError("a single-game family cannot fill both sides")
+
+
+def test_collector_defaults_to_ten_solved_episodes_per_family():
+    import sys
+
+    from scripts.collect_expert_sft import parse_args
+
+    argv = sys.argv
+    sys.argv = ["collect_expert_sft.py", "--env-config", "c.yaml", "--tokenizer", "t", "--output", "o"]
+    try:
+        args = parse_args()
+    finally:
+        sys.argv = argv
+    assert args.solved_per_task_type == 10
+    assert args.max_attempts_per_task_type == 50
+    assert args.split == "train"

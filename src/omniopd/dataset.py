@@ -190,3 +190,75 @@ def split_rows_by_game(
         "validation_games": sorted(validation_games),
     }
     return train, validation, metadata
+
+
+def split_rows_by_game_stratified(
+    rows: Iterable[Any],
+    *,
+    val_fraction: float,
+    rng_seed: int,
+    stratum_key: Callable[[Any], str],
+    game_key: Callable[[Any], str],
+) -> tuple[list[Any], list[Any], dict]:
+    """Game-disjoint split that also covers every stratum on both sides.
+
+    A plain global split can leave whole task families out of validation by
+    chance, which then makes a per-family closed-loop evaluation impossible.
+    Here every stratum donates at least one whole game to validation, so the
+    validation side always spans all families.  Each stratum must contain at
+    least two games; otherwise one side would have to be empty and the split
+    fails closed instead of silently reweighting the corpus.
+    """
+
+    if not 0.0 < val_fraction < 1.0:
+        raise ValueError("val_fraction must be between zero and one")
+    rows = list(rows)
+    by_game: dict[str, list[Any]] = defaultdict(list)
+    for row in rows:
+        by_game[str(game_key(row))].append(row)
+    game_stratum: dict[str, str] = {}
+    for game, group in by_game.items():
+        strata = {str(stratum_key(row)) for row in group}
+        if len(strata) != 1:
+            raise ValueError(f"game {game!r} spans multiple strata: {sorted(strata)}")
+        game_stratum[game] = strata.pop()
+    by_stratum: dict[str, list[str]] = defaultdict(list)
+    for game in sorted(by_game):
+        by_stratum[game_stratum[game]].append(game)
+
+    rng = random.Random(rng_seed)
+    validation_games: set[str] = set()
+    strata_metadata: dict[str, dict[str, Any]] = {}
+    for stratum in sorted(by_stratum):
+        games = by_stratum[stratum]
+        if len(games) < 2:
+            raise ValueError(
+                f"stratum {stratum!r} has {len(games)} game(s); at least two are "
+                "required so both sides stay non-empty"
+            )
+        shuffled = list(games)
+        rng.shuffle(shuffled)
+        count = min(len(games) - 1, max(1, round(len(games) * val_fraction)))
+        chosen = set(shuffled[:count])
+        validation_games.update(chosen)
+        strata_metadata[stratum] = {
+            "games": len(games),
+            "validation_games": sorted(chosen),
+            "train_games": sorted(set(games) - chosen),
+        }
+
+    train = [row for game in sorted(by_game) if game not in validation_games for row in by_game[game]]
+    validation = [row for game in sorted(by_game) if game in validation_games for row in by_game[game]]
+    if len(train) + len(validation) != len(rows):
+        raise RuntimeError("stratified split lost or duplicated rows")
+    if not train or not validation:
+        raise RuntimeError("stratified split produced an empty side")
+    metadata = {
+        "split_unit": "game_within_stratum",
+        "rng_seed": rng_seed,
+        "val_fraction": val_fraction,
+        "strata": strata_metadata,
+        "train_games": sorted(set(by_game) - validation_games),
+        "validation_games": sorted(validation_games),
+    }
+    return train, validation, metadata

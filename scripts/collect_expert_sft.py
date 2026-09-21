@@ -107,7 +107,18 @@ def parse_args() -> argparse.Namespace:
         default=",".join(CANONICAL_TASK_TYPES),
         help="comma-separated ALFWorld task families to cover",
     )
-    parser.add_argument("--games-per-task-type", type=int, default=10)
+    parser.add_argument(
+        "--solved-per-task-type",
+        type=int,
+        default=10,
+        help="solved episodes required from every task family",
+    )
+    parser.add_argument(
+        "--max-attempts-per-task-type",
+        type=int,
+        default=50,
+        help="attempts allowed per family before the collection fails closed",
+    )
     parser.add_argument("--game-order-seed", type=int, default=42)
     parser.add_argument("--environment-master-seed", type=int, default=314159)
     parser.add_argument("--max-steps", type=int, default=50)
@@ -124,7 +135,8 @@ def main() -> None:
     task_types = tuple(item.strip() for item in args.task_types.split(",") if item.strip())
     if (
         args.split != "train"
-        or args.games_per_task_type <= 0
+        or args.solved_per_task_type <= 0
+        or args.max_attempts_per_task_type < args.solved_per_task_type
         or args.game_order_seed < 0
         or args.environment_master_seed < 0
         or args.max_steps <= 0
@@ -143,12 +155,15 @@ def main() -> None:
 
     config = yaml.safe_load(env_config_path.read_text(encoding="utf-8"))
     games = list_alfworld_games(config, args.split)
-    selected = select_games(
+    candidates = select_games(
         games,
         task_types=task_types,
-        games_per_task_type=args.games_per_task_type,
+        games_per_task_type=args.max_attempts_per_task_type,
         seed=args.game_order_seed,
     )
+    candidates_by_type: dict[str, list[str]] = defaultdict(list)
+    for game in candidates:
+        candidates_by_type[task_family_from_path(game)].append(game)
 
     tokenizer = AutoTokenizer.from_pretrained(
         str(tokenizer_path), use_fast=True, local_files_only=True, trust_remote_code=False
@@ -163,68 +178,90 @@ def main() -> None:
     output.mkdir(parents=True)
     episodes_path = output / "episodes.jsonl"
     environment_seeds: dict[str, int] = {}
-    observed_task_types: dict[str, str] = {}
+    tasks_by_game: dict[str, str] = {}
+    per_task_type: dict[str, dict[str, int]] = {
+        task_type: {"attempts": 0, "solved": 0} for task_type in task_types
+    }
     counts = {"games_attempted": 0, "games_won": 0, "turns": 0, "invalid_turns": 0}
+    attempted_games: list[str] = []
+    total_budget = len(task_types) * args.max_attempts_per_task_type
     with episodes_path.open("x", encoding="utf-8") as handle:
-        for game in selected:
-            task_family = task_family_from_path(game)
-            task_type = extract_task_type(game)
-            if task_type != task_family:
+        for family in task_types:
+            for game in candidates_by_type[family]:
+                if per_task_type[family]["solved"] >= args.solved_per_task_type:
+                    break
+                if per_task_type[family]["attempts"] >= args.max_attempts_per_task_type:
+                    break
+                task_type = extract_task_type(game)
+                if task_type != family:
+                    raise SystemExit(
+                        f"task family {family!r} disagrees with traj_data.json "
+                        f"task_type {task_type!r} for {game}"
+                    )
+                environment_seed = derive_environment_seed(args.environment_master_seed, game)
+                environment_seeds[game] = environment_seed
+                tasks_by_game[game] = task_type
+                attempted_games.append(game)
+                env = AlfworldEnvironment(
+                    config, game, rollout_seed=environment_seed, expert_type="handcoded"
+                )
+                policy = ExpertPolicy(env.expert_action)
+                try:
+                    turns, won = rollout_episode(
+                        env,
+                        policy,
+                        truncator,
+                        settings=GenerationSettings(temperature=0.0, max_tokens=64),
+                        max_steps=args.max_steps,
+                        system_prompt=STUDENT_SYSTEM_PROMPT,
+                        state_source="student",
+                    )
+                    seed_attestation = env.seed_attestation
+                finally:
+                    env.close()
+                if len(policy.request_ids) != len(turns):
+                    raise SystemExit(f"expert turn accounting drifted for {game}")
+                invalid_turns = sum(1 for turn in turns if not turn.student.valid)
+                per_task_type[family]["attempts"] += 1
+                per_task_type[family]["solved"] += int(bool(won))
+                counts["games_attempted"] += 1
+                counts["games_won"] += int(bool(won))
+                counts["turns"] += len(turns)
+                counts["invalid_turns"] += invalid_turns
+                handle.write(
+                    json.dumps(
+                        {
+                            "game_id": game,
+                            "task_type": task_type,
+                            "environment_seed": environment_seed,
+                            "seed_attestation": seed_attestation,
+                            "won": bool(won),
+                            "steps": len(turns),
+                            "invalid_turns": invalid_turns,
+                            "turns": [turn.to_dict() for turn in turns],
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        allow_nan=False,
+                    )
+                    + "\n"
+                )
+                handle.flush()
+                print(
+                    f"[{counts['games_attempted']}/{total_budget}] {task_type}: "
+                    f"won={bool(won)} steps={len(turns)} invalid={invalid_turns} "
+                    f"solved={per_task_type[family]['solved']}/{args.solved_per_task_type}",
+                    flush=True,
+                )
+            if per_task_type[family]["solved"] < args.solved_per_task_type:
                 raise SystemExit(
-                    f"task family {task_family!r} disagrees with traj_data.json "
-                    f"task_type {task_type!r} for {game}"
+                    f"task family {family!r} solved only "
+                    f"{per_task_type[family]['solved']} of the requested "
+                    f"{args.solved_per_task_type} episodes within "
+                    f"{per_task_type[family]['attempts']} attempts; the corpus is "
+                    "incomplete, so the run fails closed instead of shipping an "
+                    "imbalanced corpus"
                 )
-            environment_seed = derive_environment_seed(args.environment_master_seed, game)
-            environment_seeds[game] = environment_seed
-            observed_task_types[game] = task_type
-            env = AlfworldEnvironment(
-                config, game, rollout_seed=environment_seed, expert_type="handcoded"
-            )
-            policy = ExpertPolicy(env.expert_action)
-            try:
-                turns, won = rollout_episode(
-                    env,
-                    policy,
-                    truncator,
-                    settings=GenerationSettings(temperature=0.0, max_tokens=64),
-                    max_steps=args.max_steps,
-                    system_prompt=STUDENT_SYSTEM_PROMPT,
-                    state_source="student",
-                )
-                seed_attestation = env.seed_attestation
-            finally:
-                env.close()
-            if len(policy.request_ids) != len(turns):
-                raise SystemExit(f"expert turn accounting drifted for {game}")
-            invalid_turns = sum(1 for turn in turns if not turn.student.valid)
-            counts["games_attempted"] += 1
-            counts["games_won"] += int(bool(won))
-            counts["turns"] += len(turns)
-            counts["invalid_turns"] += invalid_turns
-            handle.write(
-                json.dumps(
-                    {
-                        "game_id": game,
-                        "task_type": task_type,
-                        "environment_seed": environment_seed,
-                        "seed_attestation": seed_attestation,
-                        "won": bool(won),
-                        "steps": len(turns),
-                        "invalid_turns": invalid_turns,
-                        "turns": [turn.to_dict() for turn in turns],
-                    },
-                    ensure_ascii=False,
-                    sort_keys=True,
-                    allow_nan=False,
-                )
-                + "\n"
-            )
-            handle.flush()
-            print(
-                f"[{counts['games_attempted']}/{len(selected)}] {task_type}: "
-                f"won={bool(won)} steps={len(turns)} invalid={invalid_turns}",
-                flush=True,
-            )
 
     manifest = {
         "artifact": "expert_trajectory_collection",
@@ -234,7 +271,9 @@ def main() -> None:
         "expert_type": "handcoded",
         "split": args.split,
         "task_types": list(task_types),
-        "games_per_task_type": args.games_per_task_type,
+        "solved_per_task_type": args.solved_per_task_type,
+        "max_attempts_per_task_type": args.max_attempts_per_task_type,
+        "per_task_type": per_task_type,
         "game_order_seed": args.game_order_seed,
         "environment_master_seed": args.environment_master_seed,
         "max_steps": args.max_steps,
@@ -245,7 +284,7 @@ def main() -> None:
         },
         "student_system_prompt_sha256": sha256_text(STUDENT_SYSTEM_PROMPT),
         "selection": {
-            "rule": "per_task_type_stable_shuffle_take_n",
+            "rule": "per_task_type_stable_shuffle_attempt_until_solved_target",
             "task_family_source": "trial_directory_name_cross_checked_with_traj_data",
             "game_order_seed": args.game_order_seed,
         },
@@ -261,12 +300,12 @@ def main() -> None:
             "tokenizer_config_sha256": sha256_file(tokenizer_path / "tokenizer_config.json"),
         },
         "runtime_dependencies": capture_runtime_dependencies(),
-        "game_artifacts": fingerprint_game_artifacts(selected),
+        "game_artifacts": fingerprint_game_artifacts(attempted_games),
         "game_artifacts_digest": game_artifacts_digest(
-            fingerprint_game_artifacts(selected)
+            fingerprint_game_artifacts(attempted_games)
         ),
         "environment_seeds": environment_seeds,
-        "tasks_by_game": observed_task_types,
+        "tasks_by_game": tasks_by_game,
         "counts": counts,
         "episodes": {
             "path": str(episodes_path),
