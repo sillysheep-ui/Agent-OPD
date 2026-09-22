@@ -167,8 +167,17 @@ class OmniOPDAgentLoopWorker(AgentLoopWorker):
         # final dummy row for the EOS sequence position itself.
         remapped_ids.append([self.tokenizer.pad_token_id])
         remapped_scores.append([0.0])
-        if len(remapped_scores) != len(prompt_ids) + len(response_ids):
-            raise ValueError("remapped Teacher score width disagrees with Student layout")
+        # veRL keeps every response at the batch's fixed response length, while
+        # the Teacher only scores the Student's action span. Pad the Teacher
+        # rows with zeros so the widths match; the response mask already zeroes
+        # everything outside the span, so the padded positions never train.
+        target_width = len(prompt_ids) + len(response_ids)
+        if len(remapped_scores) > target_width:
+            raise ValueError("remapped Teacher score width exceeds the Student layout")
+        missing = target_width - len(remapped_scores)
+        if missing:
+            remapped_ids.extend([[self.tokenizer.pad_token_id]] * missing)
+            remapped_scores.extend([[0.0]] * missing)
         output.extra_fields["teacher_ids"] = torch.tensor(remapped_ids, dtype=torch.int32)
         output.extra_fields["teacher_logprobs"] = torch.tensor(
             remapped_scores, dtype=torch.float32
