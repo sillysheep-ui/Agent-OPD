@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "af6bb0f0fe88eeebd0162e794c5cc68db58eeccd",
+  "code_revision_at_generation": "e29768a628686bb3b7aba76e16b343b24f98aad6",
   "canonical_code": {
-    "tree_sha256": "39580aacd48b32102b9bded4f1b34dc77962959292c875fdb671c877156019c9",
-    "files": 117,
-    "bytes": 1015156
+    "tree_sha256": "6e5676de0b837052463b6f6d8fa620ffc1e10290f248c0ee215d5485ab277d06",
+    "files": 118,
+    "bytes": 1020722
   },
-  "files": 271,
-  "bytes": 1819173,
+  "files": 272,
+  "bytes": 1824739,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 59,
+    "scripts": 60,
     "src": 42,
     "tests": 36
   },
@@ -1175,6 +1175,12 @@
       "role": "canonical_or_documentation"
     },
     {
+      "path": "scripts/verify_opd_layout.py",
+      "bytes": 3878,
+      "sha256": "c79de1e0940f20267488dc2aa0c78029c8e556ed63776f277f0465c8d8a098bd",
+      "role": "canonical_or_documentation"
+    },
+    {
       "path": "scripts/wait_for_model.py",
       "bytes": 1490,
       "sha256": "08ba8c3fa59e3e72df03327b9da706c6011f8fadbccb96366243a0e5f104dee1",
@@ -1332,8 +1338,8 @@
     },
     {
       "path": "src/omniopd/opd_adapter.py",
-      "bytes": 15804,
-      "sha256": "dc2bb5d0a38066be5f3cc0dc87d739dfc20e836eaa418d811150c631ebc06b39",
+      "bytes": 17492,
+      "sha256": "2a5de372fe8ca5821287c9d90a0ccae33e562f97314103e0599adba94b053aa9",
       "role": "canonical_or_documentation"
     },
     {
