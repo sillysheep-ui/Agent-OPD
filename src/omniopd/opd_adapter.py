@@ -302,6 +302,12 @@ def extract_strict_action_tokens(
             raise ValueError("could not locate the Student action tokens")
         content_ids = ids[:cut]
         special_ids = set(tokenizer.all_special_ids)
+        # The token that closes the action line is often the chat-template end
+        # token; it is a terminator, not part of the supervised action.
+        while content_ids and content_ids[-1] in special_ids:
+            content_ids.pop()
+        if not content_ids:
+            raise ValueError("Student action span is empty after trimming terminators")
         if any(token_id in special_ids for token_id in content_ids):
             raise ValueError("Student action contains a special/reasoning token")
         response_text = tokenizer.decode(
