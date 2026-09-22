@@ -120,7 +120,7 @@ cd "${repo_root}"
   actor_rollout_ref.rollout.enforce_eager=true \
   actor_rollout_ref.rollout.n=1 \
   actor_rollout_ref.rollout.temperature=1.0 \
-  actor_rollout_ref.rollout.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
+  actor_rollout_ref.rollout.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH + 2)) \
   actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 \
   actor_rollout_ref.rollout.agent.num_workers=1 \
   actor_rollout_ref.rollout.agent.agent_loop_config_path="${repo_root}/configs/verl_v080_opd_agent_loops.yaml" \
@@ -148,7 +148,7 @@ cd "${repo_root}"
   distillation.teacher_models.teacher_model.inference.tensor_model_parallel_size=1 \
   distillation.teacher_models.teacher_model.inference.name=vllm \
   distillation.teacher_models.teacher_model.inference.gpu_memory_utilization="${TEACHER_GPU_MEMORY}" \
-  distillation.teacher_models.teacher_model.inference.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH)) \
+  distillation.teacher_models.teacher_model.inference.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH + 2)) \
   distillation.teacher_models.teacher_model.inference.temperature=1.0 \
   distillation.distillation_loss.loss_mode=k2 \
   distillation.distillation_loss.use_task_rewards=false \
