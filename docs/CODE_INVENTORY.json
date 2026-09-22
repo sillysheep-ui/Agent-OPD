@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "1f4ee90969d6e287592902f0f604ee16515f8136",
+  "code_revision_at_generation": "9a7cc7647af6275fc4e57fd9f22a74fda9e08b77",
   "canonical_code": {
-    "tree_sha256": "c89e85a350dd52c46c50d8e1d4a6e2d6ace8be84ff887700bf4b2fc55261d0bb",
+    "tree_sha256": "c243ba2aaabcba248a7e79de0658fcbb9cf128a070366e72743800e740a11df0",
     "files": 117,
-    "bytes": 1014430
+    "bytes": 1014478
   },
   "files": 271,
-  "bytes": 1818447,
+  "bytes": 1818495,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -1092,8 +1092,8 @@
     },
     {
       "path": "scripts/run_verl_opd_train.sh",
-      "bytes": 8390,
-      "sha256": "efa3a9ee363108a0c9726950ddb155e6c4991addabd64b5def3b20266e0f622f",
+      "bytes": 8438,
+      "sha256": "6932e8ba8bf6273943336d5797e51b53144dc287920791bcfbee516617997695",
       "role": "canonical_or_documentation"
     },
     {
