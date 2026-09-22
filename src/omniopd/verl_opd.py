@@ -7,6 +7,8 @@ budget protocol is required before confirmatory training.
 
 from __future__ import annotations
 
+import os
+
 from collections.abc import Mapping
 from typing import Any
 
@@ -45,8 +47,14 @@ class OmniOPDActionLoop(SingleTurnAgentLoop):
         actions = extra.get("admissible_actions")
         if not isinstance(actions, (list, tuple)) or not actions:
             raise ValueError("OPD state has no admissible action set")
+        require_admissible = (
+            os.environ.get("OMNIOPD_REQUIRE_ADMISSIBLE_ACTION", "1") != "0"
+        )
         content_ids, _, canonical_action = extract_strict_action_tokens(
-            self.tokenizer, output.response_ids, actions
+            self.tokenizer,
+            output.response_ids,
+            actions,
+            require_admissible=require_admissible,
         )
         output.response_mask = [1] * len(content_ids) + [0]
         # veRL's rollout/reward pipeline requires rm_scores even when OPD
@@ -69,6 +77,9 @@ class OmniOPDAgentLoopWorker(AgentLoopWorker):
         validate: bool,
         sample_kwargs: dict[str, Any] | None = None,
     ) -> None:
+        require_admissible = (
+            os.environ.get("OMNIOPD_REQUIRE_ADMISSIBLE_ACTION", "1") != "0"
+        )
         if validate or not self.distillation_enabled:
             return
         if sample_kwargs is None:
@@ -97,7 +108,12 @@ class OmniOPDAgentLoopWorker(AgentLoopWorker):
         ):
             raise ValueError("Teacher prompt does not share the Student state history")
         actions = extra.get("admissible_actions")
-        content_ids, _, _ = extract_strict_action_tokens(self.tokenizer, response_ids, actions)
+        content_ids, _, _ = extract_strict_action_tokens(
+            self.tokenizer,
+            response_ids,
+            actions,
+            require_admissible=require_admissible,
+        )
         expected_student_ids = apply_chat_template_ids(
             self.tokenizer,
             student_messages,

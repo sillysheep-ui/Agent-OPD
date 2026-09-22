@@ -262,11 +262,20 @@ def remap_teacher_scores_to_student_layout(
     return remapped_ids, remapped_scores
 
 
-def extract_strict_action_tokens(tokenizer: Any, generated_ids: Sequence[int], admissible_actions):
-    """Require one executable action line ending in EOS, with EOS masked out.
+def extract_strict_action_tokens(
+    tokenizer: Any,
+    generated_ids: Sequence[int],
+    admissible_actions,
+    *,
+    require_admissible: bool = True,
+):
+    """Require one action line ending in EOS, with EOS masked out.
 
-    This fail-closed pilot policy is not yet a general invalid-rollout strategy
-    for confirmatory OPD training.
+    ``require_admissible=True`` is the fail-closed policy for the
+    teacher-sampling arm, where only an executable Teacher action may be
+    supervised. Standard token OPD instead distils the Student's own rollout,
+    so an inadmissible Student action must still yield its token span: the
+    environment's rejection is exactly the supervision signal in that arm.
     """
 
     ids = [int(token_id) for token_id in generated_ids]
@@ -282,7 +291,7 @@ def extract_strict_action_tokens(tokenizer: Any, generated_ids: Sequence[int], a
     if not re.fullmatch(r"Action:[^\r\n]+(?:\r?\n)?", response_text):
         raise ValueError(f"Student response is not exactly one action line: {response_text!r}")
     parsed = parse_action(response_text, admissible_actions)
-    if not parsed.valid:
+    if require_admissible and not parsed.valid:
         raise ValueError(
             f"Student action is not admissible: {parsed.failure_reason}: {response_text!r}"
         )
