@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "e76afd02cf4a6453c9f03d9100ec74c7074b334d",
+  "code_revision_at_generation": "45d8f4119f40c2795b48cc32f1f2686f3a274ad5",
   "canonical_code": {
-    "tree_sha256": "aad2a73028b1ee2b3c598144f8849c789fb8f82ace5efefa7b22b4a454e38602",
+    "tree_sha256": "24746d1f0181f6750acef87667a6b582fa8e663db5ac37ca4dd96a5e9c35799d",
     "files": 117,
-    "bytes": 1014029
+    "bytes": 1014388
   },
   "files": 271,
-  "bytes": 1818046,
+  "bytes": 1818405,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -1332,8 +1332,8 @@
     },
     {
       "path": "src/omniopd/opd_adapter.py",
-      "bytes": 15445,
-      "sha256": "586f1ca88e18ac8569374850692413cb79e7613540984869645ca77d743b2af0",
+      "bytes": 15804,
+      "sha256": "dc2bb5d0a38066be5f3cc0dc87d739dfc20e836eaa418d811150c631ebc06b39",
       "role": "canonical_or_documentation"
     },
     {
