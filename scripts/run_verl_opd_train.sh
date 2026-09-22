@@ -21,6 +21,7 @@ MAX_PROMPT_LENGTH=${MAX_PROMPT_LENGTH:-16384}
 MAX_RESPONSE_LENGTH=${MAX_RESPONSE_LENGTH:-512}
 TEACHER_GPU_MEMORY=${TEACHER_GPU_MEMORY:-0.60}
 TEACHER_TP=${TEACHER_TP:-1}
+TEACHER_GPUS=${TEACHER_GPUS:-1}
 STUDENT_GPU_MEMORY=${STUDENT_GPU_MEMORY:-0.30}
 LORA_RANK=${LORA_RANK:-16}
 LORA_ALPHA=${LORA_ALPHA:-32}
@@ -144,7 +145,7 @@ cd "${repo_root}"
   trainer.rollout_data_dir="${OPD_OUTPUT}/rollouts" \
   hydra.run.dir="${OPD_OUTPUT}/hydra" \
   distillation.enabled=true \
-  distillation.n_gpus_per_node=1 \
+  distillation.n_gpus_per_node="${TEACHER_GPUS}" \
   distillation.nnodes=1 \
   distillation.teacher_models.teacher_model.model_path="${OPD_TEACHER_MODEL}" \
   distillation.teacher_models.teacher_model.inference.tensor_model_parallel_size="${TEACHER_TP}" \
