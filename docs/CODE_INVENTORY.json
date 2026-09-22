@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "e29768a628686bb3b7aba76e16b343b24f98aad6",
+  "code_revision_at_generation": "dc8c5327e3bf4ef2fc5f68270b469586f16384d1",
   "canonical_code": {
-    "tree_sha256": "6e5676de0b837052463b6f6d8fa620ffc1e10290f248c0ee215d5485ab277d06",
-    "files": 118,
-    "bytes": 1020722
+    "tree_sha256": "a149ae445fd677a751be81e364a48cc38af33479cbb2d721a8c02478dc4b6f37",
+    "files": 119,
+    "bytes": 1024789
   },
-  "files": 272,
-  "bytes": 1824739,
+  "files": 273,
+  "bytes": 1828806,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 60,
+    "scripts": 61,
     "src": 42,
     "tests": 36
   },
@@ -962,6 +962,12 @@
       "path": "scripts/collect_teacher_sft.py",
       "bytes": 13476,
       "sha256": "3c04733658c620459e2b6b44fae8188f2ce8a692ff6cb9423ffac99387bc6c81",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/convert_opd_checkpoint.py",
+      "bytes": 4067,
+      "sha256": "904f3e72e8a0c1dee1fb4d02831f1d73ccaa12ffa748bb94ad6185be7be9b0d6",
       "role": "canonical_or_documentation"
     },
     {
