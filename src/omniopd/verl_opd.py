@@ -19,9 +19,11 @@ from verl.experimental.agent_loop.agent_loop import AgentLoopManager, AgentLoopW
 from verl.experimental.agent_loop.single_turn_agent_loop import SingleTurnAgentLoop
 
 from .opd_adapter import (
+    align_teacher_rows_to_student_layout,
     audit_shared_token_id_space,
     extract_strict_action_tokens,
     remap_teacher_scores_to_student_layout,
+    response_mask_for_action_span,
 )
 from .prompts import STUDENT_SYSTEM_PROMPT, TEACHER_SYSTEM_PROMPT, replace_system
 from .tokenization import apply_chat_template_ids
@@ -56,13 +58,11 @@ class OmniOPDActionLoop(SingleTurnAgentLoop):
             actions,
             require_admissible=require_admissible,
         )
-        # The mask must match the response length veRL already fixed for the
-        # batch, so supervise the action span in place instead of resizing the
-        # response (a trimmed response can exceed the length cap).
-        mask = [0] * len(output.response_ids)
-        for index in range(min(len(content_ids), len(mask))):
-            mask[index] = 1
-        output.response_mask = mask
+        # veRL fixes every response at the batch width; supervise the action
+        # span in place instead of resizing the response.
+        output.response_mask = response_mask_for_action_span(
+            len(output.response_ids), len(content_ids)
+        )
         # veRL's rollout/reward pipeline requires rm_scores even when OPD
         # deliberately disables task rewards. This zero is a plumbing value,
         # not an ALFWorld success signal.
@@ -162,23 +162,15 @@ class OmniOPDAgentLoopWorker(AgentLoopWorker):
             teacher_scored_logprobs=teacher_logprobs.tolist(),
             pad_token_id=self.tokenizer.pad_token_id,
         )
-        # The remap stores one row per Student prompt position plus one per
-        # scored action token. veRL's one-left response slice reads a row for
-        # every response position, and every response in the batch has the same
-        # fixed length, so align the rows to the Student sequence width:
-        #   * one extra row when the response is exactly action + terminator,
-        #   * no extra row when the action already spans the response,
-        #   * zero-padded rows when the response continues past the action.
-        # Everything outside the action span is masked out of the loss.
-        pad_row = [self.tokenizer.pad_token_id]
-        rows = len(remapped_scores)
-        target_width = len(prompt_ids) + len(response_ids)
-        if target_width < rows:
-            raise ValueError("remapped Teacher score width exceeds the Student layout")
-        missing = target_width - rows
-        if missing:
-            remapped_ids.extend([list(pad_row) for _ in range(missing)])
-            remapped_scores.extend([[0.0] for _ in range(missing)])
+        # Align the Teacher rows with the Student sequence width veRL fixes for
+        # the batch; the action span alone can be shorter than the response.
+        remapped_ids, remapped_scores = align_teacher_rows_to_student_layout(
+            student_prompt_length=len(prompt_ids),
+            student_response_ids=response_ids,
+            teacher_rows=remapped_scores,
+            teacher_ids=remapped_ids,
+            pad_token_id=self.tokenizer.pad_token_id,
+        )
         output.extra_fields["teacher_ids"] = torch.tensor(remapped_ids, dtype=torch.int32)
         output.extra_fields["teacher_logprobs"] = torch.tensor(
             remapped_scores, dtype=torch.float32
