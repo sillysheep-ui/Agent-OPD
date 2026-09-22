@@ -79,13 +79,23 @@ class OmniOPDAgentLoopWorker(AgentLoopWorker):
         student_messages = [dict(message) for message in sample_kwargs["raw_prompt"]]
         if (
             not student_messages
-            or student_messages[0] != {"role": "system", "content": STUDENT_SYSTEM_PROMPT}
+            or student_messages[0].get("role") != "system"
+            or not str(student_messages[0].get("content", "")).strip()
             or student_messages[-1].get("role") != "user"
         ):
-            raise ValueError("OPD Student prompt is not the registered state prompt")
+            raise ValueError(
+                "OPD Student prompt must be a system message followed by the state history"
+            )
         teacher_messages = extra.get("teacher_prompt")
-        if teacher_messages != replace_system(student_messages, TEACHER_SYSTEM_PROMPT):
-            raise ValueError("Teacher prompt does not share exactly the Student state history")
+        # Two contracts are legitimate: the paper's separate P_T view, and
+        # standard token OPD where the Teacher scores the Student prefix in the
+        # identical context. Both require the non-system history to be the same.
+        if (
+            not teacher_messages
+            or [dict(message) for message in teacher_messages][1:]
+            != [dict(message) for message in student_messages][1:]
+        ):
+            raise ValueError("Teacher prompt does not share the Student state history")
         actions = extra.get("admissible_actions")
         content_ids, _, _ = extract_strict_action_tokens(self.tokenizer, response_ids, actions)
         expected_student_ids = apply_chat_template_ids(
