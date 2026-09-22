@@ -20,6 +20,7 @@ MICRO_BSZ=${MICRO_BSZ:-1}
 MAX_PROMPT_LENGTH=${MAX_PROMPT_LENGTH:-16384}
 MAX_RESPONSE_LENGTH=${MAX_RESPONSE_LENGTH:-512}
 TEACHER_GPU_MEMORY=${TEACHER_GPU_MEMORY:-0.60}
+TEACHER_TP=${TEACHER_TP:-1}
 STUDENT_GPU_MEMORY=${STUDENT_GPU_MEMORY:-0.30}
 LORA_RANK=${LORA_RANK:-16}
 LORA_ALPHA=${LORA_ALPHA:-32}
@@ -146,7 +147,7 @@ cd "${repo_root}"
   distillation.n_gpus_per_node=1 \
   distillation.nnodes=1 \
   distillation.teacher_models.teacher_model.model_path="${OPD_TEACHER_MODEL}" \
-  distillation.teacher_models.teacher_model.inference.tensor_model_parallel_size=1 \
+  distillation.teacher_models.teacher_model.inference.tensor_model_parallel_size="${TEACHER_TP}" \
   distillation.teacher_models.teacher_model.inference.name=vllm \
   distillation.teacher_models.teacher_model.inference.gpu_memory_utilization="${TEACHER_GPU_MEMORY}" \
   distillation.teacher_models.teacher_model.inference.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH + 2)) \
