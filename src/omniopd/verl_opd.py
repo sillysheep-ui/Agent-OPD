@@ -162,22 +162,23 @@ class OmniOPDAgentLoopWorker(AgentLoopWorker):
             teacher_scored_logprobs=teacher_logprobs.tolist(),
             pad_token_id=self.tokenizer.pad_token_id,
         )
-        # The remap already stores zero at the last action-ID position, which
-        # veRL's one-left response slice reads for the masked EOS. Add the
-        # final dummy row for the EOS sequence position itself.
-        remapped_ids.append([self.tokenizer.pad_token_id])
-        remapped_scores.append([0.0])
-        # veRL keeps every response at the batch's fixed response length, while
-        # the Teacher only scores the Student's action span. Pad the Teacher
-        # rows with zeros so the widths match; the response mask already zeroes
-        # everything outside the span, so the padded positions never train.
+        # The remap stores one row per Student prompt position plus one per
+        # scored action token. veRL's one-left response slice reads a row for
+        # every response position, and every response in the batch has the same
+        # fixed length, so align the rows to the Student sequence width:
+        #   * one extra row when the response is exactly action + terminator,
+        #   * no extra row when the action already spans the response,
+        #   * zero-padded rows when the response continues past the action.
+        # Everything outside the action span is masked out of the loss.
+        pad_row = [self.tokenizer.pad_token_id]
+        rows = len(remapped_scores)
         target_width = len(prompt_ids) + len(response_ids)
-        if len(remapped_scores) > target_width:
+        if target_width < rows:
             raise ValueError("remapped Teacher score width exceeds the Student layout")
-        missing = target_width - len(remapped_scores)
+        missing = target_width - rows
         if missing:
-            remapped_ids.extend([[self.tokenizer.pad_token_id]] * missing)
-            remapped_scores.extend([[0.0]] * missing)
+            remapped_ids.extend([list(pad_row) for _ in range(missing)])
+            remapped_scores.extend([[0.0] for _ in range(missing)])
         output.extra_fields["teacher_ids"] = torch.tensor(remapped_ids, dtype=torch.int32)
         output.extra_fields["teacher_logprobs"] = torch.tensor(
             remapped_scores, dtype=torch.float32
