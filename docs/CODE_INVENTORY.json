@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "b0d6506d097d9bfafd396b263955298ab90f064f",
+  "code_revision_at_generation": "6b4a3bd941022bd5071b85004ac371142484492c",
   "canonical_code": {
-    "tree_sha256": "3503475325c37259b0178420851433414b54f8f8ec515012e410202831b45709",
+    "tree_sha256": "200881fa505baebc0fba61384ac4ba09318a4f722a5debdb25859ebc4d1f292e",
     "files": 117,
-    "bytes": 1011435
+    "bytes": 1012260
   },
   "files": 271,
-  "bytes": 1815452,
+  "bytes": 1816277,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -1092,8 +1092,8 @@
     },
     {
       "path": "scripts/run_verl_opd_train.sh",
-      "bytes": 8265,
-      "sha256": "a8fa37113ad75b25ec820aaf1fc539775e018370ec9b97bd451e026110b461e9",
+      "bytes": 8348,
+      "sha256": "84ce23a22e77ff54a008d6b7ebdc57f1f0aeccce22d279dc19da5245864ab927",
       "role": "canonical_or_documentation"
     },
     {
@@ -1332,8 +1332,8 @@
     },
     {
       "path": "src/omniopd/opd_adapter.py",
-      "bytes": 13599,
-      "sha256": "54e5eccfddcedfb5e4492f350095b2d269124a1284263237700fadd059f5eacb",
+      "bytes": 13922,
+      "sha256": "8343d74fa44a7fb54039bd667224ec7daabdb7de2ffb9fd018635603ea6f6807",
       "role": "canonical_or_documentation"
     },
     {
@@ -1428,8 +1428,8 @@
     },
     {
       "path": "src/omniopd/verl_opd.py",
-      "bytes": 7609,
-      "sha256": "11cc610fa789faa2ef50dc7797f7b30270d571aa7b11a749d479a755f9e07034",
+      "bytes": 8028,
+      "sha256": "afd19240c06b1f8bfc27177930568bc789b2629f3d7c58c4b41d6e4131525991",
       "role": "canonical_or_documentation"
     },
     {
