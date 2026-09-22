@@ -56,6 +56,9 @@ class OmniOPDActionLoop(SingleTurnAgentLoop):
             actions,
             require_admissible=require_admissible,
         )
+        if not require_admissible and len(output.response_ids) != len(content_ids) + 1:
+            # Keep ids and mask consistent after cutting the rambling response.
+            output.response_ids = [*content_ids, self.tokenizer.eos_token_id]
         output.response_mask = [1] * len(content_ids) + [0]
         # veRL's rollout/reward pipeline requires rm_scores even when OPD
         # deliberately disables task rewards. This zero is a plumbing value,

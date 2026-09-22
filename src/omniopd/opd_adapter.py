@@ -279,6 +279,37 @@ def extract_strict_action_tokens(
     """
 
     ids = [int(token_id) for token_id in generated_ids]
+    if not require_admissible:
+        # Free student rollouts may ramble past the action line or never emit
+        # EOS. Standard token OPD still supervises the action the student
+        # actually produced, so cut the response at the end of its first
+        # action line and return that span.
+        full_text = tokenizer.decode(
+            ids, skip_special_tokens=False, clean_up_tokenization_spaces=False
+        )
+        match = re.search(r"(?im)^\s*Action\s*:\s*[^\r\n]*", full_text)
+        if match is None:
+            raise ValueError(f"Student response contains no action line: {full_text!r}")
+        target_end = match.end()
+        accumulated = ""
+        cut = 0
+        for index, token_id in enumerate(ids):
+            accumulated += tokenizer.decode([token_id], skip_special_tokens=False)
+            if len(accumulated) >= target_end:
+                cut = index + 1
+                break
+        if cut == 0:
+            raise ValueError("could not locate the Student action tokens")
+        content_ids = ids[:cut]
+        special_ids = set(tokenizer.all_special_ids)
+        if any(token_id in special_ids for token_id in content_ids):
+            raise ValueError("Student action contains a special/reasoning token")
+        response_text = tokenizer.decode(
+            content_ids, skip_special_tokens=False, clean_up_tokenization_spaces=False
+        )
+        parsed = parse_action(response_text, admissible_actions)
+        return content_ids, response_text, parsed.canonical_action
+
     if len(ids) < 2 or ids[-1] != tokenizer.eos_token_id:
         raise ValueError("Student did not finish an action with its EOS token")
     content_ids = ids[:-1]
