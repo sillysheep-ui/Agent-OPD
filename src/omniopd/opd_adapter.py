@@ -65,6 +65,47 @@ def prompts_for_opd_turn(
     return messages, [dict(message) for message in teacher_messages]
 
 
+
+def response_mask_for_action_span(response_length: int, span_length: int) -> list[int]:
+    """Mark exactly the supervised action span inside a padded response.
+
+    veRL fixes every response at the batch width, so the mask must match that
+    width even when the Teacher only scores the action.
+    """
+
+    if response_length < 0 or span_length < 0:
+        raise ValueError("lengths must be non-negative")
+    span = min(span_length, response_length)
+    return [1] * span + [0] * (response_length - span)
+
+
+def align_teacher_rows_to_student_layout(
+    *,
+    student_prompt_length: int,
+    student_response_ids: Sequence[int],
+    teacher_rows: Sequence[Sequence[float]],
+    teacher_ids: Sequence[Sequence[int]],
+    pad_token_id: int,
+) -> tuple[list[list[int]], list[list[float]]]:
+    """Pad Teacher rows (or leave them) so their width matches the Student.
+
+    The remap emits one row per Student prompt position plus one per scored
+    action token, while veRL expects one row per prompt position plus one per
+    response position, with every response in the batch at the same width.
+    """
+
+    if len(teacher_rows) != len(teacher_ids):
+        raise ValueError("Teacher row and id arrays must have the same length")
+    target = student_prompt_length + len(student_response_ids)
+    rows = len(teacher_rows)
+    if target < rows:
+        raise ValueError("remapped Teacher score width exceeds the Student layout")
+    missing = target - rows
+    if missing:
+        teacher_ids = [*teacher_ids, *([[pad_token_id]] * missing)]
+        teacher_rows = [*teacher_rows, *([[0.0]] * missing)]
+    return [list(row) for row in teacher_ids], [list(row) for row in teacher_rows]
+
 def build_fixed_pool_opd_prompts(
     turns: Iterable[RolloutTurn],
     selections: Iterable[Mapping[str, Any]],
