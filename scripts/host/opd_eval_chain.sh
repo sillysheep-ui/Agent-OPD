@@ -21,6 +21,10 @@ CKPT=$OUT/checkpoints/global_step_$STEPS
 ADAPTER=$ROOT/opd_adapter_$RUN
 MERGED=$ROOT/opd_merged_$RUN
 EVALDIR=$ROOT/opd_eval_$RUN
+# The evaluation container only sees the runs root at /runs, so every path
+# handed to it must be the container's view of the same directory. Passing the
+# host path silently writes the results inside the ephemeral container.
+EVALDIR_CONTAINER=/runs/$(basename "$EVALDIR")
 LOG=$ROOT/opd_eval_chain_$RUN.log
 TRAIN_IMG=${TRAIN_IMG:-omniopd-verl080:vllm010-td010}
 EVAL_IMG=${EVAL_IMG:-omniopd-verl080:alfworld}
@@ -119,8 +123,12 @@ _evaluate_with_val_data() {
     --base-url "http://127.0.0.1:$PORT/v1" --model "$1" --prompt-json "$PROMPT_JSON" \
     --max-steps "$MAX_STEPS" --max-context-tokens "$MAX_CONTEXT_TOKENS" \
     --reserve-tokens "$RESERVE_TOKENS" --max-tokens "$MAX_TOKENS" \
-    --output "$EVALDIR/$2" >> "$LOG" 2>&1
+    --output "$EVALDIR_CONTAINER/$2" >> "$LOG" 2>&1
   echo "evaluation of $1 finished with exit=$? $(date -u)" >> "$LOG"
+  if [ ! -f "$EVALDIR/$2" ]; then
+    echo "FAIL: $2 is missing on the host; the evaluation wrote somewhere else $(date -u)" >> "$LOG"
+    return 1
+  fi
 }
 
 summarize() {
@@ -158,8 +166,8 @@ if [ ! -f "$ADAPTER/adapter_config.json" ]; then echo "conversion failed; abort 
 ls -l "$ADAPTER" >> "$LOG" 2>&1
 
 if start_lora_server; then
-  smoke_evaluate opd closed_loop_opd.json
-  evaluate opd closed_loop_opd.json
+  smoke_evaluate opd closed_loop_opd.json || exit 1
+  evaluate opd closed_loop_opd.json || exit 1
   evaluate base4b closed_loop_base.json
   summarize
   docker rm -f omniopd-vllm-opd-eval >/dev/null 2>&1
@@ -181,8 +189,8 @@ docker run --rm --network none -e PYTHONDONTWRITEBYTECODE=1 \
 if [ ! -f "$MERGED/config.json" ]; then echo "merge failed; abort $(date -u)" >> "$LOG"; exit 1; fi
 
 if start_plain_server "$MERGED" opd; then
-  smoke_evaluate opd closed_loop_opd.json
-  evaluate opd closed_loop_opd.json
+  smoke_evaluate opd closed_loop_opd.json || exit 1
+  evaluate opd closed_loop_opd.json || exit 1
 else
   echo "could not serve the adapted Student $(date -u)" >> "$LOG"
 fi
