@@ -1,0 +1,5 @@
+# One entry: the stock single-turn rollout with the reward slot filled by zero.
+# OPD has no task reward, so the alternative is inventing a reward_model field
+# in the data, which veRL's reward loop would then try to score.
+- name: native_opd_zero_reward
+  _target_: omniopd.verl_native_opd.ZeroRewardSingleTurnAgentLoop

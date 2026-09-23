@@ -31,6 +31,7 @@ import ray
 import torch
 from transformers import AutoTokenizer
 from verl.experimental.agent_loop.agent_loop import AgentLoopManager, AgentLoopWorker
+from verl.experimental.agent_loop.single_turn_agent_loop import SingleTurnAgentLoop
 
 from .opd_adapter import (
     align_teacher_rows_to_student_layout,
@@ -41,6 +42,23 @@ from .opd_adapter import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class ZeroRewardSingleTurnAgentLoop(SingleTurnAgentLoop):
+    """Stock single-turn rollout with the task-reward slot filled by zero.
+
+    OPD supervises tokens, not outcomes, so an OPD dataset carries no
+    ``reward_model``. veRL's postprocess only consults the reward loop while
+    ``reward_score is None`` (``agent_loop.py: _compute_score``), so recording
+    the plumbing zero keeps the stock path intact instead of inventing reward
+    data that does not exist. ``distillation.distillation_loss.use_task_rewards``
+    is False, so this zero is never used as a learning signal.
+    """
+
+    async def run(self, sampling_params: dict[str, Any], **kwargs):
+        output = await super().run(sampling_params, **kwargs)
+        output.reward_score = 0.0
+        return output
 
 
 class TeacherTemplateAgentLoopWorker(AgentLoopWorker):

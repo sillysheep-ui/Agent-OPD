@@ -33,6 +33,9 @@ SAVE_FREQ=${SAVE_FREQ:-43}
 TEACHER_GPU_MEMORY=${TEACHER_GPU_MEMORY:-0.60}
 TEACHER_TP=${TEACHER_TP:-2}
 TEACHER_GPUS=${TEACHER_GPUS:-2}
+# veRL asserts that (num_replicas * per_replica_world_size) equals the size of
+# the distillation resource pool, so derive the replica count instead of hoping.
+TEACHER_REPLICAS=${TEACHER_REPLICAS:-$((TEACHER_GPUS / TEACHER_TP))}
 STUDENT_GPU_MEMORY=${STUDENT_GPU_MEMORY:-0.30}
 LORA_RANK=${LORA_RANK:-16}
 LORA_ALPHA=${LORA_ALPHA:-32}
@@ -48,6 +51,11 @@ if [ "${SAVE_FREQ}" -le 0 ]; then
   echo "SAVE_FREQ must be positive: veRL skips every checkpoint when it is 0" >&2
   exit 2
 fi
+if [ $((TEACHER_REPLICAS * TEACHER_TP)) -ne "${TEACHER_GPUS}" ]; then
+  echo "TEACHER_GPUS=${TEACHER_GPUS} must be a multiple of TEACHER_TP=${TEACHER_TP}" >&2
+  exit 2
+fi
+echo "teacher pool: ${TEACHER_GPUS} GPUs = ${TEACHER_REPLICAS} replica(s) x TP ${TEACHER_TP}"
 echo "checkpoint schedule: every ${SAVE_FREQ} steps plus the final step ${TOTAL_TRAINING_STEPS}"
 
 python_candidate=${PYTHON_BIN:-python3}
@@ -152,6 +160,8 @@ cd "${repo_root}"
   actor_rollout_ref.rollout.max_model_len=$((MAX_PROMPT_LENGTH + MAX_RESPONSE_LENGTH + 1)) \
   actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 \
   actor_rollout_ref.rollout.agent.num_workers=1 \
+  actor_rollout_ref.rollout.agent.agent_loop_config_path="${repo_root}/configs/verl_v080_native_opd_agent_loops.yaml" \
+  actor_rollout_ref.rollout.agent.default_agent_loop=native_opd_zero_reward \
   +actor_rollout_ref.rollout.agent.agent_loop_manager_class="${AGENT_LOOP_MANAGER}" \
   trainer.balance_batch=false \
   trainer.logger='["console"]' \
@@ -173,7 +183,7 @@ cd "${repo_root}"
   distillation.nnodes=1 \
   +distillation.teacher_models.teacher.key="${data_source}" \
   +distillation.teacher_models.teacher.model_path="${OPD_TEACHER_MODEL}" \
-  +distillation.teacher_models.teacher.num_replicas=1 \
+  +distillation.teacher_models.teacher.num_replicas="${TEACHER_REPLICAS}" \
   +distillation.teacher_models.teacher.inference.name=vllm \
   +distillation.teacher_models.teacher.inference.tensor_model_parallel_size="${TEACHER_TP}" \
   +distillation.teacher_models.teacher.inference.gpu_memory_utilization="${TEACHER_GPU_MEMORY}" \

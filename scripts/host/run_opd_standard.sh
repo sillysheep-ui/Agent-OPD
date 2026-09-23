@@ -68,6 +68,7 @@ done
 docker run -d --rm --name "$NAME" --network host --runtime=nvidia --shm-size=16g \
   -e NVIDIA_VISIBLE_DEVICES="$GPUS" \
   -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONUNBUFFERED=1 \
+  "${passthrough_env[@]}" \
   -e NUM_GPUS="$NUM_GPUS" -e TEACHER_GPUS="$TEACHER_GPUS" -e TEACHER_TP="$TEACHER_TP" \
   -e TRAIN_BSZ="$TRAIN_BSZ" -e MICRO_BSZ="$MICRO_BSZ" \
   -e MAX_PROMPT_LENGTH="$MAX_PROMPT_LENGTH" -e MAX_RESPONSE_LENGTH="$MAX_RESPONSE_LENGTH" \
@@ -83,7 +84,6 @@ docker run -d --rm --name "$NAME" --network host --runtime=nvidia --shm-size=16g
   -v "$TEACHER_MODEL":/models/teacher:ro \
   -v "$ROOT":/runs \
   -w /opt/agent --entrypoint bash "$IMG" \
-  "${passthrough_env[@]}" \
   -c "bash ${CONTAINER_SCRIPT}" > /dev/null
 
 echo "training container started: $RUN -> $OUT (GPUs $GPUS)" > "$LOG"
