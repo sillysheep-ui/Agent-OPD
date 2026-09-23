@@ -2,22 +2,22 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "f5f19aad3c450a6a6c634006738c160e4ed1a7e8",
+  "code_revision_at_generation": "1a0efbb08265d7234d34214240ad18c5f3072bdc",
   "canonical_code": {
-    "tree_sha256": "15d7f21cfa934226e75188145db07ecae8eac7e6a32b9dc405600ff82bf5a885",
-    "files": 124,
-    "bytes": 1063476
+    "tree_sha256": "a24794b0e5dce289f92bf3f94b5af7b5dbf58f7ad31cb9f34ca9578fad980fe9",
+    "files": 125,
+    "bytes": 1067303
   },
-  "files": 281,
-  "bytes": 1899026,
+  "files": 283,
+  "bytes": 2187625,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
-    "docs": 18,
+    "docs": 19,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 66,
+    "scripts": 67,
     "src": 42,
     "tests": 37
   },
@@ -218,6 +218,12 @@
       "path": "docs/VERL_V080_MIGRATION.md",
       "bytes": 11656,
       "sha256": "444e9ad9f921da5e81fc201bfbe13c0dc59341bf38d5f64d29befa40ce774c9c",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/figures/opd_standard18_curves.png",
+      "bytes": 284772,
+      "sha256": "7b8cf2cbf0969919f69ebdbf6f41a06124c1b1d0996fc93e8f6abdd9e0f7d3b3",
       "role": "canonical_or_documentation"
     },
     {
@@ -1094,6 +1100,12 @@
       "path": "scripts/pilot_sft_teacher_rollouts_promptv2.py",
       "bytes": 6940,
       "sha256": "e904d4117303cb51f2500f9a0a38150abf7a5c3407cf275c2e4eddab9a00ad98",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/plot_opd_training_curves.py",
+      "bytes": 3827,
+      "sha256": "1d4e5d5babfafd56bbbaaae1e77448ebec9195533d74a61d3f5b7369f03bb3ac",
       "role": "canonical_or_documentation"
     },
     {
