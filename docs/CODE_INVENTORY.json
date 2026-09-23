@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "d618f6a7cb23cfe9a7ff38829734ac0e652dba00",
+  "code_revision_at_generation": "3fbe522ee9e05fc20cc30031edfe95cef478188d",
   "canonical_code": {
-    "tree_sha256": "451cdfa38cbbdc8d24b635ab7e3a2b26cf6c38344265793d8c81b9323cb12c33",
+    "tree_sha256": "25879312b970622bdba50715eb6b2c8ab4264b8fbad5f056b821643f463b45d9",
     "files": 123,
-    "bytes": 1057074
+    "bytes": 1058138
   },
   "files": 278,
-  "bytes": 1876702,
+  "bytes": 1877766,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -1026,8 +1026,8 @@
     },
     {
       "path": "scripts/merge_adapter_for_serving.py",
-      "bytes": 4531,
-      "sha256": "c5046784713bee39ef0a4cb0cd896420e0db817bb97b57b64a0e5221157aa3f4",
+      "bytes": 5595,
+      "sha256": "7762109a00aa38ec19029771903f5130b9590c70561bef5821e168d73cb08e89",
       "role": "canonical_or_documentation"
     },
     {
