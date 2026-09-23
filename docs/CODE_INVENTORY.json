@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "1a0efbb08265d7234d34214240ad18c5f3072bdc",
+  "code_revision_at_generation": "f2c406e22b6caa97dee23316bc4ddd88f56e2860",
   "canonical_code": {
-    "tree_sha256": "a24794b0e5dce289f92bf3f94b5af7b5dbf58f7ad31cb9f34ca9578fad980fe9",
-    "files": 125,
-    "bytes": 1067303
+    "tree_sha256": "744d1404ae61ff7edb226eac3ea486874f4d3ae5bf2873449364a6a615a39e65",
+    "files": 126,
+    "bytes": 1075829
   },
-  "files": 283,
-  "bytes": 2187625,
+  "files": 284,
+  "bytes": 2199883,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 67,
+    "scripts": 68,
     "src": 42,
     "tests": 37
   },
@@ -132,8 +132,8 @@
     },
     {
       "path": "docs/ANALYSIS_standard_opd_20260923.md",
-      "bytes": 9382,
-      "sha256": "97ca797e5ffef6d418879289468b9178b7a614d5b7a143331e4a72ee95f93f7d",
+      "bytes": 13114,
+      "sha256": "5d17fef404b09d7f25225d5e294fc0d85c46450d115fa720ef8fcfc0eb807ce3",
       "role": "canonical_or_documentation"
     },
     {
@@ -1046,6 +1046,12 @@
       "path": "scripts/latest_checkpoint.py",
       "bytes": 723,
       "sha256": "4ed1fb3784d142525b90df6faeff45311bf38078e169d1e7a1f83b3abd698181",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/measure_teacher_student_gap.py",
+      "bytes": 8526,
+      "sha256": "3ea2944780d04d3773dc6971ff6527efc5759462065614fd4adcdeeb5c821648",
       "role": "canonical_or_documentation"
     },
     {
