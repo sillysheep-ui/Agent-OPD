@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "6e1378a68a73ab88788f1341a18cabde0bce84c2",
+  "code_revision_at_generation": "3f692cac72b508f77a134f6074f3e38de9e0f5ef",
   "canonical_code": {
-    "tree_sha256": "634b13d12222cd927bfbb6121395787927ea59f1f8ddc337d5e594dcaf6c7fa7",
+    "tree_sha256": "ca26c0662a00daf59f302ef38aa18ef98b1fda1faa5040040a8eba19b71c828c",
     "files": 123,
-    "bytes": 1058165
+    "bytes": 1058641
   },
   "files": 278,
-  "bytes": 1877793,
+  "bytes": 1879447,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -150,8 +150,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 51896,
-      "sha256": "b3e263075176180d4e788e88c398aebab162a4c5789adf103969e4aa223ad2f0",
+      "bytes": 53074,
+      "sha256": "e1d07bbf22573b25bb40d8107bb6bad2db6f8a8210a6c21b871be1df395bcfeb",
       "role": "canonical_or_documentation"
     },
     {
@@ -996,8 +996,8 @@
     },
     {
       "path": "scripts/host/opd_eval_chain.sh",
-      "bytes": 8704,
-      "sha256": "57424a457721004dbbea5c9f061c3aa50d11d6c59531cf99e5f9e781e882502f",
+      "bytes": 9180,
+      "sha256": "fa15b1f1a6b96a24d8492bb69f2a2a87c155398e24b7a674a05c2feea8a5b00d",
       "role": "canonical_or_documentation"
     },
     {
