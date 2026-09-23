@@ -393,3 +393,27 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   /nfsdir/miniconda3/etc/profile.d/conda.sh && conda activate qwen3_medusa_xh_bak &&
   demokill`（`/usr/local/bin/demokill` 只 kill 匹配 `killme` 的进程）。运行前后必须记录
   GPU 占用，且不得据此推断这些卡长期可用。
+
+- **E17｜八卡训练跑完 86 步却没有落盘，整轮权重全丢。** 2026-09-23 第 16 次运行
+  （`opd_standard_20260923_16`）在第 86 步正常收尾、全程零异常、86 条 rollout 全部写出，
+  但运行目录里没有 `checkpoints/`。启动器收尾检查随即报
+  `training finished without the expected checkpoint`，容器非零退出，完成清单没写，
+  已挂好的评测链按设计中止。**代价：约 2 小时八卡训练没有任何权重留下，必须整轮重跑。**
+  根因（源码级，不是猜测）：启动脚本传 `trainer.save_freq=0`，而 veRL 的保存分支是
+  `if self.config.trainer.save_freq > 0 and (is_last_step or self.global_steps %
+  self.config.trainer.save_freq == 0 or esi_close_to_expiration)`
+  （`/data/yangchunyu/ld/verl-v0.8.0/verl/trainer/ppo/ray_trainer.py:1663`）——
+  `save_freq > 0` 是**必需前提**，取 0 时整段保存代码永不进入，连最后一步都不存。
+  日志侧证据：`Saved model` 出现 0 次，`save_freq: 0` 出现在解析后的配置里。
+  处理：`SAVE_FREQ` 默认 43（86 步运行在第 43 与第 86 步各存一次），启动前校验必须为
+  正整数、否则在起容器之前就退出，日志打印实际保存计划，收尾错误信息带 `save_freq`。
+  **先行验证**：另跑一次 2 步短跑 `opd_savecheck_20260923_17`，确认
+  `checkpoints/global_step_2`（`model_world_size_2_rank_{0,1}.pt`、`optim_*.pt`、
+  `extra_state_*.pt`、`lora_train_meta.json`、`huggingface/`）与
+  `completion_manifest.json` 都按预期产出（18 个文件、约 18 GiB），然后才启动
+  正式的第 18 次运行。该短跑同时确认了 checkpoint 目录结构与
+  `scripts/convert_opd_checkpoint.py` 的输入假设一致。
+  同一轮还修掉一个同类的启动期配置错误：通用主机侧脚本把 `OPD_DATA` 传成了宿主路径，
+  容器内看不到 `/data/...`，现在按容器内 `/runs/...` 寻址并在起容器前校验宿主文件存在。
+  **教训**：凡是"跑完之后才有产物"的断言（落盘、完成清单、转换产物），都应当在启动长跑
+  之前用一次短跑验证；把失败从"两小时后"提前到"五分钟内"。
