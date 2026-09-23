@@ -49,18 +49,33 @@ def _raises_value_error(function, *args, **kwargs):
     raise AssertionError("expected ValueError")
 
 
-def test_fixed_pool_opd_prompt_preserves_two_policy_views_without_behavior_action():
+def test_fixed_pool_opd_prompt_shares_one_prefix_by_default():
+    """Standard token OPD scores the Student prefix, so P_T defaults to P_S.
+
+    The paper's separate P_T view stays available by passing an explicit
+    Teacher system prompt, which the teacher-sampling arm uses instead.
+    """
+
     first, second = _turn("game-1"), _turn("game-2")
     rows = build_fixed_pool_opd_prompts(
         [first, second], [_selection(first), _selection(second)]
     )
     assert len(rows) == 2
     assert rows[0]["prompt"][0]["content"] == STUDENT_SYSTEM_PROMPT
-    assert rows[0]["extra_info"]["teacher_prompt"][0]["content"] == TEACHER_SYSTEM_PROMPT
+    assert rows[0]["extra_info"]["teacher_prompt"] == rows[0]["prompt"]
     assert rows[0]["extra_info"]["admissible_actions"] == ["take book", "look"]
     assert rows[0]["prompt"][1:] == rows[0]["extra_info"]["teacher_prompt"][1:]
     assert rows[0]["extra_info"]["state_weight"] == 1.0
     assert "Action: look" not in json.dumps(rows[0], ensure_ascii=False)
+
+    separate = build_fixed_pool_opd_prompts(
+        [first, second],
+        [_selection(first), _selection(second)],
+        teacher_system_prompt=TEACHER_SYSTEM_PROMPT,
+    )
+    assert separate[0]["prompt"][0]["content"] == STUDENT_SYSTEM_PROMPT
+    assert separate[0]["extra_info"]["teacher_prompt"][0]["content"] == TEACHER_SYSTEM_PROMPT
+    assert separate[0]["prompt"][1:] == separate[0]["extra_info"]["teacher_prompt"][1:]
 
 
 def test_fixed_pool_opd_prompt_rejects_duplicate_and_wrong_state_identity():

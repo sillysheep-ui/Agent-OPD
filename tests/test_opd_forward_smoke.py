@@ -43,7 +43,15 @@ class _LenientTokenizer:
             "clean_up_tokenization_spaces": False,
         }
         return "".join(
-            {1: "Action:", 2: " look", 3: "\n", 4: "<think>", 5: "I give up."}[token]
+            {
+                1: "Action:",
+                2: " look",
+                3: "\n",
+                4: "<think>",
+                5: "I give up.",
+                98: "",
+                99: "<|im_end|>",
+            }[token]
             for token in token_ids
         )
 

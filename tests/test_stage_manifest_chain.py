@@ -290,8 +290,7 @@ def test_state_pool_selection_annotation_pair_preserves_behavior_student_identit
                 assert all(row["data_source"] == "alfworld_fixed_state_token_opd" for row in opd_rows)
                 assert all(
                     row["prompt"][0]["content"] == STUDENT_SYSTEM_PROMPT
-                    and row["extra_info"]["teacher_prompt"][0]["content"]
-                    != STUDENT_SYSTEM_PROMPT
+                    and row["extra_info"]["teacher_prompt"] == row["prompt"]
                     for row in opd_rows
                 )
                 opd_manifest = json.loads(opd_manifest_path.read_text(encoding="utf-8"))
