@@ -65,7 +65,9 @@ for name in LOSS_MODE USE_POLICY_GRADIENT DISTILLATION_TOPK LR TEMPERATURE SAVE_
   fi
 done
 
-docker run -d --rm --name "$NAME" --network host --runtime=nvidia --shm-size=16g \
+# Keep the container after exit so its exit code can be reported: a run that
+# dies without a traceback used to leave nothing behind but an empty log.
+docker run -d --name "$NAME" --network host --runtime=nvidia --shm-size=16g \
   -e NVIDIA_VISIBLE_DEVICES="$GPUS" \
   -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONUNBUFFERED=1 \
   "${passthrough_env[@]}" \
@@ -88,3 +90,11 @@ docker run -d --rm --name "$NAME" --network host --runtime=nvidia --shm-size=16g
 
 echo "training container started: $RUN -> $OUT (GPUs $GPUS)" > "$LOG"
 docker logs -f "$NAME" >> "$LOG" 2>&1
+exit_code=$(docker inspect -f '{{.State.ExitCode}}' "$NAME" 2>/dev/null || echo unknown)
+echo "container exit code: ${exit_code}" >> "$LOG"
+if [ "$exit_code" != "0" ]; then
+  echo "container failed; last log lines follow" >> "$LOG"
+  docker logs --tail 40 "$NAME" >> "$LOG" 2>&1
+fi
+docker rm -f "$NAME" >/dev/null 2>&1
+exit "${exit_code:-1}"
