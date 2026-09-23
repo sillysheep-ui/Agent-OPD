@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "8e91f7f535b11f6463b9f4bdb00a9075f86a48a3",
+  "code_revision_at_generation": "8f9ee20ae6292c495c80bac9c9a2896cada58933",
   "canonical_code": {
-    "tree_sha256": "c6b99483e8e3a6d1e8c7d2b65eda9accf7d7a327974e0416d902a86c9d75bebd",
-    "files": 119,
-    "bytes": 1029777
+    "tree_sha256": "024da20947a541bc21ce7e8b953b98fc34cd2faed9fe7e7d4fd3f77fc555693d",
+    "files": 121,
+    "bytes": 1040719
   },
-  "files": 273,
-  "bytes": 1840265,
+  "files": 275,
+  "bytes": 1851207,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 61,
+    "scripts": 63,
     "src": 42,
     "tests": 36
   },
@@ -992,6 +992,18 @@
       "path": "scripts/freeze_game_list.py",
       "bytes": 4874,
       "sha256": "6b0fcf74eb32c9a61eb2910c29124e1345bacb71c0fed349b2a49389c8637de6",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/host/opd_eval_chain.sh",
+      "bytes": 8078,
+      "sha256": "ba86f438e52f9df5d3dcf12a45f159337065e412c2e6f152857e6f470e04371d",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/host/run_opd_standard.sh",
+      "bytes": 2864,
+      "sha256": "3a0d0d350f83c14cb23d06653db670553049f2e50563943b3665ec2109aa48fc",
       "role": "canonical_or_documentation"
     },
     {
