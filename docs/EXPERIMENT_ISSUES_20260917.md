@@ -417,3 +417,33 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   容器内看不到 `/data/...`，现在按容器内 `/runs/...` 寻址并在起容器前校验宿主文件存在。
   **教训**：凡是"跑完之后才有产物"的断言（落盘、完成清单、转换产物），都应当在启动长跑
   之前用一次短跑验证；把失败从"两小时后"提前到"五分钟内"。
+
+- **E18｜checkpoint 里的 LoRA 是 DTensor 分片，旧转换脚本必然失败（同一类"跑完才暴露"的问题）。**
+  用第 17 次那轮的 2 步 checkpoint 真跑转换，直接得到
+  `RuntimeError: Attempted to access the data pointer on an invalid python storage`
+  （safetensors 在 `_find_shared_tensors` 内取 storage 指针时炸）。逐键定位：LoRA 张量
+  的类型是 `torch.distributed.tensor.DTensor`，`data_ptr()==0`，
+  `placements=(Shard(dim=0),)`、mesh 大小 2、local shard 形状 `(8,2560)`——
+  即单个 rank 文件只有一半数据，而且外层包装没有可序列化的 storage。
+  旧脚本假设"一个文件里是完整张量"，只做键名映射后交给 safetensors，因此**任何**真实
+  checkpoint 都会失败；如果没有这次提前验证，它会在两小时训练结束后才炸。
+  **修复**：重写 `scripts/convert_opd_checkpoint.py`——分片按 `(world_size, rank)` 数值排序
+  （避免 rank 10 排在 rank 2 前面）；每个 A/B 键取 `to_local()` 后按 placement 维度拼接；
+  用分片自述的全局形状与实际重建形状对账；要求每个模块 A/B 成对且 rank 一致；
+  传入 `--base-model` 时用 safetensors header 读取基座层形状，逐模块核对
+  `A(r, in_features)`、`B(out_features, r)`；输出 `conversion_manifest.json` 记录分片、
+  世界大小与全部形状。另新增 `scripts/merge_adapter_for_serving.py`：在 CPU 上用 float32
+  计算 base / adapter-applied / merged-reloaded 三组 logits，**adapter 若零效果就拒绝导出**，
+  并报出合并误差占 logits 量级的比例。
+  **真实验证**（全部在 2 步 checkpoint 上执行）：转换得到 504 个张量、252 个模块
+  （36 层 × 7 个投影），与基座形状逐一核对通过；合并后 `adapter_effect=2.6e-3`（非零，
+  说明 adapter 确实作用到模型上）、`merge_gap=0.141`、占 logits 量级 0.93%（阈值 25%）→ PASS。
+  另加 5 条离线测试（数值排序、键名映射、placement、拼接形状、基座键映射），容器内
+  测试套件 **192 项全绿**。
+- **E19｜把"跑完才有产物"的检查前移成强制步骤。** 本轮两次损失（E17 无落盘、E18 转换不可用）
+  都属于同一模式：断言写在收尾，验算写在事后。新增
+  `scripts/host/preflight_opd_chain.sh`：在任何长跑之前先用 2 步短跑把
+  "checkpoint → 完成清单 → adapter 转换（含基座对账）→ 合并（含等价性）"整条后处理链
+  跑一遍，任何一步失败即在几分钟内暴露。第 18 次运行中第 43 步的中途 checkpoint
+  已确认落盘（`checkpoints/global_step_43`，`Saved model` 计数 3），说明落盘修复在
+  真实运行里生效。
