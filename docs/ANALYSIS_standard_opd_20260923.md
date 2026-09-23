@@ -171,6 +171,58 @@ thinking 块），再重新量 gap 分布，最后才选 loss**。现有对齐�
 | `forward_kl_topk`（分布匹配） | **首选**：能表达"老师更想去哪里"，而不是只压当前 token；需要扩展教师接口返回 top-k |
 | teacher 动作序列级监督（Agent-R1 风格） | 与"分歧集中在首个决策"这一实测结论最匹配，也最适合 greedy 评测 |
 
+
+## 六、框架选型复盘：为什么不直接 1:1 用已有实现
+
+**先说结论**：这件事要分两半看，我们**做错的那一半**是在训练侧——所用的 veRL v0.8.0
+本身就带 OPD 的官方文档、示例和两种 loss 变体，而我们绕开它手写了 loss/worker 层；
+**另一半确实没有 1:1 选项**——环境侧与目标论文侧都不存在可直接照抄的实现。
+
+### 6.1 训练侧：框架已经给了实现，我们没用
+
+证据（都在我们正在使用的 `/data/yangchunyu/ld/verl-v0.8.0` 里）：
+
+| 路径 | 内容 |
+|---|---|
+| `docs/algo/opd.md` | 官方 OPD 文档：给出目标函数 `L = E[1/\|y\| Σ_t D(π_θ(·\|s_t), ν(·\|s_t), y_t)]`，并把实现分成 **GKD OPD**（分布级 KL，直接反传）与 **PG OPD**（k1 作为 reward + policy gradient）两种 |
+| `examples/on_policy_distillation_trainer/` | 可跑脚本：`run_qwen3_0.6b_opd_veomni.sh`、`run_qwen3_8b_mopd_fsdp.sh` 等 |
+| 上述脚本的默认值 | `distillation_loss_mode=k1`、`use_policy_gradient=True`、`distillation_topk=32/64`、`use_task_rewards=False`、`actor_lr=1e-5`、`total_epochs=15`、`save_freq=200` |
+| 文档对 PG OPD 的明确警告 | "The stop-gradient is required because ... without it, differentiating through the estimator ... leading to a loss that is independent of the teacher signal" |
+
+对照我们实际做的：
+
+| 维度 | 框架官方配方 | 我们的实现 | 后果 |
+|---|---|---|---|
+| loss | `forward_kl_topk`（分布级，topk 32/64）或 `k1 + use_policy_gradient=True` | **k2 + use_policy_gradient=False** | 既不是 GKD 也不是 PG OPD；k2 在 veRL 里本是 PPO 的 KL 惩罚估计器 |
+| 归一化 | `1/\|y\|` 整段响应 | 只对动作跨度做 token-mean | 监督单位与文档不同 |
+| 步数/LR 量级 | 示例：LR 1e-5、15 epochs、save_freq 200 | LR 1e-6、86 步、LoRA | 实测权重变化 7.8e-5，比行为变化所需小约 100 倍 |
+| worker | 内置 AgentLoop/manager 路径 | 自写 `OmniOPDAgentLoop(Worker)` | 自写层里引入了教师提示词模板 bug（见 4.2 节） |
+| 教师提示词 | 由教师自己的模板渲染 | 用学生渲染后交给教师 | 首 token 目标变成 `<think>`，gap 24.4 nats |
+
+也就是说：**我们手写的那一层，正是框架已有实现的那一层；而我们必须自己写的那一层（ALFWorld 环境），反而没出问题。**
+"1:1 用框架"在训练侧不仅可行，而且应当——起点就是 `examples/on_policy_distillation_trainer/`。
+
+### 6.2 环境侧与论文侧：确实没有 1:1 选项
+
+| 候选 | 为什么不能 1:1 |
+|---|---|
+| **veRL** | 没有 ALFWorld/TextWorld 环境与 agent 协议；它只提供训练器与 rollout 机制 |
+| **Agent-R1**（含 fork 版 veRL） | 我们逐项审计过（台账 O14–O21）：默认输出 Hermes `env_step` 工具调用而非 `Action:`；recipe 每局 20 步而本协议 30/50 步；教师布局按 `response_mask.sum()` 推断 padding，**已证实**把 EOS 评分当成首个动作评分（O19）；`AgentFlowManager` 硬要求教师返回的 token id 与请求逐位相同，无法直接接入独立 `P_T(s)`（O16）。整体照抄 = 换掉我们冻结的评测协议，四条臂的可比性随之失效 |
+| **AgentBoard / ReAct** | 提供环境与提示词（我们已 1:1 冻结其 `alfworld_base.json`，按路径+哈希引用），但没有训练侧 OPD 实现 |
+| **SAGE-OPD（目标论文）** | 代码/数据/one-shot 示范内容未公开（R01）；按其 Table 6 复原也复现不出它的 base 数字（R02：7.86% vs 25.71%）。**没有可 1:1 对照的目标** |
+
+### 6.3 正确的做法（下次怎么开始）
+
+1. **训练侧 1:1 继承**：以 `examples/on_policy_distillation_trainer/run_qwen3_*.sh` 为模板，
+   用官方两种变体之一（首选 `forward_kl_topk, topk=64`；或 `k1 + use_policy_gradient=True`），
+   保持官方归一化与官方 worker 路径。
+2. **只写一个适配器**：ALFWorld 环境 → veRL 数据源（状态池或多轮 flow），以及教师提示词
+   用**教师自己的 tokenizer+模板**渲染。适配器之外的代码尽量为零。
+3. **启动门槛**：① `measure_teacher_student_gap.py` 确认首 token argmax 与预期格式一致、
+   gap 分布合理；② 短跑验证 `‖ΔW‖/‖W‖ ≥ 1e-3`；③ 再谈评测与预算。
+4. **需要自定义时先问一句**："框架里有没有现成实现？"——这次这个问题如果早问一周，
+   后面所有的调试都不会发生。
+
 ## 五、下一步（按性价比排序）
 
 1. **方向性检查（最便宜）**：把已训 adapter 沿训练方向放大（B×k, k=10/30/100）做一次
