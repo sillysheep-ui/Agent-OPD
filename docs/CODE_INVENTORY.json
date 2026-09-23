@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "62a7c2e02ef23fb0358406fd6a53b6b97a3bd7e8",
+  "code_revision_at_generation": "35312f8d2fc3352e1ac2f3abb4d3b388476485cd",
   "canonical_code": {
-    "tree_sha256": "9092d1de95f3ef1b2a03d784ec80a43082a3c8d189f97d8e740dc429cd9bc82d",
+    "tree_sha256": "c6b99483e8e3a6d1e8c7d2b65eda9accf7d7a327974e0416d902a86c9d75bebd",
     "files": 119,
-    "bytes": 1024144
+    "bytes": 1029777
   },
   "files": 273,
-  "bytes": 1828161,
+  "bytes": 1839529,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -150,8 +150,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 42276,
-      "sha256": "24f0c94911313e06901dde7365a457b94cf8157ec8df1fa8e8b9111d3af31f2f",
+      "bytes": 46528,
+      "sha256": "12cfcbebd78dc43cfacf2806c7d90dd8e0f277c6a4894f36144e3dbb05b94a5e",
       "role": "canonical_or_documentation"
     },
     {
@@ -1182,8 +1182,8 @@
     },
     {
       "path": "scripts/verify_opd_layout.py",
-      "bytes": 3878,
-      "sha256": "c79de1e0940f20267488dc2aa0c78029c8e556ed63776f277f0465c8d8a098bd",
+      "bytes": 6203,
+      "sha256": "82816b59197079cafea91d1858b2d132942f276bcff7be33d6ffe3b84dc15303",
       "role": "canonical_or_documentation"
     },
     {
@@ -1344,8 +1344,8 @@
     },
     {
       "path": "src/omniopd/opd_adapter.py",
-      "bytes": 17492,
-      "sha256": "2a5de372fe8ca5821287c9d90a0ccae33e562f97314103e0599adba94b053aa9",
+      "bytes": 20292,
+      "sha256": "074842a833890cf26a8be6faffa6e0da031a815a01ac63f08a2fad5095bc17b6",
       "role": "canonical_or_documentation"
     },
     {
@@ -1440,8 +1440,8 @@
     },
     {
       "path": "src/omniopd/verl_opd.py",
-      "bytes": 8307,
-      "sha256": "de9ca5fc08b19df93d2348145684b1b35a12ee8013f2c4824a39ec67c284e7be",
+      "bytes": 8815,
+      "sha256": "96943937e33c3738e136d9e126825cbb6777a1d00ea28a6aa32d1917c88ff03b",
       "role": "canonical_or_documentation"
     },
     {
@@ -1554,8 +1554,8 @@
     },
     {
       "path": "tests/test_opd_forward_smoke.py",
-      "bytes": 1098,
-      "sha256": "535d551e0966c1a73414060beb8784f70eec98250518951b2d54adb8acd5ab3b",
+      "bytes": 2581,
+      "sha256": "9de6cdc92639ff70a851bbcb2c40ed2d953127a94f90cdff72f0788d0a37129d",
       "role": "canonical_or_documentation"
     },
     {
