@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "ac520601d44db5140b72245c09aa9cbe7f51bfcc",
+  "code_revision_at_generation": "d3ee602bfa6ed39aedb483802b184dca5de70c4a",
   "canonical_code": {
-    "tree_sha256": "1ff9fd281f78eb1137d452445a25ad0904341aa7643872b522c6811389c0a87c",
+    "tree_sha256": "494ca1a070bdd50afe15a953f7f3a35da15117d77195c69faf2bc31c0ffade72",
     "files": 130,
-    "bytes": 1096024
+    "bytes": 1096512
   },
   "files": 290,
-  "bytes": 2235955,
+  "bytes": 2236443,
   "counts_by_root": {
     "configs": 12,
     "docker": 2,
@@ -1044,8 +1044,8 @@
     },
     {
       "path": "scripts/host/run_opd_standard.sh",
-      "bytes": 3802,
-      "sha256": "462449bd8981bddf53c6593ac3fabfb43828e5f981e3a9a125a6f402ef25434c",
+      "bytes": 4290,
+      "sha256": "22de1668b9433d880e2b5012e940cc407c143b2f3fb510398deaf319d2c1cbd7",
       "role": "canonical_or_documentation"
     },
     {
