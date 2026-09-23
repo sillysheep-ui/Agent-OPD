@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "35312f8d2fc3352e1ac2f3abb4d3b388476485cd",
+  "code_revision_at_generation": "8e91f7f535b11f6463b9f4bdb00a9075f86a48a3",
   "canonical_code": {
     "tree_sha256": "c6b99483e8e3a6d1e8c7d2b65eda9accf7d7a327974e0416d902a86c9d75bebd",
     "files": 119,
     "bytes": 1029777
   },
   "files": 273,
-  "bytes": 1839529,
+  "bytes": 1840265,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -1548,14 +1548,14 @@
     },
     {
       "path": "tests/test_opd_adapter.py",
-      "bytes": 6203,
-      "sha256": "1e9c7808cf1c939670070b1632cb1b90ec89e12116b993f30945acf7478f83f3",
+      "bytes": 6828,
+      "sha256": "af31caacbf73be22189b42dff6e2735a54d102e1380f9271f4f6ecad0f4411c6",
       "role": "canonical_or_documentation"
     },
     {
       "path": "tests/test_opd_forward_smoke.py",
-      "bytes": 2581,
-      "sha256": "9de6cdc92639ff70a851bbcb2c40ed2d953127a94f90cdff72f0788d0a37129d",
+      "bytes": 2734,
+      "sha256": "309081ef638ca3e170b74bd87fe596932e76458cc90b546c7650d569f73a0f4c",
       "role": "canonical_or_documentation"
     },
     {
@@ -1620,8 +1620,8 @@
     },
     {
       "path": "tests/test_stage_manifest_chain.py",
-      "bytes": 20389,
-      "sha256": "3e43406d551bf455a276d03a2c3b897a2ee6ea4017dc21728a04a047c707b33c",
+      "bytes": 20347,
+      "sha256": "8aa26db217b0022526cde0c88be8f1c70a4d7fde7f50e92c73d76440b3a1902b",
       "role": "canonical_or_documentation"
     },
     {
