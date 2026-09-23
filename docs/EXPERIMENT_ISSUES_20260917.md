@@ -365,7 +365,10 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   token**：先去掉 veRL 右侧 padding，再剔除末尾终止符；若整条输出只有终止符，则保留这
   1 个 token（否则教师侧会拿到空序列）。严格分支（`require_admissible=True`）保持
   fail-closed 不变。`opd_supervision ∈ {action_line, whole_response, empty}` 随 rollout
-  写入 `extra_fields` 记账，不静默丢弃、不免费重采样。
+  写入 `extra_fields` 记账，不静默丢弃、不免费重采样。注意：`extra_fields` 只在训练
+  进程内存在，veRL 的 `rollout_data_dir` 转储只写 `input/output/gts/score/step`，因此
+  事后只能用转储文本里"没有行首 `Action:`"的输出条数做近似统计，不能就地读出该字段。
+  若要精确计数，必须在同一提交里把计数打进日志或指标，这属于下一轮改动。
   **离线验证**：`scripts/verify_opd_layout.py` 扩为 8 个正例（含"学生放弃"、"放弃且无
   终止符"、"只有终止符"、"整条为 padding"）+ 2 个严格分支必抛用例，断言 mask 宽度/和、
   教师行宽度、监督模式、以及"监督区间 = 实际生成 token"；`tests/test_opd_forward_smoke.py`
