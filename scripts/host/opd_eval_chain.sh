@@ -94,13 +94,28 @@ start_plain_server() {
 
 evaluate() {
   echo "=== evaluating $1 -> $2 $(date -u) ===" >> "$LOG"
+  _evaluate_with_val_data "$1" "$2" "$VAL_DATA"
+}
+
+# A three-game pass over the served model, so a broken adapter or a server that
+# answers nonsense is caught in minutes instead of after the full game list.
+smoke_evaluate() {
+  if [ ! -f "$ROOT/valid_seen_probe/val_3.jsonl" ]; then
+    echo "smoke game list missing; skipping the smoke pass $(date -u)" >> "$LOG"
+    return 0
+  fi
+  echo "=== smoke: 3 games on $1 $(date -u) ===" >> "$LOG"
+  _evaluate_with_val_data "$1" "smoke_$2" "/runs/valid_seen_probe/val_3.jsonl"
+}
+
+_evaluate_with_val_data() {
   docker run --rm --network host -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONUNBUFFERED=1 \
     -e PYTHONPATH=/opt/agent/src:/opt/verl -e ALFWORLD_DATA=/alfworld \
     -v "$VERL_ROOT":/opt/verl:ro -v "$AGENT_ROOT":/opt/agent:ro \
     -v "$REFERENCE_ROOT":/reference:ro -v "$ALFWORLD_DATA":/alfworld:ro \
     -v "$BASE":/models/student:ro -v "$ROOT":/runs -w /opt/agent --entrypoint python "$EVAL_IMG" \
     scripts/evaluate_coldstart_sft.py --env-config configs/alfworld_textworld.yaml \
-    --tokenizer /models/student --val-data "$VAL_DATA" \
+    --tokenizer /models/student --val-data "$3" \
     --base-url "http://127.0.0.1:$PORT/v1" --model "$1" --prompt-json "$PROMPT_JSON" \
     --max-steps "$MAX_STEPS" --max-context-tokens "$MAX_CONTEXT_TOKENS" \
     --reserve-tokens "$RESERVE_TOKENS" --max-tokens "$MAX_TOKENS" \
@@ -143,6 +158,7 @@ if [ ! -f "$ADAPTER/adapter_config.json" ]; then echo "conversion failed; abort 
 ls -l "$ADAPTER" >> "$LOG" 2>&1
 
 if start_lora_server; then
+  smoke_evaluate opd closed_loop_opd.json
   evaluate opd closed_loop_opd.json
   evaluate base4b closed_loop_base.json
   summarize
@@ -165,6 +181,7 @@ docker run --rm --network none -e PYTHONDONTWRITEBYTECODE=1 \
 if [ ! -f "$MERGED/config.json" ]; then echo "merge failed; abort $(date -u)" >> "$LOG"; exit 1; fi
 
 if start_plain_server "$MERGED" opd; then
+  smoke_evaluate opd closed_loop_opd.json
   evaluate opd closed_loop_opd.json
 else
   echo "could not serve the adapted Student $(date -u)" >> "$LOG"
