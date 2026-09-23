@@ -137,7 +137,8 @@ echo "=== converting the FSDP shard to a PEFT adapter $(date -u) ===" >> "$LOG"
 docker run --rm --network none -e PYTHONDONTWRITEBYTECODE=1 \
   -v "$AGENT_ROOT":/opt/agent:ro -v "$ROOT":/runs \
   --entrypoint python "$TRAIN_IMG" /opt/agent/scripts/convert_opd_checkpoint.py \
-  --checkpoint "/runs/$RUN/checkpoints/global_step_$STEPS" --output "/runs/opd_adapter_$RUN" >> "$LOG" 2>&1
+  --checkpoint "/runs/$RUN/checkpoints/global_step_$STEPS" --output "/runs/opd_adapter_$RUN" \
+  --base-model "/models/base" >> "$LOG" 2>&1
 if [ ! -f "$ADAPTER/adapter_config.json" ]; then echo "conversion failed; abort $(date -u)" >> "$LOG"; exit 1; fi
 ls -l "$ADAPTER" >> "$LOG" 2>&1
 
@@ -152,19 +153,15 @@ fi
 
 echo "=== falling back to a merged model $(date -u) ===" >> "$LOG"
 docker rm -f omniopd-vllm-opd-eval >/dev/null 2>&1
-mkdir -p "$MERGED"
+# The merge script verifies that the adapter actually changes the logits and
+# that the exported checkpoint stays close to the adapter-applied model.
 docker run --rm --network none -e PYTHONDONTWRITEBYTECODE=1 \
-  -v "$BASE":/models/base:ro -v "$ADAPTER":/adapters/opd:ro -v "$MERGED":/merged \
-  --entrypoint python "$EVAL_IMG" -c '
-import torch
-from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
-base = AutoModelForCausalLM.from_pretrained("/models/base", torch_dtype=torch.bfloat16)
-merged = PeftModel.from_pretrained(base, "/adapters/opd").merge_and_unload()
-merged.save_pretrained("/merged")
-AutoTokenizer.from_pretrained("/models/base").save_pretrained("/merged")
-print("merged adapter into /merged")
-' >> "$LOG" 2>&1
+  -e TRANSFORMERS_OFFLINE=1 -e HF_HUB_OFFLINE=1 \
+  -v "$AGENT_ROOT":/opt/agent:ro \
+  -v "$BASE":/models/base:ro -v "$ADAPTER":/adapters/opd:ro -v "$ROOT":/runs \
+  --entrypoint python "$EVAL_IMG" /opt/agent/scripts/merge_adapter_for_serving.py \
+  --base-model /models/base --adapter /adapters/opd \
+  --output-dir "/runs/opd_merged_$RUN" >> "$LOG" 2>&1
 if [ ! -f "$MERGED/config.json" ]; then echo "merge failed; abort $(date -u)" >> "$LOG"; exit 1; fi
 
 if start_plain_server "$MERGED" opd; then
