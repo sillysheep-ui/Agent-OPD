@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # veRL's native on-policy distillation plus one hook: the Teacher prompt is
-# rendered with the Teacher's own chat template (see src/omniopd/verl_native_opd.py).
+# rendered with the Teacher's own chat template (see src/omniopd/opd_native.py).
 #
 # This launcher deliberately mirrors examples/on_policy_distillation_trainer/
 # run_qwen3_0.6b_opd_veomni.sh flag for flag, with four documented deviations:
@@ -42,7 +42,7 @@ LORA_ALPHA=${LORA_ALPHA:-32}
 TEMPERATURE=${TEMPERATURE:-1.0}
 EXPERIMENT_NAME=${EXPERIMENT_NAME:-native_opd}
 PROJECT_NAME=${PROJECT_NAME:-agent_omniopd}
-AGENT_LOOP_MANAGER=${AGENT_LOOP_MANAGER:-omniopd.verl_native_opd.TeacherTemplateAgentLoopManager}
+AGENT_LOOP_MANAGER=${AGENT_LOOP_MANAGER:-omniopd.opd_native.TeacherTemplateAgentLoopManager}
 
 case "${SAVE_FREQ}" in
   ''|*[!0-9]*) echo "SAVE_FREQ must be a positive integer, got '${SAVE_FREQ}'" >&2; exit 2 ;;

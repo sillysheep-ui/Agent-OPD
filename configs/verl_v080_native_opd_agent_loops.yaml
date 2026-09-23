@@ -2,4 +2,4 @@
 # OPD has no task reward, so the alternative is inventing a reward_model field
 # in the data, which veRL's reward loop would then try to score.
 - name: native_opd_zero_reward
-  _target_: omniopd.verl_native_opd.ZeroRewardSingleTurnAgentLoop
+  _target_: omniopd.opd_native.ZeroRewardSingleTurnAgentLoop
