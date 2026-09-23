@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "8f9ee20ae6292c495c80bac9c9a2896cada58933",
+  "code_revision_at_generation": "07b014962d08ff915932d97728904138bcc8e4c4",
   "canonical_code": {
-    "tree_sha256": "024da20947a541bc21ce7e8b953b98fc34cd2faed9fe7e7d4fd3f77fc555693d",
+    "tree_sha256": "5784179e3f4e4ea7c5076d3b510753f2922c59d33a69d59d53a150ff0ece1829",
     "files": 121,
-    "bytes": 1040719
+    "bytes": 1041674
   },
   "files": 275,
-  "bytes": 1851207,
+  "bytes": 1852526,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -150,8 +150,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 46528,
-      "sha256": "12cfcbebd78dc43cfacf2806c7d90dd8e0f277c6a4894f36144e3dbb05b94a5e",
+      "bytes": 46892,
+      "sha256": "33c12594d24b156c5cd56abd0e1e5a727fe9efae5ea00441600d4d4e86b091c4",
       "role": "canonical_or_documentation"
     },
     {
@@ -1002,8 +1002,8 @@
     },
     {
       "path": "scripts/host/run_opd_standard.sh",
-      "bytes": 2864,
-      "sha256": "3a0d0d350f83c14cb23d06653db670553049f2e50563943b3665ec2109aa48fc",
+      "bytes": 2921,
+      "sha256": "a5b6f5bad5366e5db59c2d1dfc56e6b528dd19ac205a23386fa85e258fe49462",
       "role": "canonical_or_documentation"
     },
     {
@@ -1110,8 +1110,8 @@
     },
     {
       "path": "scripts/run_verl_opd_train.sh",
-      "bytes": 8438,
-      "sha256": "6932e8ba8bf6273943336d5797e51b53144dc287920791bcfbee516617997695",
+      "bytes": 9336,
+      "sha256": "e545a95614c90f6236c88bee8ab55cc1dd0ec585249a40800746533ef49aba0d",
       "role": "canonical_or_documentation"
     },
     {
