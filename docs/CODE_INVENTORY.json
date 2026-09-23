@@ -2,22 +2,22 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "0271b21f509e4f73eb61cefc13d04fd2d42e990f",
+  "code_revision_at_generation": "f5f19aad3c450a6a6c634006738c160e4ed1a7e8",
   "canonical_code": {
-    "tree_sha256": "ca26c0662a00daf59f302ef38aa18ef98b1fda1faa5040040a8eba19b71c828c",
-    "files": 123,
-    "bytes": 1058641
+    "tree_sha256": "15d7f21cfa934226e75188145db07ecae8eac7e6a32b9dc405600ff82bf5a885",
+    "files": 124,
+    "bytes": 1063476
   },
-  "files": 279,
-  "bytes": 1884809,
+  "files": 281,
+  "bytes": 1899026,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
-    "docs": 17,
+    "docs": 18,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 65,
+    "scripts": 66,
     "src": 42,
     "tests": 37
   },
@@ -128,6 +128,12 @@
       "path": "docs/ALFWORLD_REBUILD_20260916.md",
       "bytes": 4164,
       "sha256": "111c0c5f6f69bc098cb6897f72b6ceec51b66c256bfb9cb4459261fdd8e86e51",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/ANALYSIS_standard_opd_20260923.md",
+      "bytes": 9382,
+      "sha256": "97ca797e5ffef6d418879289468b9178b7a614d5b7a143331e4a72ee95f93f7d",
       "role": "canonical_or_documentation"
     },
     {
@@ -980,6 +986,12 @@
       "path": "scripts/count_state_population.py",
       "bytes": 3112,
       "sha256": "c8ecf9b2a8c100aad911f45dec3fe825af09c611da12a9825df24b5f5c2ab13e",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/diagnose_adapter_scale.py",
+      "bytes": 4835,
+      "sha256": "d194dc56b062a30e364513f6d3543f30b6dcec33b47304c29322c5956aae0027",
       "role": "canonical_or_documentation"
     },
     {
