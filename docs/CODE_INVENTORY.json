@@ -2,16 +2,16 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "7590e67f8f68d318cf54acdb1a6da4f5c3da7c78",
+  "code_revision_at_generation": "a76b538bc5c45373ee21f168af1425ac72074078",
   "canonical_code": {
-    "tree_sha256": "4faaa0ec5d8a8f74a4554fb0d9750fe22541d38be2d31879db3164106c0fe27f",
-    "files": 128,
-    "bytes": 1093870
+    "tree_sha256": "e41a26f8e148732ab909f3688d0487481e77f45971598d4549da761889912963",
+    "files": 129,
+    "bytes": 1095767
   },
-  "files": 288,
-  "bytes": 2233994,
+  "files": 289,
+  "bytes": 2235891,
   "counts_by_root": {
-    "configs": 11,
+    "configs": 12,
     "docker": 2,
     "docs": 20,
     "integrations": 1,
@@ -86,6 +86,12 @@
       "path": "configs/teacher_state_control.yaml",
       "bytes": 876,
       "sha256": "ab6d583973c60e9a5db14b1cfb1df43a3d2983a1290fda3e6b5797a086184515",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "configs/verl_v080_native_opd_agent_loops.yaml",
+      "bytes": 321,
+      "sha256": "4872a4fcb48d9f2e92b51746b5e6acb0fcd47153a733e1c999c42a101daacbaf",
       "role": "canonical_or_documentation"
     },
     {
@@ -1039,7 +1045,7 @@
     {
       "path": "scripts/host/run_opd_standard.sh",
       "bytes": 3802,
-      "sha256": "4986785cdd1a76b8b007d513c128a658b302514a4cea1b05b1f96f4a7d468d49",
+      "sha256": "462449bd8981bddf53c6593ac3fabfb43828e5f981e3a9a125a6f402ef25434c",
       "role": "canonical_or_documentation"
     },
     {
@@ -1158,8 +1164,8 @@
     },
     {
       "path": "scripts/run_verl_opd_native.sh",
-      "bytes": 9500,
-      "sha256": "25baea2e3a5bc80cc97dfa1e1d4ac8c1eff389ad513f68c064487234329b3e33",
+      "bytes": 10212,
+      "sha256": "2cc5979c71e34f2d34ab5726155397b9543f30a5fe6710686d9f39b75f5a5483",
       "role": "canonical_or_documentation"
     },
     {
@@ -1512,8 +1518,8 @@
     },
     {
       "path": "src/omniopd/verl_native_opd.py",
-      "bytes": 6600,
-      "sha256": "76259d03f32beb2a1dd4a1b28df1611b9ca6046566ff45f13b67cde067b0c06a",
+      "bytes": 7464,
+      "sha256": "5953722954deea65bfdb434072142d0fcf12574d390391cda7f713c06afbad1b",
       "role": "canonical_or_documentation"
     },
     {
