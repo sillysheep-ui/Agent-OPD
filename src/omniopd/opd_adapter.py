@@ -25,6 +25,43 @@ ACTION_LINE_PATTERN = r"(?im)^\s*Action\s*:\s*[^\r\n]*"
 """The single action line a rolled-out Student turn is allowed to supervise."""
 
 
+def teacher_state_messages(sample_kwargs: Mapping[str, Any] | None) -> list[dict[str, str]]:
+    """Return the conversation the Teacher must be asked about.
+
+    The Teacher sees the same state history as the Student; only the rendering
+    (tokenizer and chat template) differs. veRL's stock worker instead hands the
+    Teacher the Student's own token ids, which is wrong for a cross-template
+    model pair.
+    """
+
+    if sample_kwargs is None:
+        raise ValueError("native OPD Teacher scoring requires the dataset sample")
+    raw = sample_kwargs.get("raw_prompt")
+    if not isinstance(raw, (list, tuple)) and hasattr(raw, "item"):
+        raw = raw.item()
+    if not isinstance(raw, (list, tuple)) or not raw:
+        raise ValueError("dataset sample must expose a non-empty raw_prompt")
+    messages = [dict(message) for message in raw]
+    if messages[0].get("role") != "system" or messages[-1].get("role") != "user":
+        raise ValueError("state history must be a system message followed by user turns")
+    if any(not isinstance(message.get("content"), str) for message in messages):
+        raise ValueError("state history must contain text content")
+    return messages
+
+
+def render_teacher_prompt_ids(tokenizer: Any, messages: Sequence[Mapping[str, str]]) -> list[int]:
+    """Render the conversation with the Teacher's own template, thinking off."""
+
+    from .tokenization import apply_chat_template_ids
+
+    return apply_chat_template_ids(
+        tokenizer,
+        [dict(message) for message in messages],
+        add_generation_prompt=True,
+        enable_thinking=False,
+    )
+
+
 def _canonical_sha256(value: Any) -> str:
     encoded = json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False

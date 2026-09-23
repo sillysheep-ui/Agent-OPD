@@ -18,6 +18,7 @@ OUT=${OUT:-$ROOT/$RUN}
 LOG=${LOG:-$ROOT/$RUN.host.log}
 IMG=${IMG:-omniopd-verl080:vllm010-td010}
 NAME=${NAME:-omniopd-opd-standard}
+CONTAINER_SCRIPT=${CONTAINER_SCRIPT:-scripts/run_verl_opd_train.sh}
 GPUS=${GPUS:-0,1,2,3,4,5,6,7}
 NUM_GPUS=${NUM_GPUS:-4}
 TEACHER_GPUS=${TEACHER_GPUS:-4}
@@ -56,6 +57,14 @@ if [ -e "$OUT" ]; then
 fi
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
+passthrough_env=()
+for name in LOSS_MODE USE_POLICY_GRADIENT DISTILLATION_TOPK LR TEMPERATURE SAVE_FREQ \
+            AGENT_LOOP_MANAGER LORA_RANK LORA_ALPHA; do
+  if [ -n "${!name:-}" ]; then
+    passthrough_env+=(-e "$name=${!name}")
+  fi
+done
+
 docker run -d --rm --name "$NAME" --network host --runtime=nvidia --shm-size=16g \
   -e NVIDIA_VISIBLE_DEVICES="$GPUS" \
   -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONUNBUFFERED=1 \
@@ -74,7 +83,8 @@ docker run -d --rm --name "$NAME" --network host --runtime=nvidia --shm-size=16g
   -v "$TEACHER_MODEL":/models/teacher:ro \
   -v "$ROOT":/runs \
   -w /opt/agent --entrypoint bash "$IMG" \
-  -c 'bash scripts/run_verl_opd_train.sh' > /dev/null
+  "${passthrough_env[@]}" \
+  -c "bash ${CONTAINER_SCRIPT}" > /dev/null
 
 echo "training container started: $RUN -> $OUT (GPUs $GPUS)" > "$LOG"
 docker logs -f "$NAME" >> "$LOG" 2>&1
