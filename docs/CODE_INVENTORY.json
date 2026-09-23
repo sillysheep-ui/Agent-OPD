@@ -2,18 +2,18 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "3f692cac72b508f77a134f6074f3e38de9e0f5ef",
+  "code_revision_at_generation": "0271b21f509e4f73eb61cefc13d04fd2d42e990f",
   "canonical_code": {
     "tree_sha256": "ca26c0662a00daf59f302ef38aa18ef98b1fda1faa5040040a8eba19b71c828c",
     "files": 123,
     "bytes": 1058641
   },
-  "files": 278,
-  "bytes": 1879447,
+  "files": 279,
+  "bytes": 1884809,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
-    "docs": 16,
+    "docs": 17,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
@@ -150,8 +150,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 53074,
-      "sha256": "e1d07bbf22573b25bb40d8107bb6bad2db6f8a8210a6c21b871be1df395bcfeb",
+      "bytes": 54154,
+      "sha256": "244ad0823e382aa994af641ac27c059a3b646e40806d65e04c7bfd78e18b9ddd",
       "role": "canonical_or_documentation"
     },
     {
@@ -176,6 +176,12 @@
       "path": "docs/REPRODUCTION.md",
       "bytes": 25119,
       "sha256": "516332b5b32e9c5c2a1c906d09118f3231c3d781f10556141e1e84152d7520a3",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/RESULTS_standard_opd_20260923.md",
+      "bytes": 4282,
+      "sha256": "3e26f9e8501fbaf09e2476c73b219a9495af414bd4712188ef139522e5c3c08c",
       "role": "canonical_or_documentation"
     },
     {
