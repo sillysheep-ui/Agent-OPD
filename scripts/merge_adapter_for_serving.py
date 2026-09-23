@@ -18,6 +18,7 @@ CPU: it needs no GPU and no network.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -38,10 +39,21 @@ def main() -> None:
     parser.add_argument("--adapter", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--prompt", default=DEFAULT_PROMPT)
+    parser.add_argument(
+        "--prompt-file",
+        type=Path,
+        default=None,
+        help="read the probe prompt from this file instead of --prompt",
+    )
     parser.add_argument("--export-dtype", default="bfloat16")
     parser.add_argument("--max-merge-gap-ratio", type=float, default=0.25)
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
+    prompt = args.prompt
+    if args.prompt_file is not None:
+        prompt = args.prompt_file.read_text(encoding="utf-8")
+        if not prompt.strip():
+            raise SystemExit(f"probe prompt file is empty: {args.prompt_file}")
 
     base_dir = args.base_model.resolve()
     adapter_dir = args.adapter.resolve()
@@ -60,10 +72,10 @@ def main() -> None:
     base = AutoModelForCausalLM.from_pretrained(
         str(base_dir), torch_dtype=torch.float32, local_files_only=True
     ).to(device)
-    logits_base = last_logits(base, tokenizer, args.prompt)
+    logits_base = last_logits(base, tokenizer, prompt)
 
     peft_model = PeftModel.from_pretrained(base, str(adapter_dir), is_trainable=False)
-    logits_adapter = last_logits(peft_model, tokenizer, args.prompt)
+    logits_adapter = last_logits(peft_model, tokenizer, prompt)
     adapter_effect = float((logits_adapter - logits_base).abs().max())
     if adapter_effect == 0.0:
         raise SystemExit(
@@ -82,7 +94,7 @@ def main() -> None:
     reloaded = AutoModelForCausalLM.from_pretrained(
         str(output), torch_dtype=export_dtype, local_files_only=True
     ).to(device)
-    logits_merged = last_logits(reloaded, tokenizer, args.prompt)
+    logits_merged = last_logits(reloaded, tokenizer, prompt)
     merge_gap = float((logits_merged - logits_adapter).abs().max())
     scale = float(logits_base.abs().max())
     ratio = merge_gap / scale if scale else float("inf")
@@ -97,11 +109,22 @@ def main() -> None:
         "logit_scale_max_abs": scale,
         "merge_gap_ratio": ratio,
         "max_merge_gap_ratio": args.max_merge_gap_ratio,
+        "adapter_effect_below_merge_gap": adapter_effect <= merge_gap,
+        "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+        "probe_prompt_file": str(args.prompt_file) if args.prompt_file else None,
     }
     (output / "merge_manifest.json").write_text(
         json.dumps(payload, indent=2) + "\n", encoding="utf-8"
     )
     print(json.dumps(payload, indent=2))
+    if adapter_effect <= merge_gap:
+        print(
+            "WARNING: the adapter's own effect "
+            f"({adapter_effect:.4g}) is no larger than the {args.export_dtype} export gap "
+            f"({merge_gap:.4g}); serving the merged checkpoint would blur the trained change. "
+            "Prefer serving the adapter itself, and report this caveat if the merged model is "
+            "what gets evaluated."
+        )
     if ratio > args.max_merge_gap_ratio:
         raise SystemExit(
             f"merge gap {merge_gap} is {ratio:.3f} of the logit scale {scale}, above the "
