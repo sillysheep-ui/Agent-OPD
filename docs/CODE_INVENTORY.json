@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "cf6ee980a4a7d8b2af1c35c90b09c9836110b6ab",
+  "code_revision_at_generation": "4b0e102c38449a5f60608b1ee929648c1ed563c3",
   "canonical_code": {
-    "tree_sha256": "697f7b5bbb836389eb34fe213bc9606ef92d921fe360b2ddfec414f3331e1e2c",
-    "files": 121,
-    "bytes": 1042222
+    "tree_sha256": "4aac7fa8ecd1ef183a0b1c627bfdbe2d00c11b7daecc9fbd8dd9b5b420f9af17",
+    "files": 123,
+    "bytes": 1056445
   },
-  "files": 275,
-  "bytes": 1855302,
+  "files": 278,
+  "bytes": 1873297,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
@@ -17,9 +17,9 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 63,
+    "scripts": 65,
     "src": 42,
-    "tests": 36
+    "tests": 37
   },
   "entries": [
     {
@@ -966,8 +966,8 @@
     },
     {
       "path": "scripts/convert_opd_checkpoint.py",
-      "bytes": 4067,
-      "sha256": "904f3e72e8a0c1dee1fb4d02831f1d73ccaa12ffa748bb94ad6185be7be9b0d6",
+      "bytes": 10336,
+      "sha256": "a7ee2dab9854fed7158f8c6a6b1f040fc5a2685ccb1212bfc6077186ed534cee",
       "role": "canonical_or_documentation"
     },
     {
@@ -996,8 +996,14 @@
     },
     {
       "path": "scripts/host/opd_eval_chain.sh",
-      "bytes": 8078,
-      "sha256": "ba86f438e52f9df5d3dcf12a45f159337065e412c2e6f152857e6f470e04371d",
+      "bytes": 8048,
+      "sha256": "20db600f28fb275479785bfbf4663ed6e22da1107a78244d20b35b2e557ffa73",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/host/preflight_opd_chain.sh",
+      "bytes": 3453,
+      "sha256": "60ac954c998a1bc24fea5e6aa2789e9c0f084b3eaea4cbd4e91dfda5291b37af",
       "role": "canonical_or_documentation"
     },
     {
@@ -1016,6 +1022,12 @@
       "path": "scripts/latest_checkpoint.py",
       "bytes": 723,
       "sha256": "4ed1fb3784d142525b90df6faeff45311bf38078e169d1e7a1f83b3abd698181",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/merge_adapter_for_serving.py",
+      "bytes": 4531,
+      "sha256": "c5046784713bee39ef0a4cb0cd896420e0db817bb97b57b64a0e5221157aa3f4",
       "role": "canonical_or_documentation"
     },
     {
@@ -1562,6 +1574,12 @@
       "path": "tests/test_opd_adapter.py",
       "bytes": 6828,
       "sha256": "af31caacbf73be22189b42dff6e2735a54d102e1380f9271f4f6ecad0f4411c6",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "tests/test_opd_checkpoint_conversion.py",
+      "bytes": 3772,
+      "sha256": "8ef805e8ad9c40f53d25e5ad1abf907084b0b7ed6823cd2a58b67f29118d1f35",
       "role": "canonical_or_documentation"
     },
     {
