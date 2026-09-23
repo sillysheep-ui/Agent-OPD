@@ -17,6 +17,10 @@ set -euo pipefail
 LR=${LR:-1e-6}
 TRAIN_BSZ=${TRAIN_BSZ:-8}
 MICRO_BSZ=${MICRO_BSZ:-1}
+# veRL only enters its checkpoint branch when save_freq is positive, and it
+# saves unconditionally on the last step. A zero here means "train for hours
+# and keep nothing", so it is validated below instead of being a silent default.
+SAVE_FREQ=${SAVE_FREQ:-43}
 MAX_PROMPT_LENGTH=${MAX_PROMPT_LENGTH:-16384}
 MAX_RESPONSE_LENGTH=${MAX_RESPONSE_LENGTH:-512}
 TEACHER_GPU_MEMORY=${TEACHER_GPU_MEMORY:-0.60}
@@ -30,6 +34,14 @@ PROJECT_NAME=${PROJECT_NAME:-agent_omniopd}
 
 python_candidate=${PYTHON_BIN:-python3}
 command -v -- "${python_candidate}" >/dev/null || { echo "PYTHON_BIN missing" >&2; exit 2; }
+case "${SAVE_FREQ}" in
+  ''|*[!0-9]*) echo "SAVE_FREQ must be a positive integer, got '${SAVE_FREQ}'" >&2; exit 2 ;;
+esac
+if [ "${SAVE_FREQ}" -le 0 ]; then
+  echo "SAVE_FREQ must be positive: veRL skips every checkpoint when it is 0" >&2
+  exit 2
+fi
+echo "checkpoint schedule: every ${SAVE_FREQ} steps plus the final step ${TOTAL_TRAINING_STEPS}"
 python_bin=$("${python_candidate}" -c 'from pathlib import Path; import sys; print(Path(sys.executable).resolve())')
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 resolve() { "${python_bin}" -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).expanduser().resolve())' "$1"; }
@@ -41,6 +53,7 @@ OPD_TEACHER_MODEL=$(resolve "${OPD_TEACHER_MODEL}")
 OPD_OUTPUT=$(resolve "${OPD_OUTPUT}")
 
 export OPD_DATA OPD_DATA_MANIFEST OPD_STUDENT_MODEL OPD_TEACHER_MODEL OPD_OUTPUT
+export SAVE_FREQ
 export OMNIOPD_REPO_ROOT="${repo_root}" VERL_ROOT
 export OMNIOPD_REQUIRE_ADMISSIBLE_ACTION="${OMNIOPD_REQUIRE_ADMISSIBLE_ACTION:-0}"
 export PYTHONPATH="${repo_root}/src:${VERL_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
@@ -136,7 +149,7 @@ cd "${repo_root}"
   trainer.n_gpus_per_node="${NUM_GPUS}" \
   trainer.nnodes=1 \
   trainer.val_before_train=false \
-  trainer.save_freq=0 \
+  trainer.save_freq="${SAVE_FREQ}" \
   trainer.test_freq=-1 \
   trainer.total_epochs=1 \
   trainer.total_training_steps="${TOTAL_TRAINING_STEPS}" \
@@ -176,7 +189,12 @@ from omniopd.provenance import fingerprint_path, sha256_file
 output = Path(os.environ["OPD_OUTPUT"]).resolve()
 checkpoint = output / "checkpoints" / f"global_step_{int(os.environ['TOTAL_TRAINING_STEPS'])}"
 if not checkpoint.is_dir():
-    raise SystemExit(f"training finished without the expected checkpoint: {checkpoint}")
+    raise SystemExit(
+        f"training finished without the expected checkpoint: {checkpoint}. "
+        f"save_freq={os.environ['SAVE_FREQ']}; veRL only enters its checkpoint "
+        "branch for a positive save_freq and always saves on the last step, so a "
+        "missing directory means the run trained without ever writing weights."
+    )
 payload = {
     "artifact": "standard_token_opd_completion",
     "total_optimizer_steps": int(os.environ["TOTAL_TRAINING_STEPS"]),

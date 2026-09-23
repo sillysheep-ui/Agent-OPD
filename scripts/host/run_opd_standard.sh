@@ -28,6 +28,7 @@ MAX_PROMPT_LENGTH=${MAX_PROMPT_LENGTH:-8192}
 MAX_RESPONSE_LENGTH=${MAX_RESPONSE_LENGTH:-512}
 LR=${LR:-1e-6}
 TOTAL_TRAINING_STEPS=${TOTAL_TRAINING_STEPS:-86}
+SAVE_FREQ=${SAVE_FREQ:-43}
 VERL_ROOT=${VERL_ROOT:-/data/yangchunyu/ld/verl-v0.8.0}
 AGENT_ROOT=${AGENT_ROOT:-/data/yangchunyu/ld/agent_omniopd_v080}
 STUDENT_MODEL=${STUDENT_MODEL:-/cfs/data/private/zhangsl/Model/Qwen/Qwen3-4B-Instruct-2507}
@@ -48,6 +49,7 @@ docker run -d --rm --name "$NAME" --network host --runtime=nvidia --shm-size=16g
   -e TRAIN_BSZ="$TRAIN_BSZ" -e MICRO_BSZ="$MICRO_BSZ" \
   -e MAX_PROMPT_LENGTH="$MAX_PROMPT_LENGTH" -e MAX_RESPONSE_LENGTH="$MAX_RESPONSE_LENGTH" \
   -e LR="$LR" -e TOTAL_TRAINING_STEPS="$TOTAL_TRAINING_STEPS" \
+  -e SAVE_FREQ="$SAVE_FREQ" \
   -e VERL_ROOT=/opt/verl \
   -e OPD_DATA="$OPD_DATA" -e OPD_DATA_MANIFEST="$OPD_DATA_MANIFEST" \
   -e OPD_STUDENT_MODEL=/models/student -e OPD_TEACHER_MODEL=/models/teacher \
