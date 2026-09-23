@@ -21,6 +21,10 @@ from .parser import parse_action
 from .schema import RolloutTurn
 
 
+ACTION_LINE_PATTERN = r"(?im)^\s*Action\s*:\s*[^\r\n]*"
+"""The single action line a rolled-out Student turn is allowed to supervise."""
+
+
 def _canonical_sha256(value: Any) -> str:
     encoded = json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
@@ -303,6 +307,47 @@ def remap_teacher_scores_to_student_layout(
     return remapped_ids, remapped_scores
 
 
+def emitted_response_span_ids(tokenizer: Any, generated_ids: Sequence[int]) -> list[int]:
+    """Return the tokens a Student actually emitted for one turn.
+
+    veRL pads every response to the width of its batch before the Teacher
+    scorer sees it, so right-hand padding must be dropped or the pad token
+    would be supervised. Trailing chat-template terminators are dropped for the
+    same reason as in the action-line branch: they close the turn instead of
+    carrying content. A turn that emitted nothing but its terminator keeps that
+    single terminator token, so the span is never empty while the response is
+    not; an empty span would leave the Teacher scorer with no sequence to score.
+    """
+
+    ids = [int(token_id) for token_id in generated_ids]
+    pad_token_id = getattr(tokenizer, "pad_token_id", None)
+    end = len(ids)
+    if pad_token_id is not None:
+        while end and ids[end - 1] == pad_token_id:
+            end -= 1
+    content_ids = ids[:end]
+    special_ids = set(tokenizer.all_special_ids)
+    while len(content_ids) > 1 and content_ids[-1] in special_ids:
+        content_ids.pop()
+    return content_ids
+
+
+def describe_supervision_span(content_ids: Sequence[int], response_text: str) -> str:
+    """Name how one Student turn was supervised, for the training ledger.
+
+    ``action_line`` is the normal case, ``whole_response`` is a turn with no
+    action line at all (including a turn that emitted only its terminator), and
+    ``empty`` is a response veRL padded to width zero content: it contributes no
+    gradient and is counted, not hidden.
+    """
+
+    if not list(content_ids):
+        return "empty"
+    if re.search(ACTION_LINE_PATTERN, response_text):
+        return "action_line"
+    return "whole_response"
+
+
 def extract_strict_action_tokens(
     tokenizer: Any,
     generated_ids: Sequence[int],
@@ -317,6 +362,11 @@ def extract_strict_action_tokens(
     supervised. Standard token OPD instead distils the Student's own rollout,
     so an inadmissible Student action must still yield its token span: the
     environment's rejection is exactly the supervision signal in that arm.
+
+    A Student that never emits an action line still produced a turn in its own
+    words (typically a refusal such as "the task cannot be completed"). There
+    is no action to bound the span, so the whole emitted response becomes the
+    supervised span; see ``describe_supervision_span`` for the accounting.
     """
 
     ids = [int(token_id) for token_id in generated_ids]
@@ -328,9 +378,20 @@ def extract_strict_action_tokens(
         full_text = tokenizer.decode(
             ids, skip_special_tokens=False, clean_up_tokenization_spaces=False
         )
-        match = re.search(r"(?im)^\s*Action\s*:\s*[^\r\n]*", full_text)
+        match = re.search(ACTION_LINE_PATTERN, full_text)
         if match is None:
-            raise ValueError(f"Student response contains no action line: {full_text!r}")
+            # No action line: supervise everything the Student emitted for this
+            # state. Dropping the sample would remove the only signal that
+            # teaches the Student out of a refusal, and there is no action
+            # boundary to trim to.
+            content_ids = emitted_response_span_ids(tokenizer, ids)
+            if not content_ids:
+                return [], "", None
+            response_text = tokenizer.decode(
+                content_ids, skip_special_tokens=False, clean_up_tokenization_spaces=False
+            )
+            parsed = parse_action(response_text, admissible_actions)
+            return content_ids, response_text, parsed.canonical_action
         target_end = match.end()
         accumulated = ""
         cut = 0

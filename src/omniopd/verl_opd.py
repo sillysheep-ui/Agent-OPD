@@ -21,6 +21,7 @@ from verl.experimental.agent_loop.single_turn_agent_loop import SingleTurnAgentL
 from .opd_adapter import (
     align_teacher_rows_to_student_layout,
     audit_shared_token_id_space,
+    describe_supervision_span,
     extract_strict_action_tokens,
     remap_teacher_scores_to_student_layout,
     response_mask_for_action_span,
@@ -52,7 +53,7 @@ class OmniOPDActionLoop(SingleTurnAgentLoop):
         require_admissible = (
             os.environ.get("OMNIOPD_REQUIRE_ADMISSIBLE_ACTION", "1") != "0"
         )
-        content_ids, _, canonical_action = extract_strict_action_tokens(
+        content_ids, response_text, canonical_action = extract_strict_action_tokens(
             self.tokenizer,
             output.response_ids,
             actions,
@@ -69,6 +70,12 @@ class OmniOPDActionLoop(SingleTurnAgentLoop):
         output.reward_score = 0.0
         output.extra_fields["opd_canonical_action"] = canonical_action
         output.extra_fields["opd_scored_action_tokens"] = len(content_ids)
+        # Ledger value: does this turn carry an action line, the whole emitted
+        # response, or no content at all? Recorded instead of raised so one
+        # degenerate turn cannot abort the run.
+        output.extra_fields["opd_supervision"] = describe_supervision_span(
+            content_ids, response_text
+        )
         return output
 
 
@@ -114,11 +121,14 @@ class OmniOPDAgentLoopWorker(AgentLoopWorker):
         ):
             raise ValueError("Teacher prompt does not share the Student state history")
         actions = extra.get("admissible_actions")
-        content_ids, _, _ = extract_strict_action_tokens(
+        content_ids, response_text, _ = extract_strict_action_tokens(
             self.tokenizer,
             response_ids,
             actions,
             require_admissible=require_admissible,
+        )
+        output.extra_fields["opd_supervision"] = describe_supervision_span(
+            content_ids, response_text
         )
         expected_student_ids = apply_chat_template_ids(
             self.tokenizer,

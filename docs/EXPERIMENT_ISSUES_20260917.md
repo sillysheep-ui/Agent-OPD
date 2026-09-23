@@ -344,3 +344,49 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   提示词 = 上述冻结形式；评测 = valid_seen 140 局、30 轮、贪心。四条臂为：
   无更新基线、传统逐 Token OPD、随机状态动作校正、所提选样策略。
 
+
+## 2026-09-22/23：传统逐 Token OPD 首次长跑与 invalid 输出边界
+
+- **输入（非确认性 Pilot）**：学生轨迹池 `omniopd_runs/student_pool_20260921_02/`
+  （240 局、89 胜 = 37.1%、5524 回合、六类各 40 局）→ OPD 训练行
+  `omniopd_runs/opd_train_20260922_01/rows.jsonl`（5524 行 + `rows.manifest.json`，
+  prompt token 中位 5837、p99 7921）。这些只用于把链路跑通，不是正式确认数据。
+- **启动器**：`scripts/run_verl_opd_train.sh`，4 卡（学生 0/1、教师 2/3，Teacher TP=2）、
+  `TRAIN_BSZ=64`、`MICRO_BSZ=4`、`LR=1e-6`、`TOTAL_TRAINING_STEPS=86`、K2、温度 1.0、
+  `OMNIOPD_REQUIRE_ADMISSIBLE_ACTION=0`。单步约 133 s。
+- **E14｜学生输出没有 `Action:` 行时，旧实现直接终止整次训练。** 启动 08 与 14 均在
+  step 9 崩溃：`ValueError: Student response contains no action line: 'Task completed:
+  cooled some lettuce ... The task cannot be completed as written.<|im_end|>'`。
+  宽松分支（`require_admissible=False`）对无 Action 行的输出没有定义监督区间。
+  崩溃前的 576 条真实 rollout 中没有一条是这种情况，即**约 1/600 的低频退化生成**
+  （模型自述"任务无法完成"）足以让 86 步训练整批作废（单次损失约 20 分钟算力）。
+  **处理**：新增纯函数 `emitted_response_span_ids()` 与 `describe_supervision_span()`
+  （`src/omniopd/opd_adapter.py`）。宽松分支在无 Action 行时监督**该回合实际生成的全部
+  token**：先去掉 veRL 右侧 padding，再剔除末尾终止符；若整条输出只有终止符，则保留这
+  1 个 token（否则教师侧会拿到空序列）。严格分支（`require_admissible=True`）保持
+  fail-closed 不变。`opd_supervision ∈ {action_line, whole_response, empty}` 随 rollout
+  写入 `extra_fields` 记账，不静默丢弃、不免费重采样。
+  **离线验证**：`scripts/verify_opd_layout.py` 扩为 8 个正例（含"学生放弃"、"放弃且无
+  终止符"、"只有终止符"、"整条为 padding"）+ 2 个严格分支必抛用例，断言 mask 宽度/和、
+  教师行宽度、监督模式、以及"监督区间 = 实际生成 token"；`tests/test_opd_forward_smoke.py`
+  增加 3 条同合同回归测试。
+  **必须随结果报告的偏差**：该臂在无 Action 行时监督的是学生整条输出，而不是动作跨度。
+  频率约 0.2%，但它是本臂的协议选择，不能外推为通用结论；若后续认为"无效回合应当零权重"，
+  需要改协议并重跑，不能只在报告里换说法。
+- **E15｜启动 01–14 的其余阻塞项（均已修复并写入仓库）。** 依次为：(1) Hydra 输出目录
+  只读导致启动即失败；(2) 上下文预算差 1 个 token；(3) `PYTORCH_CUDA_ALLOC_CONF=
+  expandable_segments` 与 vLLM 显存池冲突导致引擎初始化失败；(4) worker 硬绑 v1 提示词、
+  与学生实际提示词不一致；(5) 无效动作策略报错（改为宽松分支 + 记账）；(6) 响应被截断到
+  513 > 512；(7) Teacher 分数宽度与 Student 布局不一致（含差 1 行与超宽两种）；(8) 布局
+  逻辑散落在 worker 中，已抽成 `response_mask_for_action_span()` 与
+  `align_teacher_rows_to_student_layout()` 两个可离线验证的纯函数。
+  14 次启动的结局：01/02/03/04/05/06/07/09/11 在第一个优化步之前失败（配置、服务、
+  协议或布局），10/12/13 分别跑到 step 8/11/1 后因布局宽度失败，08/14 到 step 9 后
+  因 E14 失败。**到 2026-09-23 为止仍没有任何 checkpoint 产生**。
+- **E16｜集群 cron 会用占位任务占满全部 8 张卡。** 09-23 观察到 8 个
+  `llamafactory/launcher.py /nfsdir/pulushi/task_test/killme.yaml` 进程各占约 53 GiB、
+  ~60% 利用率，父容器名为 `grpo8b`（命令 `sleep infinity`），启动时间与 cron 周期一致。
+  这**不是**他人的真实训练，但也不是本项目的作业。处理：`source
+  /nfsdir/miniconda3/etc/profile.d/conda.sh && conda activate qwen3_medusa_xh_bak &&
+  demokill`（`/usr/local/bin/demokill` 只 kill 匹配 `killme` 的进程）。运行前后必须记录
+  GPU 占用，且不得据此推断这些卡长期可用。
