@@ -33,8 +33,22 @@ VERL_ROOT=${VERL_ROOT:-/data/yangchunyu/ld/verl-v0.8.0}
 AGENT_ROOT=${AGENT_ROOT:-/data/yangchunyu/ld/agent_omniopd_v080}
 STUDENT_MODEL=${STUDENT_MODEL:-/cfs/data/private/zhangsl/Model/Qwen/Qwen3-4B-Instruct-2507}
 TEACHER_MODEL=${TEACHER_MODEL:-/cfs/data/private/zhangsl/Model/Qwen/Qwen3-14B}
-OPD_DATA=${OPD_DATA:-$ROOT/opd_train_20260922_01/rows.jsonl}
-OPD_DATA_MANIFEST=${OPD_DATA_MANIFEST:-$ROOT/opd_train_20260922_01/rows.manifest.json}
+# The launcher runs inside the container, where the runs root is /runs, so the
+# training data is addressed by container path and checked on the host.
+DATA_DIR=${DATA_DIR:-opd_train_20260922_01}
+OPD_DATA=${OPD_DATA:-/runs/$DATA_DIR/rows.jsonl}
+OPD_DATA_MANIFEST=${OPD_DATA_MANIFEST:-/runs/$DATA_DIR/rows.manifest.json}
+
+for container_path in "$OPD_DATA" "$OPD_DATA_MANIFEST"; do
+  case "$container_path" in
+    /runs/*) host_path="$ROOT/${container_path#/runs/}" ;;
+    *) echo "data paths must live under /runs inside the container: $container_path" >&2; exit 2 ;;
+  esac
+  if [ ! -f "$host_path" ]; then
+    echo "missing on the host: $host_path (for $container_path)" >&2
+    exit 2
+  fi
+done
 
 if [ -e "$OUT" ]; then
   echo "refusing to reuse an existing output directory: $OUT" >&2
