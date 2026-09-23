@@ -2,18 +2,18 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "14924ad410b4165a52fbbfcc768b7fb96a10a85b",
+  "code_revision_at_generation": "52976bfd3797326851aca30c4c031dcd4e2fe8f9",
   "canonical_code": {
     "tree_sha256": "744d1404ae61ff7edb226eac3ea486874f4d3ae5bf2873449364a6a615a39e65",
     "files": 126,
     "bytes": 1075829
   },
-  "files": 284,
-  "bytes": 2207382,
+  "files": 285,
+  "bytes": 2212229,
   "counts_by_root": {
     "configs": 11,
     "docker": 2,
-    "docs": 19,
+    "docs": 20,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
@@ -176,6 +176,12 @@
       "path": "docs/MODIFICATION_PLAN.md",
       "bytes": 6616,
       "sha256": "7488769a7752aab82e57abe642583841222cc416224045bb17013d81bd315900",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "docs/PLAN_verl_native_opd_20260923.md",
+      "bytes": 4847,
+      "sha256": "5114ea164975f20dbfe71ec14a45f46cfde30f8fb0363468e7d7f122ad7accd8",
       "role": "canonical_or_documentation"
     },
     {
