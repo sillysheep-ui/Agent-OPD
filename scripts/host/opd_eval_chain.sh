@@ -150,7 +150,7 @@ du -sh "$CKPT" >> "$LOG" 2>&1
 
 echo "=== converting the FSDP shard to a PEFT adapter $(date -u) ===" >> "$LOG"
 docker run --rm --network none -e PYTHONDONTWRITEBYTECODE=1 \
-  -v "$AGENT_ROOT":/opt/agent:ro -v "$ROOT":/runs \
+  -v "$AGENT_ROOT":/opt/agent:ro -v "$ROOT":/runs -v "$BASE":/models/base:ro \
   --entrypoint python "$TRAIN_IMG" /opt/agent/scripts/convert_opd_checkpoint.py \
   --checkpoint "/runs/$RUN/checkpoints/global_step_$STEPS" --output "/runs/opd_adapter_$RUN" \
   --base-model "/models/base" >> "$LOG" 2>&1
