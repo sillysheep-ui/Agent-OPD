@@ -234,8 +234,9 @@ def main() -> None:
     print(f"[4] rows        : {len(encoded_rows)} rows, target tokens "
           f"{sum(masked_tokens.values())} (min {min(len(r['input_ids']) for r in encoded_rows)} / "
           f"max {max(len(r['input_ids']) for r in encoded_rows)} tokens)")
-    print(f"    weight sums per game: " + ", ".join(f"{g.split('/')[-1][:22]}={w:.3f}" for g, w in
-                                                   sorted(weight_by_game.items())))
+    print("    weight sums per game: " + ", ".join(
+        f"{g.split('/')[-1][:22]}={w:.3f}" for g, w in sorted(weight_by_game.items())
+    ))
     print(f"    pool sha256: {sha256_file(args.pool)[:16]}…  output: {args.output_dir}")
 
 
