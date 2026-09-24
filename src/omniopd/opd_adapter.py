@@ -16,7 +16,7 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
-from .prompts import STUDENT_SYSTEM_PROMPT, TEACHER_SYSTEM_PROMPT, replace_system
+from .prompts import STUDENT_SYSTEM_PROMPT, replace_system
 from .parser import parse_action
 from .schema import RolloutTurn
 

@@ -26,7 +26,6 @@ from .opd_adapter import (
     remap_teacher_scores_to_student_layout,
     response_mask_for_action_span,
 )
-from .prompts import STUDENT_SYSTEM_PROMPT, TEACHER_SYSTEM_PROMPT, replace_system
 from .tokenization import apply_chat_template_ids
 
 

@@ -501,3 +501,13 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   `distillation/loss 0.921`、`grad_norm 165`、`entropy 1.347`。**注意**：LR 1e-4 下 grad_norm
   已达 165，正式跑之前应先用 20 步短跑量 `‖ΔW‖/‖W‖`（`scripts/diagnose_adapter_scale.py`），
   确认更新幅度落在 1e-3 量级而不是过大或过小。
+
+- **E25｜我们的本地流程没有 lint，GitHub CI 替我们挡住了（2026-09-24）。** 推送后 `offline-ci`
+  的 3.10/3.11/3.12 三个 job 全部在 Lint 一步失败（安装、compileall、测试套件均通过）。
+  根因是重构留下的 5 处 ruff 违规：`src/omniopd/verl_opd.py` 的 `STUDENT_SYSTEM_PROMPT`、
+  `TEACHER_SYSTEM_PROMPT`、`replace_system` 三个未使用导入；`src/omniopd/opd_adapter.py` 的
+  `TEACHER_SYSTEM_PROMPT`；`scripts/measure_teacher_student_gap.py` 的未使用局部变量
+  `records`。容器里的 `scripts/run_tests.py` 只跑测试、**不跑 ruff**，所以本地一直是绿的。
+  **纪律**：推送前在容器里同时跑 `python -m ruff check --no-cache src scripts tests integrations`
+  与 `scripts/run_tests.py`；ruff 的默认规则集是 E4/E7/E9/F（含未使用导入/变量），
+  这类问题一秒就能查出来。

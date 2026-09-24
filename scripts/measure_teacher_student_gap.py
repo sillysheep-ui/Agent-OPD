@@ -87,7 +87,6 @@ def main() -> None:
     turns = load_turns(args.pool, args.limit, args.seed)
 
     tokenizer = AutoTokenizer.from_pretrained(str(args.student), local_files_only=True)
-    records = []
     for name, path in (("student", args.student), ("teacher", args.teacher)):
         model = AutoModelForCausalLM.from_pretrained(
             str(path), dtype=torch.bfloat16, local_files_only=True
