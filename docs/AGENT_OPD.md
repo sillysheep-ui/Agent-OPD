@@ -138,7 +138,7 @@ off-policy multi-turn SFT 基线）。四条臂的对应关系见 §4。
 |---|---|---|---|
 | 1 | 采集学生诱导状态池（含完整历史、admissible、种子） | `scripts/collect_state_pool.py`、`src/omniopd/schema.py` | `state_pool.jsonl` + manifest |
 | 2 | 冻结 game 划分与选择（$G$、$m$、嵌套 breadth/depth） | `scripts/freeze_game_list.py`、`src/omniopd/selection.py`、`sampling.py` | selection rows + manifest |
-| 3 | **教师黑盒查询**（文本、温度 0、每状态 $N$ 次、记 ledger） | `scripts/annotate_states.py`（需接 vLLM 生成；离线原型见 `scripts/pilot_sft_teacher_rollouts*.py`） | `CorrectionRecord`（state + teacher_samples + validity） |
+| 3 | **教师黑盒查询**（文本、温度 0、每状态 $N$ 次、记 ledger） | **MVP 已实现**：`scripts/mvp_blackbox_opd.py`（完整链路见下）；正式链 `scripts/annotate_states.py` | `CorrectionRecord` + attempt ledger |
 | 4 | 组训练行（加权 + action-only mask） | `src/omniopd/dataset.py: build_training_rows(weighting="game_state_mean")`、`tokenization.encode_final_assistant_example` | SFT 行（`state_weight`, `target_token_mask`） |
 | 5 | 训练（四级归一加权 CE） | `src/omniopd/loss.py: weighted_causal_ce_components` + veRL SFT trainer | LoRA checkpoint + 日志 |
 | 6 | 评测（同批配对） | `scripts/host/opd_eval_chain.sh`、`scripts/evaluate_coldstart_sft.py` | 140 局配对 JSON |
@@ -150,6 +150,12 @@ off-policy multi-turn SFT 基线）。四条臂的对应关系见 §4。
 * 教师用**自己的 tokenizer/模板**渲染同一段对话（跨模板模型对必须如此，实测否则首 token 目标会变成 `<think>`、差 21 nats）；
 * 训练/评测的 prompt 必须是同一份冻结文本；
 * LoRA 的 LR 必须按 `‖ΔW‖/‖W‖` 标定（门槛 ≥1e-3），不能沿用全参数微调的值。
+
+> **MVP 状态（2026-09-24）**：`scripts/mvp_blackbox_opd.py` 已把 §3 的第 1–4 步串成一条可跑的链
+> （状态池 → 选择 → 黑盒教师查询 → 有效性筛选 → 四级归一 + action-only mask 的 SFT 行），
+> 最小规模实测（2 局 × 2 状态 × 1 次）：4 次教师查询全部可执行、2/4 与学生的动作不同、
+> 每 game 权重和恰为 1.000（每状态 0.5 = 1/(V_g·K_s)）。第 5–6 步（加权 CE 训练、配对评测）
+> 复用已有的 SFT 启动器与 `opd_eval_chain.sh`。
 
 ## 4. 四条臂
 
