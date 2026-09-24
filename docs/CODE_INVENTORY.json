@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "32304a3ee1462b688f028ef58614bec9a64687fa",
+  "code_revision_at_generation": "d15d25eadc56e86bdd30cc46fd8225daf648ac68",
   "canonical_code": {
-    "tree_sha256": "a270982bb303e6b0e9c3e7e77e11f3177f2b52e751143076ad088eb539b08ffd",
+    "tree_sha256": "51022dae5fec889c9037e0b6f48734d47a25a9b1abc7a47fa5c36ddf908d760c",
     "files": 133,
-    "bytes": 1128485
+    "bytes": 1128880
   },
   "files": 281,
-  "bytes": 2170651,
+  "bytes": 2172635,
   "counts_by_root": {
     "configs": 12,
     "docker": 2,
@@ -126,8 +126,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 65502,
-      "sha256": "ef8a362c6ef4e63a04922011b5213e684ebe645e22ee0acc32558ce0e16f58f8",
+      "bytes": 67091,
+      "sha256": "00e253f39e3cb0db88ecba7b76bea9c38f20acf35f9127d0fa74e38b4a471ab0",
       "role": "canonical_or_documentation"
     },
     {
@@ -1080,8 +1080,8 @@
     },
     {
       "path": "scripts/prevalidate_correction_value.py",
-      "bytes": 8945,
-      "sha256": "c96c43b58c23d1a2daa9c6bfcf7c915ab0f64607f7c4d2f92cb279c3d3aaa4ad",
+      "bytes": 8998,
+      "sha256": "5fef487dc7c99a260d03d895b7732835e29c37af0c75d2e77745b21634555b96",
       "role": "canonical_or_documentation"
     },
     {
@@ -1302,8 +1302,8 @@
     },
     {
       "path": "src/omniopd/counterfactual.py",
-      "bytes": 25492,
-      "sha256": "7fe1742d9cbfe78e8aa568ae5d2f69b962d5e868d65eccbb2cb1906ccb9b4fcc",
+      "bytes": 25834,
+      "sha256": "6d5659397169608f6388c516d314fac254a0633a900b7cc3a49d321f0859a202",
       "role": "canonical_or_documentation"
     },
     {
