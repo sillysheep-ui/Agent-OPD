@@ -566,3 +566,15 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   学习率等效缩小一倍**（loss 差恰好 2 倍）。
   另：`pickle`/探针取序列**开头**会丢掉被监督的 action token（mask 为空直接抛错），
   必须取**末尾**片段。
+
+- **E30｜第 6 步（服务与配对评测）跑通，主线 1–6 步首次连贯闭环（2026-09-24）。**
+  用第 5 步训练出的 PEFT adapter（`mvp_train_20260924_01/adapter`）与基座同服务起 vLLM
+  （`base4b` + `opd` 两个 alias 均在线），在最小评测集（3 局）上跑出
+  `closed_loop_opd.json` 与 `closed_loop_base4b.json`。
+  **结果 0/3 vs 2/3 不是实验结论**：本步用的是占位参数（8 行训练数据、15 epoch），
+  训练 loss 已降到 `4e-5`（记忆化），评测规模也只有 3 局；该数字仅证明链路可跑，
+  **不得引用为结果**。参数（$G$、$m$、$N$、epochs、LR）按约定后期再定。
+  至此主线 §3 的六步各跑通一次：状态池 → 注册选样（nested + inclusion prob）→
+  教师黑盒查询（$P_T$、profile 温度、N 次、attempt ledger + 哈希校验、三层 acceptance）
+  → 四级归一 + action-only mask 的 SFT 行 → 加权 CE 训练（loss/梯度/ΔW 三项自检）
+  → 服务与配对评测。每一步都有独立产物与验证记录，可单独复现。
