@@ -2,18 +2,18 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "7303d8ee7c0064602d439bba73e0a9ec6544afb9",
+  "code_revision_at_generation": "f46380d160748148e2a1da43e613720cedbe8123",
   "canonical_code": {
-    "tree_sha256": "d63a00b1829230377dcc9fa565fae5b2ab76a7df2d1f9403274c1db4e27201da",
+    "tree_sha256": "cf4fbd3a63001353688c5ead154e6a5e8ba5634d16accba62ecd2d2699174c41",
     "files": 130,
-    "bytes": 1096826
+    "bytes": 1096885
   },
-  "files": 291,
-  "bytes": 2246104,
+  "files": 278,
+  "bytes": 2132997,
   "counts_by_root": {
     "configs": 12,
     "docker": 2,
-    "docs": 21,
+    "docs": 8,
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
@@ -30,8 +30,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8960,
-      "sha256": "1935647d0421550afc58baac20aa74234dfb8f91d66cdb6d6cae02189da90f9b",
+      "bytes": 9019,
+      "sha256": "e41feaa60744e8a7aa30871401bff3e032ee6742bdacc66712e51e235012750e",
       "role": "canonical_or_documentation"
     },
     {
@@ -119,75 +119,15 @@
       "role": "canonical_or_documentation"
     },
     {
-      "path": "docs/00_START_HERE.md",
-      "bytes": 5707,
-      "sha256": "8b306b6925be4f15e48c1e913ffc293617394d373e6573ddcd7917216d397d09",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/AGENT_R1_ADAPTATION_20260918.md",
-      "bytes": 5419,
-      "sha256": "75657a0292ab2cf0f8d877f294f1264ba694f07d3b8fb91c0a27f1298b365bf4",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/ALFWORLD_REBUILD_20260916.md",
-      "bytes": 4164,
-      "sha256": "111c0c5f6f69bc098cb6897f72b6ceec51b66c256bfb9cb4459261fdd8e86e51",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/ANALYSIS_standard_opd_20260923.md",
-      "bytes": 20613,
-      "sha256": "47e546cc696eed3e4aa3ac3b5180badfd97728310e3a2a8dacb380db8594714c",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/AUDIT.md",
-      "bytes": 13349,
-      "sha256": "45e84948c6a7818844f8eafc893311b4b1c456050678abc07ada737ccb387f88",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/EXECUTION_INPUTS.template.yaml",
-      "bytes": 2777,
-      "sha256": "7620582378353d0ad7003de5784b70db75d39ef0df8591947d5f9dda5d4e1f9b",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/EXECUTOR_PROMPT.md",
-      "bytes": 2877,
-      "sha256": "4aedc3bd25394995ef856a33933a36160d2ab8bcf15e8096a5f7d81220413f2c",
+      "path": "docs/AGENT_OPD.md",
+      "bytes": 12110,
+      "sha256": "4cb72bbee196d3212df805f5af04fa30215315624da497178adffc98bf003f79",
       "role": "canonical_or_documentation"
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
       "bytes": 59969,
       "sha256": "2f5e089526fa3c16c13ff7696cd2522041df42652f01d4e84797d8d91d6eaf92",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/FILE_AUDIT.md",
-      "bytes": 15934,
-      "sha256": "8f184969316f7a9146f6cda80d0f989c2fb25658f58e12d110aa7ad7056113eb",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/LOCAL_EXECUTION_AND_GITHUB_REQUIREMENTS_ZH.md",
-      "bytes": 15148,
-      "sha256": "b4519e2b7072edf56ce39538ce9665d10fcbf4cbf51472268e0ce4f1d2701735",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/MODIFICATION_PLAN.md",
-      "bytes": 6616,
-      "sha256": "7488769a7752aab82e57abe642583841222cc416224045bb17013d81bd315900",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/PLAN_verl_native_opd_20260923.md",
-      "bytes": 4847,
-      "sha256": "5114ea164975f20dbfe71ec14a45f46cfde30f8fb0363468e7d7f122ad7accd8",
       "role": "canonical_or_documentation"
     },
     {
@@ -216,26 +156,8 @@
     },
     {
       "path": "docs/THEORY_TO_CODE.md",
-      "bytes": 13663,
-      "sha256": "8250feb6c515593431acaaf0f87f14ab2d9b047f79b788bf7d9a823822d5caab",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/VERIFICATION_REPORT.md",
-      "bytes": 12161,
-      "sha256": "2cd87f00ea4a5ce2903d4d583ef1d8cf528dd57f368c6b8d0b31bbd8fa754ba9",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/VERL_INTEGRATION.md",
-      "bytes": 4851,
-      "sha256": "0319e6bc3f31c0dfb298bfe62ce61a232c0ecd94e6237fb33f62274cc5c97aac",
-      "role": "canonical_or_documentation"
-    },
-    {
-      "path": "docs/VERL_V080_MIGRATION.md",
-      "bytes": 11656,
-      "sha256": "444e9ad9f921da5e81fc201bfbe13c0dc59341bf38d5f64d29befa40ce774c9c",
+      "bytes": 14506,
+      "sha256": "c8429dea8fb82c33575677460a7b90c4f06c7324a91fffd35297aa75eae7d4b4",
       "role": "canonical_or_documentation"
     },
     {
