@@ -534,3 +534,19 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   缺一不可**，之前"OPD 无效果"的结论作废。详细表格与限制见
   `docs/RESULTS_native_opd_20260924.md`。
   方法论补充：更新幅度用 2 步外推会高估约 5 倍（第 1 步梯度异常大），**这类测量应至少跑 20 步**。
+
+- **E28｜MVP 的"能跑"不等于"符合需求"（2026-09-24）。** 对照主线与注册配置审计第一版 MVP，
+  发现 3 处硬性不一致：(1) 教师收到的是**学生的 system prompt**，而注册链是
+  `replace_system(state.messages, TEACHER_SYSTEM_PROMPT)`（`annotate_states.py:311`）；
+  (2) 教师温度硬编码 0.0，而 profile `teacher_sampling_nonthinking_v1` 明确为 **1.0**
+  且"各臂共享"；(3) 选择是自写 hash 抽样，而非注册的 `uniform_per_game_nested_v1`
+  （含 per-game inclusion probability）。另有 2 处不完整：缺 `messages_sha256` 校验、
+  acceptance 只报 sample/state 两层。
+  **修复与验证（MVP v2，`scripts/mvp_blackbox_opd.py`）**：教师改用 $P_T$；温度从 profile 读；
+  选择实现注册语义并记录 $m/T_g$；请求账本按 `sha256_json(messages)` 逐条校验；
+  acceptance 报 sample/state/game 三层；支持 $N\ge2$。实测（2 局 × 2 状态 × $N=2$）：
+  8 次尝试全部可执行、`hash_verified=yes (mismatch=0, missing=0)`、
+  sample 8/8、state 4/4、game 2/2、**每 game 权重和 = 1.000**（每行 $1/(V_gK_s)=0.25$ × 4 行），
+  与 §2.4 的四级归一公式完全一致。
+  **纪律**：交付前必须逐条对照"需求出处"（主线文档/注册配置/论文公式），
+  "能跑"只说明工程可行，不说明方法正确。
