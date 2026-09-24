@@ -511,3 +511,16 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   **纪律**：推送前在容器里同时跑 `python -m ruff check --no-cache src scripts tests integrations`
   与 `scripts/run_tests.py`；ruff 的默认规则集是 E4/E7/E9/F（含未使用导入/变量），
   这类问题一秒就能查出来。
+
+- **E26｜offline CI 从加入起就没绿过：lint 规则集随 ruff 漂移（2026-09-24 查清）。** GitHub Actions
+  `offline-ci` 的 3.10/3.11/3.12 三个 job 一直只在 **Lint** 一步失败；查询 API 确认自
+  2026-09-20 该 workflow 首次运行以来 **31 次全部 failure/cancelled，从无 success**。
+  根因不是某次提交：`pyproject` 里写的是 `ruff>=0.6`（未固定版本），CI 装到的是当时最新的
+  **ruff 0.16.8**，其默认规则集比仓库编写时（0.12.x）扩大很多（UP/I001/RUF/TRY/PLC…），
+  全仓报 **227 处**违规，其中含会改异常类型的 TRY004 这类不应机械修的规则。
+  **处理**：(1) 先修掉容器 ruff 0.12.12 报出的 5 处真实违规（见 E25）；
+  (2) 把 lint 契约显式化——`[tool.ruff.lint] select = ["E4","E7","E9","F"]`（历史上唯一的
+  默认集合），并把测试依赖收紧为 `ruff>=0.12,<0.14`。验证：最新 ruff 0.16.8 与 0.13.0 在本地
+  均 `All checks passed!`，容器内 ruff 与 196 项测试同时通过。
+  **纪律**：CI 的 lint 契约必须显式声明并固定版本区间，否则规则集漂移会让"历史绿灯"不可复现；
+  反向地，也不应为追新规则去机械改 227 处（尤其 TRY004 会改变异常语义）。
