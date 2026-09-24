@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "ddc0e04541f2598912cc4ba68b2d78e6829faf86",
+  "code_revision_at_generation": "04b656ddc6bb347cbecb1e0e9e52f9f502d80bff",
   "canonical_code": {
-    "tree_sha256": "9cb06b6217185f98376441c6c10463360a6a36d164588606dd669d824412047c",
+    "tree_sha256": "45450905c4d81685d2fd41155a05483d9121127239a54e547b8ad0a5f7d2b8c3",
     "files": 130,
-    "bytes": 1096550
+    "bytes": 1096428
   },
   "files": 290,
-  "bytes": 2239250,
+  "bytes": 2240026,
   "counts_by_root": {
     "configs": 12,
     "docker": 2,
@@ -162,8 +162,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 56923,
-      "sha256": "c0ab4eae427f94eea0c4ae4389da98249ced1f2be68a28ed22428b2762384ebb",
+      "bytes": 57821,
+      "sha256": "996f5ddd40a6553f4a554a0953892259181935b96ec0a14f4b59cf81d5b58a4f",
       "role": "canonical_or_documentation"
     },
     {
@@ -1062,8 +1062,8 @@
     },
     {
       "path": "scripts/measure_teacher_student_gap.py",
-      "bytes": 8526,
-      "sha256": "3ea2944780d04d3773dc6971ff6527efc5759462065614fd4adcdeeb5c821648",
+      "bytes": 8509,
+      "sha256": "9fc4a6a9c5b3cd87de292600da9fe0cded0f6e72c0d7744173d2bf8175ccd878",
       "role": "canonical_or_documentation"
     },
     {
@@ -1422,8 +1422,8 @@
     },
     {
       "path": "src/omniopd/opd_adapter.py",
-      "bytes": 20292,
-      "sha256": "074842a833890cf26a8be6faffa6e0da031a815a01ac63f08a2fad5095bc17b6",
+      "bytes": 20269,
+      "sha256": "7c30ea8ea9843cc82519d8df450f6cf8f22e388641cbb76522af941b512349c7",
       "role": "canonical_or_documentation"
     },
     {
@@ -1530,8 +1530,8 @@
     },
     {
       "path": "src/omniopd/verl_opd.py",
-      "bytes": 8815,
-      "sha256": "96943937e33c3738e136d9e126825cbb6777a1d00ea28a6aa32d1917c88ff03b",
+      "bytes": 8733,
+      "sha256": "44b36bec660f60c09642c4f2f89ddbd227f3676740dbeae295e02af514069135",
       "role": "canonical_or_documentation"
     },
     {
