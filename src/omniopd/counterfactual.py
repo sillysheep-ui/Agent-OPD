@@ -472,6 +472,7 @@ def _run_branch(
     max_steps: int,
     request_namespace: str,
     branch_label: str,
+    student_system_prompt: str = STUDENT_SYSTEM_PROMPT,
 ) -> BranchOutcome:
     if intervention_action not in state.admissible_actions:
         raise ValueError("intervention action is not admissible")
@@ -480,13 +481,15 @@ def _run_branch(
     # already-truncated query would permanently discard older pairs and can
     # change what a fresh policy query retains at later branch steps. The
     # continuation policy is always the Student, including for Teacher-state
-    # source controls, so its system prompt must be P_S.
+    # source controls, so its system prompt must be P_S -- passed in by the
+    # caller, because the frozen P_S of a study need not be the repository
+    # default (a mismatch here silently changes the continuation policy).
     full_history = state.full_messages or state.messages
     history = ConversationHistory(
         task=state.task,
         game_id=state.game_id,
         task_type=state.task_type,
-        _messages=replace_system(full_history, STUDENT_SYSTEM_PROMPT),
+        _messages=replace_system(full_history, student_system_prompt),
         _observation=state.observation,
         _admissible_actions=state.admissible_actions,
         _turn_index=state.turn_index,
@@ -547,6 +550,7 @@ def run_paired_counterfactual(
     settings: GenerationSettings = GenerationSettings(),
     max_steps: int = 50,
     request_namespace: str | None = None,
+    student_system_prompt: str = STUDENT_SYSTEM_PROMPT,
 ) -> CounterfactualPair:
     """Replay two independent branches; the intervention action is the only change."""
 
@@ -581,6 +585,7 @@ def run_paired_counterfactual(
         max_steps,
         namespace,
         "student_action_branch",
+        student_system_prompt,
     )
     teacher = _run_branch(
         env_factory,
@@ -593,5 +598,6 @@ def run_paired_counterfactual(
         max_steps,
         namespace,
         "teacher_action_branch",
+        student_system_prompt,
     )
     return CounterfactualPair(student, teacher)

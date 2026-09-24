@@ -151,6 +151,7 @@ def main() -> None:
                 settings=settings,
                 max_steps=args.max_steps,
                 request_namespace=f"preval:{index}:{turn.state.turn_index}",
+                student_system_prompt=system_prompt,
             )
             row.update({
                 "turn_index": turn.state.turn_index,
