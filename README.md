@@ -1,12 +1,12 @@
 # Agent OmniOPD
 
-> 最近一次落地（2026-09-20）：传统逐 Token OPD 的 veRL v0.8.0 训练内核已在
-> Qwen3-4B Student / Qwen3-14B Teacher 上跑通真实单步——非零梯度、优化器一阶与
-> 二阶动量非零、checkpoint 保存与显式恢复续训均通过。但这仍是非确认性单状态烟测：
-> invalid 与预算口径、`state_weight` 消费、正式估计器和多游戏数据都未冻结，
-> 不要据此启动确认性实验。共同冷启动 SFT 正在同一分支上建设。
-> 详见 `docs/EXPERIMENT_ISSUES_20260917.md`（E10、O23–O25）与
-> `docs/VERL_V080_MIGRATION.md`。
+> **主线定义见 [`docs/AGENT_OPD.md`](docs/AGENT_OPD.md)**：黑盒 Agent 在线蒸馏的记号、
+> 目标函数推导、实现步骤、四条臂映射、预算/无效策略口径与验收清单。本文档只讲怎么用。
+>
+> 最近一次落地（2026-09-24）：传统逐 Token OPD（白盒 reverse-KL 估计）在 4 卡上跑通并
+> **显著超过基线**——同批 140 局配对 66/140 = 47.14% vs 50/140 = 35.71%（净 +16 局，
+> McNemar p = 0.0328），权重变化 `‖ΔW‖/‖W‖ = 1.23e-3`。证据与限制见
+> `docs/RESULTS_native_opd_20260924.md`；问题台账见 `docs/EXPERIMENT_ISSUES_20260917.md`。
 
 这是依据论文定义重新整理的、协议优先的 Black-box Agent On-Policy Distillation
 代码库。它不把历史实验产物自动视为可信输入，而是显式记录状态 schema、
@@ -37,13 +37,12 @@ Teacher draws 在给定 \(s\) 后独立同分布，则
 - `configs/`：显式实验协议；
 - `tests/`：不依赖真实 API/ALFWorld 的协议回归测试；
 - `legacy/`：从两份 Word 提取的原始代码快照，仅用于追溯，不应运行；
-- `docs/AUDIT.md`：问题、影响、修复和旧结果处置；
-- `docs/FILE_AUDIT.md`：旧代码问题的逐文件索引；
-- `docs/MODIFICATION_PLAN.md`：修改顺序、实施状态与验收门槛；
-- `docs/THEORY_TO_CODE.md`：公式到实现与测试的映射；
-- `docs/REPRODUCTION.md`：从state pool到统计推断的完整重跑顺序；
-- `docs/VERIFICATION_REPORT.md`：代码正确性与公式契合性的最终核验；
-- `docs/CODE_INVENTORY.json`：交付文件、字节数与SHA256清单。
+- `docs/AGENT_OPD.md`：**主线文档**（方法定义、理论推导、实现、四条臂、口径、验收）；
+- `docs/THEORY_TO_CODE.md`：公式到实现与测试的逐条映射（主线的附录性质）；
+- `docs/REPRODUCTION.md`：历史重跑流程（以 `docs/AGENT_OPD.md` 为准）；
+- `docs/EXPERIMENT_ISSUES_20260917.md`：问题台账（E/D/O/R 系列，含证据与纪律）；
+- `docs/RESULTS_*.md`：已完成的实验结果与限制；
+- `docs/CODE_INVENTORY.json`：交付文件、字节数与 SHA256 清单。
 
 ## 版本管理与持续迭代
 
@@ -96,7 +95,7 @@ pytest -q
 4. 使用 `omniopd-build-data` 按 game-safe split 构造 Student-context、action-only 数据；
 5. 使用 `scripts/validate_experiment_pair.py --kind annotation_runs --output ...` 生成唯一的
    annotation-pair manifest；两个训练臂必须共同绑定这个完整文件，再按
-   `docs/VERL_INTEGRATION.md` 启动固定 optimizer-step 训练；
+   `docs/AGENT_OPD.md` §3 的步骤启动固定 optimizer-step 训练；
 6. 训练正常退出且 final checkpoint 被验证为超参数匹配、带 Tokenizer、A/B tensor
    成对且覆盖配置 target modules 的 PEFT LoRA adapter 后才生成 completion manifest。
    使用 `scripts/run_vllm_eval.sh` 在服务仍为
@@ -127,9 +126,8 @@ Teacher 采样必须显式选择 `configs/teacher_sampling_nonthinking.yaml` 或
 `configs/teacher_sampling_thinking.yaml`。non-thinking 的 \(N>1\) 使用正温度；thinking
 模式省略 temperature 并固定 reasoning effort。两种 profile 不得在比较组间混用。
 
-完整命令、阶段输入输出和重跑边界见 `docs/REPRODUCTION.md`；问题分级、逐文件
-处置和公式映射分别见 `docs/AUDIT.md`、`docs/FILE_AUDIT.md` 与
-`docs/THEORY_TO_CODE.md`。
+完整命令、阶段输入输出和重跑边界见 `docs/AGENT_OPD.md`；问题分级与逐条处置见
+`docs/EXPERIMENT_ISSUES_20260917.md`；公式与代码的逐条映射见 `docs/THEORY_TO_CODE.md`。
 
 当前发布包的确认性 launcher 完整实现的是 fixed-budget breadth/depth 二臂链。
 `student_state_control.yaml`、`teacher_state_control.yaml` 明确只是不可运行的设计约束模板；

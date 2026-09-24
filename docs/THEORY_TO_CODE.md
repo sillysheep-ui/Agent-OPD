@@ -4,6 +4,9 @@
 检验的经验主张。任何一项离线测试通过，都不能替代 DeepSeek、ALFWorld、GPU 训练或
 vLLM rollout。
 
+**本文是 [`AGENT_OPD.md`](AGENT_OPD.md) 的附录**：只负责把该主线的公式逐条映射到代码与测试。
+方法定义、四条臂、预算与无效策略口径以主线文档为准。
+
 ## 1. 状态、完整历史与实际模型上下文
 
 论文的完整环境状态为
@@ -166,12 +169,19 @@ q_{train}(s)\propto q_{sel}(s)P(K_s>0\mid s),
 
 ## 7. Action-only token CE
 
-论文目标为
+**本项目的黑盒 OPD 目标**（forward KL 的可估形式，推导见 `AGENT_OPD.md` §2.2）为
 
 \[
 \mathcal L_i=-\frac1{L_i}\sum_k
 \log p_\theta(a_{i,k}^T\mid s_i,a_{i,<k}^T).
 \]
+
+> **归属澄清（2026-09-24 核验）**：上式**不是** SAGE-OPD（arXiv 2606.19659）Eq.(5) 的目标。
+> 论文的 Eq.(5) 是学生自身 token 上的 reverse KL
+> $D_{\mathrm{KL}}\big(\pi_\theta(\cdot\mid h_t)\,\|\,\pi_\phi(\cdot\mid h_t)\big)$，需要教师
+> **logprob**（白盒）与多轮轨迹；而"用教师动作做模仿"在论文中被明确归为 off-policy
+> multi-turn SFT 基线。上式的正确身份是**黑盒 forward-CE 目标**：它的期望等于
+> $H(q_T)+D_{\mathrm{KL}}(q_T\|\pi_\theta)$，只依赖教师**文本**。
 
 `encode_final_assistant_content()` 对完整对话只调用一次 chat template；generation prompt
 必须是完整对话 token 的严格前缀，否则 fail closed。训练、M1、M3 共用同一
