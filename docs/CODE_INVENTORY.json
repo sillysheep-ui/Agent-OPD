@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "04b656ddc6bb347cbecb1e0e9e52f9f502d80bff",
+  "code_revision_at_generation": "024aa3fe2d42e3f13be8b326135e9ef3abd59034",
   "canonical_code": {
-    "tree_sha256": "45450905c4d81685d2fd41155a05483d9121127239a54e547b8ad0a5f7d2b8c3",
+    "tree_sha256": "d63a00b1829230377dcc9fa565fae5b2ab76a7df2d1f9403274c1db4e27201da",
     "files": 130,
-    "bytes": 1096428
+    "bytes": 1096826
   },
   "files": 290,
-  "bytes": 2240026,
+  "bytes": 2241713,
   "counts_by_root": {
     "configs": 12,
     "docker": 2,
@@ -162,8 +162,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 57821,
-      "sha256": "996f5ddd40a6553f4a554a0953892259181935b96ec0a14f4b59cf81d5b58a4f",
+      "bytes": 59110,
+      "sha256": "51ba0eff2a954b335ad80c4a9396d736cf7cd9e72f4d1366ee50f1df88c51e0c",
       "role": "canonical_or_documentation"
     },
     {
@@ -852,8 +852,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 1108,
-      "sha256": "234cb9f6f8e3dd6b57bbc39506e4c9e659b168b9e802a2e3bf2410d11f674f80",
+      "bytes": 1506,
+      "sha256": "0cef09a1f57f0ee44f46463b6d1005b81680298f54fe030b4ac672669fba46f9",
       "role": "canonical_or_documentation"
     },
     {
