@@ -578,3 +578,20 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   教师黑盒查询（$P_T$、profile 温度、N 次、attempt ledger + 哈希校验、三层 acceptance）
   → 四级归一 + action-only mask 的 SFT 行 → 加权 CE 训练（loss/梯度/ΔW 三项自检）
   → 服务与配对评测。每一步都有独立产物与验证记录，可单独复现。
+
+- **E31｜反事实预验证跑通，但"回放保真"不过关，结果暂不可用（2026-09-24）。** 新增
+  `scripts/prevalidate_correction_value.py`：对每局先跑学生基线 $Y(a_S)$，找到**第一个**
+  "教师（黑盒、$P_T$、温度 0）给出有效且与学生不同的动作"的状态，再用
+  `run_paired_counterfactual()` 在同一 environment seed 下回放同一前缀、只替换该步，
+  由同一冻结学生续跑到结束（$Y(a_T)$）。首次运行（8 局，GPU 上两个服务：base 学生 + 14B 教师）：
+  **前提成立**——7/8 局存在可纠正的分歧状态（correction_rate 0.875）；
+  **但对照失效**——"回放同一前缀 + 同一学生动作"的分支只有 **1/8 胜**，而原始基线是 **4/8**。
+  回放本该逐位复现原轨迹，1 vs 4 说明分支与原 rollout 不一致，因此
+  `corrected 2/8 vs baseline 4/8`（delta −25 点）**不能解释为负效应，只能说明测量无效**。
+  最可能的原因：分支续跑时的**历史表示/截断**与原 rollout 不一致（采集池用的
+  `user_turn_style` / `assistant_history` 与本脚本的默认值可能不同；`run_paired_counterfactual`
+  会从 `full_messages` 恢复并强制 $P_S$，但截断预算若不同，学生看到的历史就不同）。
+  **下一步（必须先做）**：取一局，把"原始轨迹每步的 prompt/动作"与"回放分支每步的
+  prompt/动作"逐条对拍，定位差异；修好保真后重跑（判定规则不变：≥+10 点才算机制有余量）。
+  **纪律**：paired 设计必须有"空干预对照"（replay control）作为前提，
+  仅报告 treatment 分支的胜负会把保真失败误读成方法无效。
