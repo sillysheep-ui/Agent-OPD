@@ -550,3 +550,19 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   与 §2.4 的四级归一公式完全一致。
   **纪律**：交付前必须逐条对照"需求出处"（主线文档/注册配置/论文公式），
   "能跑"只说明工程可行，不说明方法正确。
+
+- **E29｜第 5 步（加权 CE 训练）实现并通过三项自检（2026-09-24）。** 新增
+  `scripts/train_weighted_ce_sft.py`：直接调用仓库的 `weighted_causal_ce`，训练前做**三项自检**——
+  (A) 损失接线：探针批次的 loss 与独立手算逐位一致；(B) 梯度：首步 grad_norm>0；
+  (C) 更新幅度：$\|dW\|_F/\|W\|_F$ 落在主线要求的 $[10^{-3},10^{-2}]$。
+  首次运行（8 行 / 2 games、15 epoch、LR 1e-4、micro-batch 1）实测：
+  `Σstate_weight=2.000000`、**每 game 恰为 1.000000**；`[A] probe loss=manual=1.50350356, |diff|=0`；
+  `[B] grad_norm=3.05e+01`；loss `0.9337 → 0.00004`；`[C] ||dW||/||W||=2.258e-03 → OK`；
+  adapter 正常保存。
+  **自检当场抓出两个错（值得记录）**：(1) 验证用的手工 loss 在 fp32 下复制整份 logits，
+  4.6k token × 15 万词表 → 直接 OOM；改为**合成小批次（末尾 64 token）探针**；
+  (2) 我把 `weighted_causal_ce_components` 的返回值当成 loss，实际它返回
+  `(分子, 分母)`，归一化要用 `weighted_causal_ce`——**若没有 A 项自检，这个错误会静默地把
+  学习率等效缩小一倍**（loss 差恰好 2 倍）。
+  另：`pickle`/探针取序列**开头**会丢掉被监督的 action token（mask 为空直接抛错），
+  必须取**末尾**片段。
