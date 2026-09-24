@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "67a04a632329e36aa9887b84e8b0e5f34820e093",
+  "code_revision_at_generation": "aa8b62e8c33cd0f7e1f4422819cb2f2e2d5f3ec4",
   "canonical_code": {
-    "tree_sha256": "268c6bd723174bcd375ce43963e94f762708d7290a3015d31458e81181245a1e",
+    "tree_sha256": "f123f8ad7a61d56c5f14a3879504fbf1b59b05295ff984c95929a4f2435acdde",
     "files": 131,
-    "bytes": 1108043
+    "bytes": 1108005
   },
   "files": 279,
-  "bytes": 2144676,
+  "bytes": 2144638,
   "counts_by_root": {
     "configs": 12,
     "docker": 2,
@@ -1014,8 +1014,8 @@
     },
     {
       "path": "scripts/mvp_blackbox_opd.py",
-      "bytes": 11158,
-      "sha256": "677385b6e70b5aa5b3475f6079fc0a91c918f1f1d402b037b145bc1584c3ab25",
+      "bytes": 11120,
+      "sha256": "f3083a86db83597002046465a0f7bd8a44099dfa9004533c9b1427660f6c5da5",
       "role": "canonical_or_documentation"
     },
     {
