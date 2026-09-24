@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "f46380d160748148e2a1da43e613720cedbe8123",
+  "code_revision_at_generation": "67a04a632329e36aa9887b84e8b0e5f34820e093",
   "canonical_code": {
-    "tree_sha256": "cf4fbd3a63001353688c5ead154e6a5e8ba5634d16accba62ecd2d2699174c41",
-    "files": 130,
-    "bytes": 1096885
+    "tree_sha256": "268c6bd723174bcd375ce43963e94f762708d7290a3015d31458e81181245a1e",
+    "files": 131,
+    "bytes": 1108043
   },
-  "files": 278,
-  "bytes": 2132997,
+  "files": 279,
+  "bytes": 2144676,
   "counts_by_root": {
     "configs": 12,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 69,
+    "scripts": 70,
     "src": 44,
     "tests": 38
   },
@@ -120,8 +120,8 @@
     },
     {
       "path": "docs/AGENT_OPD.md",
-      "bytes": 12110,
-      "sha256": "4cb72bbee196d3212df805f5af04fa30215315624da497178adffc98bf003f79",
+      "bytes": 12631,
+      "sha256": "44f547d9b97b948c803008cacf37ab11b72654b8bf7ad47d592c6e239484f4bd",
       "role": "canonical_or_documentation"
     },
     {
@@ -1010,6 +1010,12 @@
       "path": "scripts/merge_lora.py",
       "bytes": 7847,
       "sha256": "25ba65efc6184ea780ecd44608de7ac4881970d15b9d710ad6e5e5cc594addf0",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/mvp_blackbox_opd.py",
+      "bytes": 11158,
+      "sha256": "677385b6e70b5aa5b3475f6079fc0a91c918f1f1d402b037b145bc1584c3ab25",
       "role": "canonical_or_documentation"
     },
     {
