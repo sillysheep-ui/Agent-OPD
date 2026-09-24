@@ -59,7 +59,7 @@ fi
 docker rm -f "$NAME" >/dev/null 2>&1 || true
 passthrough_env=()
 for name in LOSS_MODE USE_POLICY_GRADIENT DISTILLATION_TOPK LR TEMPERATURE SAVE_FREQ \
-            AGENT_LOOP_MANAGER LORA_RANK LORA_ALPHA; do
+            AGENT_LOOP_MANAGER LORA_RANK LORA_ALPHA TEACHER_GPU_MEMORY STUDENT_GPU_MEMORY; do
   if [ -n "${!name:-}" ]; then
     passthrough_env+=(-e "$name=${!name}")
   fi
