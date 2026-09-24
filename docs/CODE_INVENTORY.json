@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "d15d25eadc56e86bdd30cc46fd8225daf648ac68",
+  "code_revision_at_generation": "8e22884026b7b3b36678b9d14c6f0d537fe01ba7",
   "canonical_code": {
-    "tree_sha256": "51022dae5fec889c9037e0b6f48734d47a25a9b1abc7a47fa5c36ddf908d760c",
-    "files": 133,
-    "bytes": 1128880
+    "tree_sha256": "18f94009ce4b445186958d3c07a9e1459dfb065c0c53419c1703832f1c4d12c9",
+    "files": 134,
+    "bytes": 1137263
   },
-  "files": 281,
-  "bytes": 2172635,
+  "files": 282,
+  "bytes": 2183219,
   "counts_by_root": {
     "configs": 12,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 72,
+    "scripts": 73,
     "src": 44,
     "tests": 38
   },
@@ -126,8 +126,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 67091,
-      "sha256": "00e253f39e3cb0db88ecba7b76bea9c38f20acf35f9127d0fa74e38b4a471ab0",
+      "bytes": 69292,
+      "sha256": "1a712f390ef71953e4d4e6411a36d8b13a2da39adde7601657878a213fa7d596",
       "role": "canonical_or_documentation"
     },
     {
@@ -1014,8 +1014,8 @@
     },
     {
       "path": "scripts/mvp_blackbox_opd.py",
-      "bytes": 13001,
-      "sha256": "85014c3d9c54419d07caf4a5a78cec141bc5e7e33bff83853f694f5f4c9dab91",
+      "bytes": 13004,
+      "sha256": "db746d5e7b54b9ec3848870b66d2b5888e31c564f8dc34751078d229e78325a0",
       "role": "canonical_or_documentation"
     },
     {
@@ -1208,6 +1208,12 @@
       "path": "scripts/verify_opd_layout.py",
       "bytes": 6203,
       "sha256": "82816b59197079cafea91d1858b2d132942f276bcff7be33d6ffe3b84dc15303",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/verify_pipeline.py",
+      "bytes": 8380,
+      "sha256": "d660d7efc4765978d9bf35f94aef17e31e11f8ae72ac0996073be5d38c4ce834",
       "role": "canonical_or_documentation"
     },
     {
