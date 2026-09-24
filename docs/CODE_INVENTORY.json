@@ -2,14 +2,14 @@
   "schema_version": 1,
   "artifact": "complete_codebase_inventory",
   "repository": ".",
-  "code_revision_at_generation": "05cf03318ff7e0e425a10fe730f586353d6718da",
+  "code_revision_at_generation": "ca7ad34c0bd023e015dcd9af72682c69abba84ab",
   "canonical_code": {
-    "tree_sha256": "8e62d7070af98b0e64fec2eda390777a8ff0341e2d90549f9529e315fcb92ac7",
-    "files": 131,
-    "bytes": 1109886
+    "tree_sha256": "05b29f4915c886e0e1b865a07ba666c3ee6d9c62f890a3ab5f5bec85185f6b37",
+    "files": 132,
+    "bytes": 1119540
   },
-  "files": 279,
-  "bytes": 2147894,
+  "files": 280,
+  "bytes": 2158896,
   "counts_by_root": {
     "configs": 12,
     "docker": 2,
@@ -17,7 +17,7 @@
     "integrations": 1,
     "legacy": 101,
     "repository_root": 3,
-    "scripts": 70,
+    "scripts": 71,
     "src": 44,
     "tests": 38
   },
@@ -126,8 +126,8 @@
     },
     {
       "path": "docs/EXPERIMENT_ISSUES_20260917.md",
-      "bytes": 61344,
-      "sha256": "78f09c400dd0d5d4528a2de1993d6d11c5230e168bbf9fe372cfcbe6c2dfe35b",
+      "bytes": 62692,
+      "sha256": "33a6fce31339da57d5ada716bd27226e3135e11eaec697c79149ceec9af2fefd",
       "role": "canonical_or_documentation"
     },
     {
@@ -1184,6 +1184,12 @@
       "path": "scripts/smoke_opd_vllm_teacher.py",
       "bytes": 6450,
       "sha256": "68efa683c7d40fba97b10f047e586b2d8f170c1b56ab59ce9f01a714f175e7f0",
+      "role": "canonical_or_documentation"
+    },
+    {
+      "path": "scripts/train_weighted_ce_sft.py",
+      "bytes": 9654,
+      "sha256": "2e196ec705281ffc6c583cf65aaedcbaf08ffdd5ba2c5ec6a06f6a6d3fafa8f1",
       "role": "canonical_or_documentation"
     },
     {
