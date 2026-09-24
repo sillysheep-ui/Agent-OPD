@@ -472,3 +472,32 @@ step 2 checkpoint 恢复证据。该更新只关闭 O10 的单状态工程验收
   **任何 ±3 点量级的比较都不可信**，扩大评测规模（valid_seen + unseen 或多种子）应优先于
   调参。训练强度诊断（真实状态提示词上 adapter 影响 0.326 vs bf16 导出误差 0.490）表明
   该预算下 adapter 对行为几乎无改变，与"评测无差异"一致。
+
+- **E22｜宿主机 docker 被重置：data-root 与 nvidia runtime 丢失（2026-09-24）。** 现象：所有
+  GPU 容器无法启动，报 `unknown or invalid runtime name: nvidia`；`docker info` 只剩
+  `runc`，`docker images` 为空，`docker ps` 也无任何容器。取证：dockerd 运行时长仅 461 秒、
+  `/etc/docker/daemon.json` 于 17:54 被改写（只剩 registry mirrors）、默认 data-root
+  `/var/lib/docker` 只有 222 MB。**镜像并没有丢**：旧 data-root `/data/docker`（592 GB）仍在，
+  内含 `omniopd-verl080:alfworld`、`omniopd-verl080:vllm010-td010` 等 21 个仓库。
+  处理：备份现有 `daemon.json` 后写回 `data-root: /data/docker` 与
+  `runtimes.nvidia.path=/usr/bin/nvidia-container-runtime`（保持 `default-runtime=runc`，
+  避免影响他人 CPU 容器），`systemctl restart docker`。验证：`Runtimes` 重新出现 nvidia、
+  镜像 29 个可见、容器内 `nvidia-smi -L` 正常。
+  **附带影响**：17:55 的那次 daemon 重启把当时所有容器都杀掉（含他人长期运行的容器），
+  这不是本项目造成的；恢复后需各自重启。**纪律**：共享宿主机的 daemon 级操作必须先取证再动手，
+  并把「用哪个 data-root / 是否有 nvidia runtime」纳入启动前检查。
+- **E23｜cron 占位任务会周期性回归，且会与我们的 GPU 分配冲突。** 修复 docker 后第二次启动
+  8 卡实验时，教师 vLLM 报 `Free memory on device (23.84/79.32 GiB)`；取证显示 8 个进程都是
+  `conda env qwen3_medusa_xh_bak` 下的 `llamafactory/launcher.py /nfsdir/pulushi/task_test/killme.yaml`
+  （cron.service 启动，时间 09:09），即 `demokill` 的目标。清理后 8 卡全部空闲。
+  **纪律**：每次启动前先 `nvidia-smi` 确认目标卡空闲；若占用者匹配 `killme`，用 `demokill` 清理；
+  否则不得抢占。
+- **E24｜按用户约束改用 4 卡（2 学生 + 2 教师）跑通原生 OPD 短跑。** 布局：学生 + rollout 在
+  GPU 0-1（各约 21.6 GB），教师 1 副本 TP=2 在 GPU 2-3（各约 70.7 GB、94% 利用率）。
+  2 步短跑零异常，`checkpoints/global_step_2`（18 文件、18.06 GB）与 `completion_manifest.json`
+  均正常写出，宿主侧新增的退出码报告为 `container exit code: 0`。
+  门槛 1 通过：`native OPD: student_prompt=6431 teacher_prompt=6435 delta=+4
+  teacher_score(first response token)=0.000`（修复前为 −21.2）。step 1 指标：
+  `distillation/loss 0.921`、`grad_norm 165`、`entropy 1.347`。**注意**：LR 1e-4 下 grad_norm
+  已达 165，正式跑之前应先用 20 步短跑量 `‖ΔW‖/‖W‖`（`scripts/diagnose_adapter_scale.py`），
+  确认更新幅度落在 1e-3 量级而不是过大或过小。
