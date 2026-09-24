@@ -173,7 +173,7 @@ def main() -> None:
                 continue
             parsed = parse_action(raw, state.admissible_actions)
             samples.append(ActionSample(raw=raw,
-                                        executed_action=parsed.canonical_action or parsed.normalized_action or "",
+                                        executed_action=parsed.canonical_action or parsed.normalized_candidate or "",
                                         valid=parsed.valid, had_action_marker=parsed.had_action_marker,
                                         failure_reason=parsed.failure_reason))
             ledger_rows.append({"request_id": request_id, "game_id": state.game_id,
